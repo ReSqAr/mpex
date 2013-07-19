@@ -19,7 +19,9 @@ class Application:
 		self.hosts = structure.Hosts(self)
 		# initialise annexes
 		self.annexes = structure.Annexes(self)
-		# initialise host<->annex configuration
+		# initialise repositories
 		self.repos = structure.Repositories(self)
+		# initialise connections
+		self.connections = structure.Connections(self)
 		
 		

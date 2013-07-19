@@ -224,7 +224,7 @@ class Repositories:
 		key = (host,path)
 		
 		if key not in self._repos:
-			# if the we do not have yet a repository  the given key, create one
+			# if the we do not have yet a repository with the given key, create one
 			config = Repository(self.app, host, annex, path, data)
 			self._repos[key] = config
 		
@@ -251,3 +251,87 @@ class Repository:
 
 	def __str__(self):
 		return "Repository(%s@%s:%s:%s)" % (self._annex.name,self._host.name,self._path,self._data)
+
+
+class Connections:
+	""" tracks all known connections """
+	FILENAME = "known_connections"
+	def __init__(self, app):
+		# save option
+		self.app = app
+		# compute the file name
+		self._connpath = os.path.join(self.app.path,self.FILENAME)
+		# internal dictionary which tracks all known connections
+		self._connections = {}
+		# load connections
+		self.load()
+	
+	def load(self):
+		""" loads all known connections """
+		if os.path.isfile(self._connpath):
+			# open the file if it exists
+			with io.open(self._connpath, mode="rt", encoding="UTF8") as fd:
+				# decode list of connections (json file)
+				list_of_connections = json.load(fd)
+				# create connections
+				for source, dest, path, data in list_of_connections:
+					# find hosts
+					source = self.app.hosts.getHost(source)
+					dest   = self.app.hosts.getHost(dest)
+					# create config
+					self.getConnection(source, dest, path, data)
+	
+	def save(self):
+		""" saves all known connections """
+		# get all connections
+		connections = self.allConnections()
+		# convert it to a list
+		connections = [(c._source.name,c._dest.name,c._path,c._data) for c in connections]
+		# sort it
+		connections.sort()
+
+		# open the file in write mode
+		with io.open(self._connpath, mode="wt", encoding="UTF8") as fd:
+			# dump data
+			json.dump(connections, fd, ensure_ascii=False, indent=4, sort_keys=True)
+	
+	def allConnections(self):
+		""" return all known annexes """
+		return set(self._connections.values())
+
+	def getConnection(self, source, dest, path, data):
+		""" creates a connection with the given parameters """
+		# compute key
+		key = (source,dest,path)
+		
+		if key not in self._connections:
+			# if the we do not have yet a connection with the given key, create one
+			config = Connection(self.app, source, dest, path, data)
+			self._connections[key] = config
+		
+		# return the found (or created) config
+		return self._connections[key]
+		
+class Connection:
+	""" encodes information of one connection """
+	def __init__(self, app, source, dest, path, data):
+		# save options
+		self.app = app
+		self._source = source
+		self._dest = dest
+		self._path = path
+		self._data = data
+		
+		# sanity check: check that we got correct classes and path is valid,
+		# path maybe: ssh://<host> or <absolute path>
+		assert isinstance(self._dest,Host)
+		assert isinstance(self._source,Host)
+		assert self._path.startswith("ssh://") or self._path.startswith("/")
+
+	def __repr__(self):
+		return "Connection(%r,%r,%r,%r)" % (self._source,self._dest,self._path,self._data)
+
+	def __str__(self):
+		return "Connection(%s->%s:%s:%s)" % (self._source.name,self._dest.name,self._path,self._data)
+
+ 
