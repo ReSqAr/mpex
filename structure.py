@@ -245,6 +245,42 @@ class Repository:
 		assert isinstance(self._host,Host)
 		assert isinstance(self._annex,Annex)
 		assert self._path.startswith("/")
+		assert self.trust in ("semitrust","trust","untrust")
+		
+		# sanitise the files expression
+		self.sanitiseFilesExpression()
+	
+	def sanitiseFilesExpression(self):
+		""" sanitise the files expression """
+		
+		# get attribute
+		files = self._data.get("files")
+		# if there is nothing to do, leave
+		if files is None:
+			return
+		
+		# TODO
+		
+	@property
+	def direct(self):
+		""" determines if the repository should be in direct mode, default: False """
+		return bool(self._data.get("direct",False))
+	
+	@property
+	def files(self):
+		""" determines which files should be kept in the repository, default: None """
+		return self._data.get("files")
+	
+	@property
+	def strict(self):
+		""" determines if ONLY files which match the files epxression should be kept, default: False """
+		return self._data.get("strict",False)
+	
+	@property
+	def trust(self):
+		""" gives the trust level of the repository, default: semitrust """
+		return self._data.get("trust","semitrust")
+
 
 	def __repr__(self):
 		return "Repository(%r,%r,%r,%r)" % (self._host,self._annex,self._path,self._data)
