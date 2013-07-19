@@ -172,67 +172,67 @@ class Annex:
  
 
 
-class HostAnnexConfiguration:
-	""" configuration of annex/host combinations """
-	FILENAME = "known_annex_host_configs"
+class Repositories:
+	""" configuration of repositories """
+	FILENAME = "known_repositories"
 	def __init__(self, app):
 		# save option
 		self.app = app
 		# compute the file name
-		self._configpath = os.path.join(self.app.path,self.FILENAME)
+		self._repopath = os.path.join(self.app.path,self.FILENAME)
 		# internal set which tracks all known configurations
-		self._configurations = {}
+		self._repos = {}
 		# load configurations
 		self.load()
 	
 	def load(self):
 		""" loads all configurations """
-		if os.path.isfile(self._configpath):
+		if os.path.isfile(self._repopath):
 			# open the file if it exists
-			with io.open(self._configpath, mode="rt", encoding="UTF8") as fd:
+			with io.open(self._repopath, mode="rt", encoding="UTF8") as fd:
 				# decode list configurations (json file)
-				list_of_configs = json.load(fd)
+				list_of_repos = json.load(fd)
 				# create configurations
-				for host, annex, path, data in list_of_configs:
+				for host, annex, path, data in list_of_repos:
 					# find host and annex
 					host  = self.app.hosts.getHost(host)
 					annex = self.app.annexes.getAnnex(annex)
 					# create config
-					self.createConfig(host, annex, path, data)
+					self.getRepository(host, annex, path, data)
 	
 	def save(self):
-		""" saves all configurations """
+		""" saves all repositories """
 		# get all known configurations
-		configs = self.allConfigurations()
+		configs = self.allRepositories()
 		# convert it to a list
 		configs = [(c._host.name,c._annex.name,c._path,c._data) for c in configs]
 		# sort it
 		configs.sort()
 
 		# open the file in write mode
-		with io.open(self._configpath, mode="wt", encoding="UTF8") as fd:
+		with io.open(self._repopath, mode="wt", encoding="UTF8") as fd:
 			# dump data
 			json.dump(configs, fd, ensure_ascii=False, indent=4, sort_keys=True)
 	
-	def allConfigurations(self):
-		""" return all known configurations """
-		return set(self._configurations.values())
+	def allRepositories(self):
+		""" return all known repositories """
+		return set(self._repos.values())
 
-	def getConfig(self, host, annex, path, data):
-		""" creates a configuration with the given parameters """
+	def getRepository(self, host, annex, path, data):
+		""" creates a repository with the given parameters """
 		# compute key
 		key = (host,path)
 		
-		if key not in self._configurations:
-			# if the we do not have yet a config with the given key, create one
-			config = HostAnnexConfigurationItem(self.app, host, annex, path, data)
-			self._configurations[key] = config
+		if key not in self._repos:
+			# if the we do not have yet a repository  the given key, create one
+			config = Repository(self.app, host, annex, path, data)
+			self._repos[key] = config
 		
 		# return the found (or created) config
-		return self._configurations[key]
+		return self._repos[key]
 
-class HostAnnexConfigurationItem:
-	""" one host<->annex configuration item """
+class Repository:
+	""" one repository """
 	def __init__(self, app, host, annex, path, data):
 		# save options
 		self.app = app
@@ -247,7 +247,7 @@ class HostAnnexConfigurationItem:
 		assert self._path.startswith("/")
 
 	def __repr__(self):
-		return "HostAnnexConfigurationItem(%r,%r,%r,%r)" % (self._host,self._annex,self._path,self._data)
+		return "Repository(%r,%r,%r,%r)" % (self._host,self._annex,self._path,self._data)
 
 	def __str__(self):
-		return "HostAnnexConfigurationItem(%s@%s:%s:%s)" % (self._annex.name,self._host.name,self._path,self._data)
+		return "Repository(%s@%s:%s:%s)" % (self._annex.name,self._host.name,self._path,self._data)

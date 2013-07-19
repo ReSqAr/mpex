@@ -20,6 +20,6 @@ class Application:
 		# initialise annexes
 		self.annexes = structure.Annexes(self)
 		# initialise host<->annex configuration
-		self.hostannexconfig = structure.HostAnnexConfiguration(self)
+		self.repos = structure.Repositories(self)
 		
 		
