@@ -195,7 +195,7 @@ class Repositories(Collection):
 		# call super
 		super(Repositories,self).__init__(app,"known_repositories",Repository)
 
-	def keyFromArguments(self, host, annex, path, data={}):
+	def keyFromArguments(self, host, annex, path, **data):
 		""" get the key from the arguments """
 		return (host,path)
 	def objToRawData(self, obj):
@@ -209,22 +209,18 @@ class Repositories(Collection):
 		""" brings obj into a form which can be consumed by cls """
 		# copy dictionary
 		raw = dict(raw)
-		# extract host,annex and path
-		host = raw.pop("host")
-		annex = raw.pop("annex")
-		path = raw.pop("path")
 		# convert host and annex
-		host  = self.app.hosts.create(host)
-		annex = self.app.annexes.create(annex)
+		raw["host"]  = self.app.hosts.create(raw["host"])
+		raw["annex"] = self.app.annexes.create(raw["annex"])
 		# build dictionary
-		return {"host":host,"annex":annex,"path":path,"data":raw}
+		return raw
 
 class Repository:
 	""" one repository """
 	
 	OPERATORS = ["(",")","+","-","^","&"]
 	
-	def __init__(self, app, host, annex, path, data):
+	def __init__(self, app, host, annex, path, **data):
 		# save options
 		self.app = app
 		self._host = host
@@ -358,6 +354,18 @@ class Repository:
 		return files.strip()
 		
 	@property
+	def host(self):
+		return self._host
+	
+	@property
+	def annex(self):
+		return self._annex
+	
+	@property
+	def path(self):
+		return self._path
+	
+	@property
 	def direct(self):
 		""" determines if the repository should be in direct mode, default: False """
 		return self._data.get("direct","false").lower() == "true"
@@ -408,7 +416,7 @@ class Connections(Collection):
 		# call super
 		super(Connections,self).__init__(app,"known_connections",Connection)
 
-	def keyFromArguments(self, source, dest, path, data={}):
+	def keyFromArguments(self, source, dest, path, **data):
 		""" get the key from the arguments """
 		return (source,dest,path)
 	def objToRawData(self, obj):
@@ -422,19 +430,15 @@ class Connections(Collection):
 		""" brings obj into a form which can be consumed by cls """
 		# copy dictionary
 		raw = dict(raw)
-		# extract host,annex and path
-		source = raw.pop("source")
-		dest = raw.pop("dest")
-		path = raw.pop("path")
-		# convert host and annex
-		source = self.app.hosts.create(source)
-		dest = self.app.hosts.create(dest)
+		# convert source and dest
+		raw["source"] = self.app.hosts.create(raw["source"])
+		raw["dest"]   = self.app.hosts.create(raw["dest"])
 		# build dictionary
-		return {"source":source,"dest":dest,"path":path,"data":raw}
+		return raw
 
 class Connection:
 	""" encodes information of one connection """
-	def __init__(self, app, source, dest, path, data):
+	def __init__(self, app, source, dest, path, **data):
 		# save options
 		self.app = app
 		self._source = source
@@ -447,6 +451,27 @@ class Connection:
 		assert isinstance(self._source,Host), "%s: source has to be an instance of Host" % self
 		assert isinstance(self._dest,Host), "%s: dest has to be an instance of Host" % self
 		assert self._path.startswith("ssh://") or self._path.startswith("/"), "%s: unknown protocol specified in path" % self
+
+	@property
+	def source(self):
+		return self._source
+	
+	@property
+	def dest(self):
+		return self._dest
+	
+	@property
+	def path(self):
+		return self._path
+	
+	@property
+	def alwaysOn(self):
+		""" specifies if the connection is always active, default: False """
+		return self._data.get("alwayson","false").lower() == "true"
+	@alwaysOn.setter
+	def alwaysOn(self,v):
+		self._data["alwayson"] = str(bool(v)).lower()
+
 
 	def __repr__(self):
 		return "Connection(%r,%r,%r,%r)" % (self._source,self._dest,self._path,self._data)
