@@ -369,6 +369,9 @@ class Repository:
 	def direct(self):
 		""" determines if the repository should be in direct mode, default: False """
 		return self._data.get("direct","false").lower() == "true"
+	@direct.setter
+	def direct(self,v):
+		self._data["direct"] = str(bool(v)).lower()
 	
 	@property
 	def files(self):
@@ -392,7 +395,6 @@ class Repository:
 	def strict(self):
 		""" determines if ONLY files which match the files epxression should be kept, default: False """
 		return self._data.get("strict","false").lower() == "true"
-	
 	@strict.setter
 	def strict(self,v):
 		self._data["strict"] = str(bool(v)).lower()
@@ -401,6 +403,10 @@ class Repository:
 	def trust(self):
 		""" gives the trust level of the repository, default: semitrust """
 		return self._data.get("trust","semitrust")
+	@trust.setter
+	def trust(self,v):
+		assert v in ("semitrust","trust","untrust"), "Trust has to be valid, is '%s'." % v
+		self._data["trust"] = v
 
 
 	def __repr__(self):
