@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+
+import argparse
+
+import application
+
+#
+# initialise all repositories
+#
+def init_init(parsers):
+	parser = parsers.add_parser('init', help='Create all repositories.')
+	
+	parser.set_defaults(func=func_init)
+
+def func_init(args):
+	pass
+
+#
+# sync all repositories
+#
+def init_sync(parsers):
+	parser = parsers.add_parser('sync', help='Synchronise all repositories.')
+	
+	parser.set_defaults(func=func_sync)
+
+def func_sync(args):
+	pass
+
+
+
+
+def runParser():
+	# create the top-level parser
+	parser = argparse.ArgumentParser(prog='mpex')
+
+	# create sub parsers
+	subparsers = parser.add_subparsers(help='There are some subcommands.')
+	init_init(subparsers)
+	init_sync(subparsers)
+
+	# parse arguments and call function
+	args = parser.parse_args()
+	
+	if hasattr(args,"func"):
+		# if everything is OK, call the function
+		args.func(args)
+	else:
+		# print a warning
+		parser.print_usage()
+		print("Error: too few arguments")
+	
+if __name__ == "__main__":
+	runParser()
