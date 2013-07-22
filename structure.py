@@ -2,6 +2,7 @@ import json
 import os
 import os.path
 import io
+import string
 
 
 
@@ -101,10 +102,16 @@ class Hosts(Collection):
 		
 class Host:
 	""" encodes information of one host """
+	
+	VALID_CHARS = (set(string.ascii_letters + string.digits + string.punctuation) | {' '}) - {'"',"'"}
+	
 	def __init__(self, app, name):
 		# save options
 		self.app = app
 		self._name = name
+		
+		assert set(self.name).issubset(self.VALID_CHARS), "%s: invalid character detected." % self
+		assert not self.name.startswith(" ") or not self.name.endswith(" "), "%s: name may not start nor end with a white space." % self
 	
 	@property
 	def name(self):
@@ -144,13 +151,22 @@ class Annexes(Collection):
 	def rawDataToArgDict(self, raw):
 		""" brings obj into a form which can be consumed by cls """
 		return {"name": raw["name"]}
+
 	
+
+
 class Annex:
 	""" encodes information of one annex """
+	
+	VALID_CHARS = (set(string.ascii_letters + string.digits + string.punctuation) | {' '}) - {'"',"'"}
+	
 	def __init__(self, app, name):
 		# save options
 		self.app = app
 		self._name = name
+
+		assert set(self.name).issubset(self.VALID_CHARS), "%s: invalid character detected." % self
+		assert not self.name.startswith(" ") or not self.name.endswith(" "), "%s: name may not start nor end with a white space." % self
 	
 	@property
 	def name(self):
@@ -205,6 +221,9 @@ class Repositories(Collection):
 
 class Repository:
 	""" one repository """
+	
+	OPERATORS = ["(",")","+","-","^","&"]
+	
 	def __init__(self, app, host, annex, path, data):
 		# save options
 		self.app = app
@@ -214,14 +233,91 @@ class Repository:
 		self._data = data
 		
 		# sanity check: check that we got correct classes and path is absolute
-		assert isinstance(self._host,Host)
-		assert isinstance(self._annex,Annex)
-		assert self._path.startswith("/")
-		assert self.trust in ("semitrust","trust","untrust")
+		assert isinstance(self._host,Host), "%s: host has to be an instance of Host" % self
+		assert isinstance(self._annex,Annex), "%s: annex has to be an instance of Annex" % self
+		assert self._path.startswith("/"), "%s: path has to an absolute path" % self
+		assert self.trust in ("semitrust","trust","untrust"), "%s: trust has to be valid." % self
 		
 		# sanitise the files expression
 		self.files = self.files
 	
+	def tokeniseFileExpression(self, s):
+		""" tokenises the file expression, returns a list of tokens """
+		# for debugging purposes, keep the original string
+		orig = s
+		
+		# list of tokens
+		tokens = []
+		# get list of known hosts
+		known_hosts = self.app.hosts.getAll()
+		
+		while s:
+			# if the first character is a white space, ignore it
+			if s[0].isspace():
+				s = s[1:]
+				continue
+			
+			# if the first character is a operator, add it to the tokens list
+			if s[0] in self.OPERATORS:
+				tokens.append(s[0])
+				s = s[1:]
+				continue
+			
+			# hence, we have a host name
+			if s[0] in {"'",'"'}:
+				# the host name is enclosed in "" -> look for the next occurence
+				i = s.find(s[0],1)
+				if i == -1:
+					# if an error occured, fail loud
+					raise ValueError("Failed to parse '%s': non-closed %s found." % (orig,s[0]))
+				# otherwise we found the host name
+				host = s[1:i]
+				s = s[i+1:]
+			else:
+				# find the next operator (or the end of the string)
+				indices = [s.find(op) for op in self.OPERATORS]
+				indices = [index for index in indices if index >= 0]
+				
+				if indices:
+					# if there is a next operator, use it
+					i = min(indices)
+				else:
+					# otherwise, use the end of the string
+					i = len(s)
+				
+				# extract host name and set new s
+				host = s[:i]
+				s = s[i:]
+			
+			# we have found a host name, now parse it
+			host = host.strip()
+			
+			fuzzy_match = []
+			# try to match host to a known host
+			for known_host in known_hosts:
+				# in case of an exact match, add the token and end the loop
+				if known_host.name == host:
+					#print(host,"->",known_host)
+					tokens.append(known_host.name)
+					break
+				# in case of a fuzzy match, add the host to the fuzzy match list
+				fuzzy = lambda s: s.lower().replace(' ','')
+				if fuzzy(known_host.name) == fuzzy(host):
+					#print(host,"~>",known_host)
+					fuzzy_match.append(known_host)
+			else:
+				# if there was no exact match, see if we have at least fuzzy matches
+				if len(fuzzy_match) == 0:
+					raise ValueError("Could not parse the host name '%s': no candidates." % host)
+				elif len(fuzzy_match) >= 2:
+					raise ValueError("Could not parse the host name '%s': too many candidates." % host)
+				else:
+					# if there is only one fuzzy match, use it
+					tokens.append(fuzzy_match[0].name)
+		
+		# return the list of tokens
+		return tokens
+		
 	def sanitiseFilesExpression(self, files):
 		""" sanitise the files expression """
 		
@@ -229,7 +325,37 @@ class Repository:
 		if files is None:
 			return
 		
-		return files
+		# tokenise
+		tokens = self.tokeniseFileExpression(files)
+		
+		# some trivial properties which have to fullfilled:
+		# brackets: all brackets have to closed at the right level
+		number_of_brackets = 0
+		for token in tokens:
+			if token == "(": number_of_brackets += 1
+			if token == ")": number_of_brackets -= 1
+			if number_of_brackets < 0:
+				raise ValueError("Too many ')' in: %s" % files)
+		else:
+			if number_of_brackets > 0:
+				raise ValueError("Too many '(' in: %s" % files)
+		
+		# reformat files
+		files = ""
+		for token in tokens:
+			# if the host contains a white space, add around it ''
+			if ' ' in token:
+				token = "'%s'" % token
+			# kill the last white space in case of )
+			if token == ')' and files[-1] == " ":
+				files = files[:-1]
+			# add token
+			files += token
+			# white space after token, unless it is (
+			if token != '(':
+				files += " "
+		
+		return files.strip()
 		
 	@property
 	def direct(self):
@@ -259,6 +385,10 @@ class Repository:
 		""" determines if ONLY files which match the files epxression should be kept, default: False """
 		return self._data.get("strict","false").lower() == "true"
 	
+	@strict.setter
+	def strict(self,v):
+		self._data["strict"] = str(bool(v)).lower()
+
 	@property
 	def trust(self):
 		""" gives the trust level of the repository, default: semitrust """
@@ -314,9 +444,9 @@ class Connection:
 		
 		# sanity check: check that we got correct classes and path is valid,
 		# path maybe: ssh://<host> or <absolute path>
-		assert isinstance(self._dest,Host)
-		assert isinstance(self._source,Host)
-		assert self._path.startswith("ssh://") or self._path.startswith("/")
+		assert isinstance(self._source,Host), "%s: source has to be an instance of Host" % self
+		assert isinstance(self._dest,Host), "%s: dest has to be an instance of Host" % self
+		assert self._path.startswith("ssh://") or self._path.startswith("/"), "%s: unknown protocol specified in path" % self
 
 	def __repr__(self):
 		return "Connection(%r,%r,%r,%r)" % (self._source,self._dest,self._path,self._data)
