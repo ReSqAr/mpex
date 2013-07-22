@@ -83,7 +83,11 @@ class Collection:
 	def rawDataToArgDict(self, raw):
 		""" brings obj into a form which can be consumed by cls """
 		raise NotImplementedError
-	
+
+
+
+
+
 class Hosts(Collection):
 	""" tracks all known hosts """
 	def __init__(self, app):
@@ -99,7 +103,7 @@ class Hosts(Collection):
 	def rawDataToArgDict(self, raw):
 		""" brings obj into a form which can be consumed by cls """
 		return {"name": raw["name"]}
-		
+
 class Host:
 	""" encodes information of one host """
 	
@@ -116,6 +120,15 @@ class Host:
 	@property
 	def name(self):
 		return self._name
+	
+	
+	def repositories(self):
+		""" return the repositories on the current machine """
+		return {repo for repo in self.app.repositories.getAll() if repo.host == self}
+	
+	def connections(self):
+		""" return the connections from the current machine """
+		return {conn for conn in self.app.connections.getAll() if conn.source == self}
 	
 	#
 	# hashable type mehods, hashable is needed for dict keys and sets
@@ -153,8 +166,6 @@ class Annexes(Collection):
 		return {"name": raw["name"]}
 
 	
-
-
 class Annex:
 	""" encodes information of one annex """
 	
@@ -172,6 +183,10 @@ class Annex:
 	def name(self):
 		return self._name
 	
+	def repositories(self):
+		""" return the repositories belonging to the current annex """
+		return {repo for repo in self.app.repositories.getAll() if repo.annex == self}
+
 	#
 	# hashable type mehods, hashable is needed for dict keys and sets
 	# (source: http://docs.python.org/2/library/stdtypes.html#mapping-types-dict)
@@ -187,7 +202,9 @@ class Annex:
 
 	def __str__(self):
 		return "Annex(%s)" % self.name
- 
+
+
+
 
 class Repositories(Collection):
 	""" tracks all known repositories """
@@ -408,12 +425,29 @@ class Repository:
 		assert v in ("semitrust","trust","untrust"), "Trust has to be valid, is '%s'." % v
 		self._data["trust"] = v
 
+	
+	def connections(self):
+		""" all connections from the current repository to other repositories """
+		return self.host.connections() & {repo.host for repo in self.annex.repositories()}
+
+	#
+	# hashable type mehods, hashable is needed for dict keys and sets
+	# (source: http://docs.python.org/2/library/stdtypes.html#mapping-types-dict)
+	#
+	def __hash__(self):
+		return hash((self.host,self.path))
+	
+	def __eq__(self, other):
+		return (self.host,self.path) == (other.host,other.path)
 
 	def __repr__(self):
 		return "Repository(%r,%r,%r,%r)" % (self._host,self._annex,self._path,self._data)
 
 	def __str__(self):
 		return "Repository(%s@%s:%s:%s)" % (self._annex.name,self._host.name,self._path,self._data)
+
+
+
 
 
 class Connections(Collection):
@@ -493,6 +527,16 @@ class Connection:
 			raise ValueError("%s: cannot generate a valid git id." % self)
 		# return
 		return "".join(gitid)
+
+	#
+	# hashable type mehods, hashable is needed for dict keys and sets
+	# (source: http://docs.python.org/2/library/stdtypes.html#mapping-types-dict)
+	#
+	def __hash__(self):
+		return hash((self.source,self.dest,self.path))
+	
+	def __eq__(self, other):
+		return (self.source,self.dest,self.path) == (other.source,other.dest,other.path)
 
 	def __repr__(self):
 		return "Connection(%r,%r,%r,%r)" % (self._source,self._dest,self._path,self._data)

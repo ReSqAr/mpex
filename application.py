@@ -23,7 +23,7 @@ class Application:
 		# initialise annexes
 		self.annexes = structure.Annexes(self)
 		# initialise repositories
-		self.repos = structure.Repositories(self)
+		self.repositories = structure.Repositories(self)
 		# initialise connections
 		self.connections = structure.Connections(self)
 		
