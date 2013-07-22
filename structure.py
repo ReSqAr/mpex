@@ -3,60 +3,101 @@ import os
 import os.path
 import io
 
-class Hosts:
-	""" tracks all known hosts """
-	FILENAME = "known_hosts"
-	def __init__(self, app):
-		# save option
+
+
+class Collection:
+	def __init__(self, app, filename, cls):
+		# save options
 		self.app = app
+		self.cls = cls
 		# compute the file name
-		self._hostspath = os.path.join(self.app.path,self.FILENAME)
-		# internal dictionary which tracks all known hosts
-		self._hosts = {}
-		# load hosts
+		self._path = os.path.join(self.app.path,filename)
+		# internal dictionary which tracks all known objects
+		self._objects = {}
+		# load objects
 		self.load()
 	
 	def load(self):
-		""" loads all known hosts """
-		if os.path.isfile(self._hostspath):
+		""" loads all known objects """
+		# clear tracker
+		self._objects.clear()
+		if os.path.isfile(self._path):
 			# open the file if it exists
-			with io.open(self._hostspath, mode="rt", encoding="UTF8") as fd:
+			with io.open(self._path, mode="rt", encoding="UTF8") as fd:
 				# decode list of hosts (json file)
-				list_of_hosts = json.load(fd)
+				list_of_objects = json.load(fd)
 				# create individual hosts
-				for host in list_of_hosts:
-					self.getHost(host)
+				for obj in list_of_objects:
+					# covert raw object data
+					obj = self.rawDataToArgDict(obj)
+					# create the object
+					self.create(**obj)
 	
 	def save(self):
 		""" saves all known hosts """
-		# get set of all known host names
-		hostNames = self.allHostNames()
-		# convert it to a sorted list
-		hostNames = list(sorted(hostNames))
+		# get set of all known objects
+		list_of_objects = list(self._objects.items())
+		# convert it to a sorted list of raw data elements
+		list_of_objects.sort(key=lambda kv:kv[0])
+		list_of_objects = [self.objToRawData(kv[1]) for kv in list_of_objects]
 
 		# open the file in write mode
-		with io.open(self._hostspath, mode="wt", encoding="UTF8") as fd:
+		with io.open(self._path, mode="wt", encoding="UTF8") as fd:
 			# dump data
-			json.dump(hostNames, fd, ensure_ascii=False, indent=4, sort_keys=True)
+			json.dump(list_of_objects, fd, ensure_ascii=False, indent=4, sort_keys=True)
 	
-	def allHostNames(self):
-		""" return all known host names """
-		return set(self._hosts.keys())
-	
-	def allHosts(self):
-		""" return all known hosts """
-		return set(self._hosts.values())
+	def getAll(self):
+		""" return all known objects """
+		return set(self._objects.values())
 
-	def getHost(self, name):
-		""" get the given host """
+	def get(self, *args, **kwargs):
+		"""
+			get the given object, signature matches the signature of cls, however
+			not all data has to specified, only the arguments are needed which are
+			required to the deduce the key. if the object does not exists, None is
+			returned
+		"""
+		# compute key
+		key = self.keyFromArguments(*args, **kwargs)
+		# return object
+		return self._objects.get(key)
 
-		if name not in self._hosts:
-			# if the we do not have yet a host with the given name, create one
-			host = Host(self.app,name)
-			self._hosts[name] = host
+	def create(self, *args, **kwargs):
+		""" get the given object, signature matches the signature of cls """
+		# compute key
+		key = self.keyFromArguments(*args, **kwargs)
+		# if an object with the given key does not yet exists, create it
+		if key not in self._objects:
+			self._objects[key] = self.cls(self.app,*args,**kwargs)
+		# return object
+		return self._objects[key]
 		
-		# return the found (or created) host
-		return self._hosts[name]
+	# virtual methods
+	def keyFromArguments(self, *args, **kwargs):
+		""" get the key from the arguments """
+		raise NotImplementedError
+	def objToRawData(self, obj):
+		""" converts an object into raw data """
+		raise NotImplementedError
+	def rawDataToArgDict(self, raw):
+		""" brings obj into a form which can be consumed by cls """
+		raise NotImplementedError
+	
+class Hosts(Collection):
+	""" tracks all known hosts """
+	def __init__(self, app):
+		# call super
+		super(Hosts,self).__init__(app,"known_hosts",Host)
+
+	def keyFromArguments(self, name):
+		""" get the key from the arguments """
+		return name
+	def objToRawData(self, obj):
+		""" converts an object into raw data """
+		return {"name": obj.name}
+	def rawDataToArgDict(self, raw):
+		""" brings obj into a form which can be consumed by cls """
+		return {"name": raw["name"]}
 		
 class Host:
 	""" encodes information of one host """
@@ -88,61 +129,22 @@ class Host:
  
  
 
-class Annexes:
+class Annexes(Collection):
 	""" tracks all known annexes """
-	FILENAME = "known_annexes"
 	def __init__(self, app):
-		# save option
-		self.app = app
-		# compute the file name
-		self._annexespath = os.path.join(self.app.path,self.FILENAME)
-		# internal dictionary which tracks all known annexes
-		self._annexes = {}
-		# load annexes
-		self.load()
-	
-	def load(self):
-		""" loads all known annexes """
-		if os.path.isfile(self._annexespath):
-			# open the file if it exists
-			with io.open(self._annexespath, mode="rt", encoding="UTF8") as fd:
-				# decode list of annexes (json file)
-				list_of_annexes = json.load(fd)
-				# create individual annexes
-				for annex in list_of_annexes:
-					self.getAnnex(annex)
-	
-	def save(self):
-		""" saves all known annexes """
-		# get set of all known annex names
-		annexNames = self.allAnnexNames()
-		# convert it to a sorted list
-		annexNames = list(sorted(annexNames))
+		# call super
+		super(Annexes,self).__init__(app,"known_annexes",Annex)
 
-		# open the file in write mode
-		with io.open(self._annexespath, mode="wt", encoding="UTF8") as fd:
-			# dump data
-			json.dump(annexNames, fd, ensure_ascii=False, indent=4, sort_keys=True)
+	def keyFromArguments(self, name):
+		""" get the key from the arguments """
+		return name
+	def objToRawData(self, obj):
+		""" converts an object into raw data """
+		return {"name": obj.name}
+	def rawDataToArgDict(self, raw):
+		""" brings obj into a form which can be consumed by cls """
+		return {"name": raw["name"]}
 	
-	def allAnnexNames(self):
-		""" return all known annex names """
-		return set(self._annexes.keys())
-	
-	def allAnnexes(self):
-		""" return all known annexes """
-		return set(self._annexes.values())
-
-	def getAnnex(self, name):
-		""" get the given annex """
-
-		if name not in self._annexes:
-			# if the we do not have yet a annex with the given name, create one
-			annex = Annex(self.app,name)
-			self._annexes[name] = annex
-		
-		# return the found (or created) annex
-		return self._annexes[name]
-		
 class Annex:
 	""" encodes information of one annex """
 	def __init__(self, app, name):
@@ -171,65 +173,35 @@ class Annex:
 		return "Annex(%s)" % self.name
  
 
-
-class Repositories:
-	""" configuration of repositories """
-	FILENAME = "known_repositories"
+class Repositories(Collection):
+	""" tracks all known repositories """
 	def __init__(self, app):
-		# save option
-		self.app = app
-		# compute the file name
-		self._repopath = os.path.join(self.app.path,self.FILENAME)
-		# internal set which tracks all known configurations
-		self._repos = {}
-		# load configurations
-		self.load()
-	
-	def load(self):
-		""" loads all configurations """
-		if os.path.isfile(self._repopath):
-			# open the file if it exists
-			with io.open(self._repopath, mode="rt", encoding="UTF8") as fd:
-				# decode list configurations (json file)
-				list_of_repos = json.load(fd)
-				# create configurations
-				for host, annex, path, data in list_of_repos:
-					# find host and annex
-					host  = self.app.hosts.getHost(host)
-					annex = self.app.annexes.getAnnex(annex)
-					# create config
-					self.getRepository(host, annex, path, data)
-	
-	def save(self):
-		""" saves all repositories """
-		# get all known configurations
-		configs = self.allRepositories()
-		# convert it to a list
-		configs = [(c._host.name,c._annex.name,c._path,c._data) for c in configs]
-		# sort it
-		configs.sort()
+		# call super
+		super(Repositories,self).__init__(app,"known_repositories",Repository)
 
-		# open the file in write mode
-		with io.open(self._repopath, mode="wt", encoding="UTF8") as fd:
-			# dump data
-			json.dump(configs, fd, ensure_ascii=False, indent=4, sort_keys=True)
-	
-	def allRepositories(self):
-		""" return all known repositories """
-		return set(self._repos.values())
-
-	def getRepository(self, host, annex, path, data):
-		""" creates a repository with the given parameters """
-		# compute key
-		key = (host,path)
-		
-		if key not in self._repos:
-			# if the we do not have yet a repository with the given key, create one
-			config = Repository(self.app, host, annex, path, data)
-			self._repos[key] = config
-		
-		# return the found (or created) config
-		return self._repos[key]
+	def keyFromArguments(self, host, annex, path, data={}):
+		""" get the key from the arguments """
+		return (host,path)
+	def objToRawData(self, obj):
+		""" converts an object into raw data """
+		raw = dict(obj._data)
+		raw["host"] = obj._host.name
+		raw["annex"] = obj._annex.name
+		raw["path"] = obj._path
+		return raw
+	def rawDataToArgDict(self, raw):
+		""" brings obj into a form which can be consumed by cls """
+		# copy dictionary
+		raw = dict(raw)
+		# extract host,annex and path
+		host = raw.pop("host")
+		annex = raw.pop("annex")
+		path = raw.pop("path")
+		# convert host and annex
+		host  = self.app.hosts.create(host)
+		annex = self.app.annexes.create(annex)
+		# build dictionary
+		return {"host":host,"annex":annex,"path":path,"data":raw}
 
 class Repository:
 	""" one repository """
@@ -289,65 +261,36 @@ class Repository:
 		return "Repository(%s@%s:%s:%s)" % (self._annex.name,self._host.name,self._path,self._data)
 
 
-class Connections:
+class Connections(Collection):
 	""" tracks all known connections """
-	FILENAME = "known_connections"
 	def __init__(self, app):
-		# save option
-		self.app = app
-		# compute the file name
-		self._connpath = os.path.join(self.app.path,self.FILENAME)
-		# internal dictionary which tracks all known connections
-		self._connections = {}
-		# load connections
-		self.load()
-	
-	def load(self):
-		""" loads all known connections """
-		if os.path.isfile(self._connpath):
-			# open the file if it exists
-			with io.open(self._connpath, mode="rt", encoding="UTF8") as fd:
-				# decode list of connections (json file)
-				list_of_connections = json.load(fd)
-				# create connections
-				for source, dest, path, data in list_of_connections:
-					# find hosts
-					source = self.app.hosts.getHost(source)
-					dest   = self.app.hosts.getHost(dest)
-					# create config
-					self.getConnection(source, dest, path, data)
-	
-	def save(self):
-		""" saves all known connections """
-		# get all connections
-		connections = self.allConnections()
-		# convert it to a list
-		connections = [(c._source.name,c._dest.name,c._path,c._data) for c in connections]
-		# sort it
-		connections.sort()
+		# call super
+		super(Connections,self).__init__(app,"known_connections",Connection)
 
-		# open the file in write mode
-		with io.open(self._connpath, mode="wt", encoding="UTF8") as fd:
-			# dump data
-			json.dump(connections, fd, ensure_ascii=False, indent=4, sort_keys=True)
-	
-	def allConnections(self):
-		""" return all known annexes """
-		return set(self._connections.values())
+	def keyFromArguments(self, source, dest, path, data={}):
+		""" get the key from the arguments """
+		return (source,dest,path)
+	def objToRawData(self, obj):
+		""" converts an object into raw data """
+		raw = dict(obj._data)
+		raw["source"] = obj._source.name
+		raw["dest"] = obj._dest.name
+		raw["path"] = obj._path
+		return raw
+	def rawDataToArgDict(self, raw):
+		""" brings obj into a form which can be consumed by cls """
+		# copy dictionary
+		raw = dict(raw)
+		# extract host,annex and path
+		source = raw.pop("source")
+		dest = raw.pop("dest")
+		path = raw.pop("path")
+		# convert host and annex
+		source = self.app.hosts.create(source)
+		dest = self.app.hosts.create(dest)
+		# build dictionary
+		return {"source":source,"dest":dest,"path":path,"data":raw}
 
-	def getConnection(self, source, dest, path, data):
-		""" creates a connection with the given parameters """
-		# compute key
-		key = (source,dest,path)
-		
-		if key not in self._connections:
-			# if the we do not have yet a connection with the given key, create one
-			config = Connection(self.app, source, dest, path, data)
-			self._connections[key] = config
-		
-		# return the found (or created) config
-		return self._connections[key]
-		
 class Connection:
 	""" encodes information of one connection """
 	def __init__(self, app, source, dest, path, data):
