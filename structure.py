@@ -220,33 +220,44 @@ class Repository:
 		assert self.trust in ("semitrust","trust","untrust")
 		
 		# sanitise the files expression
-		self.sanitiseFilesExpression()
+		self.files = self.files
 	
-	def sanitiseFilesExpression(self):
+	def sanitiseFilesExpression(self, files):
 		""" sanitise the files expression """
 		
-		# get attribute
-		files = self._data.get("files")
 		# if there is nothing to do, leave
 		if files is None:
 			return
 		
-		# TODO
+		return files
 		
 	@property
 	def direct(self):
 		""" determines if the repository should be in direct mode, default: False """
-		return bool(self._data.get("direct",False))
+		return self._data.get("direct","false").lower() == "true"
 	
 	@property
 	def files(self):
 		""" determines which files should be kept in the repository, default: None """
 		return self._data.get("files")
 	
+	@files.setter
+	def files(self,v):
+		""" protected setter method """
+		# sanitise the expression
+		v = self.sanitiseFilesExpression(v)
+		
+		if v is None and "files" in self._data:
+			# if it should be deleted and the property is set
+			del self._data["files"]
+		elif v is not None:
+			# if the property should be set
+			self._data["files"] = v
+	
 	@property
 	def strict(self):
 		""" determines if ONLY files which match the files epxression should be kept, default: False """
-		return self._data.get("strict",False)
+		return self._data.get("strict","false").lower() == "true"
 	
 	@property
 	def trust(self):
