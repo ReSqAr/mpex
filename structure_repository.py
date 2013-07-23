@@ -348,6 +348,21 @@ class Repository:
 		else:
 			raise ValueError("Unable to determine the trust level.")
 
+	def hasUncommitedChanges(self):
+		""" has the current repository uncommited changes? """
+
+		# change into the right directory
+		path = self.changePath()
+
+		return bool(subprocess.check_output(["git","status","-s"]).decode("UTF8").strip())
+	
+	def gitBranches(self):
+		""" returns all known branches """
+		# call 'git branch'
+		output = subprocess.check_output(["git","branch"]).decode("UTF8")
+		# the first two characters are noise
+		return [line[2:].strip() for line in output.splitlines() if line.strip()]
+
 
 	def init(self):
 		""" inits the repository """
@@ -424,15 +439,19 @@ class Repository:
 				else:
 					continue
 	
-	
 	def finalise(self):
 		""" calls git-annex add and commits all changes """
-
+		
 		# change into the right directory
 		path = self.changePath()
 
 		print("\033[1;37;44m commiting changes in %s at %s \033[0m" % (self.annex.name,path))
 		
+		# early exit in case of no uncommited changes
+		if not self.hasUncommitedChanges():
+			print("no changes")
+			return
+
 		# call 'git-annex add'
 		self.execute_command(["git-annex","add"])
 		
@@ -441,7 +460,59 @@ class Repository:
 		msg = "Host: '%s' UTC: %s" % (self.host.name,utc)
 		self.execute_command(["git","commit","-a","-m",msg])
 
+	def sync(self, hosts=None):
+		"""
+			calls finalise and git-annex sync, when hosts (list of Host) is given,
+			use this list instead of hosts with an active annex
+		"""
+		
+		# change into the right directory
+		path = self.changePath()
 
+		self.finalise()
+		
+		print("\033[1;37;44m syncing %s \033[0m" % (self.annex.name,))
+		
+		# if a list of hosts is not given,
+		if hosts is None:
+			# determine repositories which are online
+			hosts = set()
+			for repository, connections in self.connectedRepositories().items():
+				for connection in connections:
+					if connection.isOnline():
+						# add the online repository
+						hosts.add(repository.host)
+						break
+		
+		# call 'git-annex sync'
+		if hosts:
+			self.execute_command(["git-annex","sync"] + [h.name for h in hosts])
+		
+		self.repairMaster()
+	
+	def repairMaster(self):
+		""" creates the master branch if necessary """
+		
+		# change into the right directory
+		path = self.changePath()
+
+		branches = self.gitBranches()
+		# unneeded, if the master branch already exists
+		if "master" in branches:
+			return
+		
+		print("\033[1;37;44m repairing master branch in %s at %s \033[0m" % (self.annex.name,path))
+		
+		if "synced/master" in branches:
+			# checkout synced/master if possible
+			self.execute_command(["git","checkout","synced/master"])
+		
+		# create the master branch
+		self.execute_command(["git","branch","master"])
+		
+		# checkout master branch
+		self.execute_command(["git","checkout","master"])
+		
 	#
 	# hashable type mehods, hashable is needed for dict keys and sets
 	# (source: http://docs.python.org/2/library/stdtypes.html#mapping-types-dict)

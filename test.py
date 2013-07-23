@@ -5,7 +5,7 @@ import subprocess
 
 import application
 
-class StructureTest(unittest.TestCase):
+class Test(unittest.TestCase):
 	def setUp(self):
 		# create temporary directory
 		self.path = tempfile.mkdtemp()
@@ -371,13 +371,14 @@ class StructureTest(unittest.TestCase):
 		repo_indirect = r.create(host,annex,path)
 		repo_indirect.init()
 		
+		# (indirect mode)
 		# create file
 		f_path = os.path.join(path,"test")
 		with open(f_path,"wt") as fd:
 			fd.write("test")
 		
-		# nothing commited?
-		self.assertIn("test",subprocess.check_output(["git","status","-s"]).decode("UTF8"))
+		# test not commited?
+		self.assertFalse(self.hasUncommitedChanges())
 
 		# finalise
 		repo_indirect.finalise()
@@ -387,8 +388,9 @@ class StructureTest(unittest.TestCase):
 			self.assertEqual(fd.read(),"test")
 			
 		# everything commited?
-		self.assertEqual(subprocess.check_output(["git","status","-s"]).decode("UTF8"),"")
+		self.assertTrue(self.hasUncommitedChanges())
 		
+		# (direct mode)
 		# create & init
 		path = os.path.join(self.path,"repo_direct")
 		repo_direct = r.create(host,annex,path)
@@ -399,8 +401,8 @@ class StructureTest(unittest.TestCase):
 		with open(f_path,"wt") as fd:
 			fd.write("test")
 		
-		# nothing commited?
-		self.assertIn("test",subprocess.check_output(["git","status","-s"]).decode("UTF8"))
+		# test not commited?
+		self.assertFalse(self.hasUncommitedChanges())
 
 		# finalise
 		repo_direct.finalise()
@@ -410,7 +412,49 @@ class StructureTest(unittest.TestCase):
 			self.assertEqual(fd.read(),"test")
 			
 		# everything commited?
-		self.assertEqual(subprocess.check_output(["git","status","-s"]).decode("UTF8"),"")
+		self.assertTrue(self.hasUncommitedChanges())
+	
+	def test_sync(self):
+		app = application.Application(self.path)
+		
+		# short cuts
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 
+		# create objects
+		host1 = h.create("Host1")
+		host2 = h.create("Host2")
+		annex = a.create("Annex")
+		conn12 = c.create(host1,host2,"/",alwayson="true")
+		
+		# create & init
+		path1 = os.path.join(self.path,"repo_host1")
+		repo1 = r.create(host1,annex,path1)
+		path2 = os.path.join(self.path,"repo_host2")
+		repo2 = r.create(host2,annex,path2)
+		
+		app.setCurrentHost(host2)
+		repo2.init()
+		
+		app.setCurrentHost(host1)
+		repo1.init()
+		
+		# create file on host1
+		f_path1 = os.path.join(path1,"test")
+		with open(f_path1,"wt") as fd:
+			fd.write("test")
+		
+		# sync changes on host1
+		repo1.sync()
+		
+		# sync changes on host2
+		app.setCurrentHost(host2)
+		repo2.sync()
+		
+		# there?
+		f_path2 = os.path.join(path2,"test")
+		self.assertTrue(os.path.isfile(f_path2) or os.path.islink(f_path2))
+		
+		
+		
 if __name__ == '__main__':
 	unittest.main()
