@@ -63,3 +63,7 @@ class Application:
 		with io.open(path, mode="wt", encoding="UTF8") as fd:
 			# write
 			fd.write(host.name)
+	
+	def getHostedRepositories(self):
+		""" get all repositories which are hosted on the current machine """
+		return self.currentHost().repositories()

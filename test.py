@@ -28,10 +28,7 @@ class StructureTest(unittest.TestCase):
 		app = application.Application(self.path)
 	
 		# short cuts
-		h = app.hosts
-		a = app.annexes
-		r = app.repositories
-		c = app.connections
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 	
 		#
 		# test hosts
@@ -195,10 +192,7 @@ class StructureTest(unittest.TestCase):
 		app = application.Application(self.path)
 	
 		# short cuts
-		h = app.hosts
-		a = app.annexes
-		r = app.repositories
-		c = app.connections
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 	
 		# create objects
 		host1 = h.create("Host1")
@@ -226,10 +220,7 @@ class StructureTest(unittest.TestCase):
 		app = application.Application(self.path)
 	
 		# short cuts
-		h = app.hosts
-		a = app.annexes
-		r = app.repositories
-		c = app.connections
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 	
 
 		self.assertEqual(h.getAll(),{host1,host2,host3})
@@ -248,8 +239,37 @@ class StructureTest(unittest.TestCase):
 		
 		conn12 = c.get(host1,host2,"/")
 		self.assertTrue(conn12.alwaysOn)
+	
+	def test_getHostedRepositories(self):
+		app = application.Application(self.path)
 
+		# short cuts
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+	
+		# create objects
+		host1 = h.create("Host1")
+		host2 = h.create("Host2")
 
+		annex1 = a.create("Annex1")
+		annex2 = a.create("Annex2")
+		
+		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"))
+		repo21 = r.create(host2,annex1,os.path.join(self.path,"repo21"))
+		repo12 = r.create(host1,annex2,os.path.join(self.path,"repo12"))
+		repo22 = r.create(host2,annex2,os.path.join(self.path,"repo22"))
+		
+		self.assertRaisesRegex(RuntimeError, "Unable to find" , app.currentHost)
+		
+		app.setCurrentHost(host1)
+		
+		self.assertEqual(app.currentHost(), host1)
+		# save all
+		app.save()
+		
+		# restart
+		app = application.Application(self.path)
+
+		self.assertEqual(app.getHostedRepositories(),{repo11,repo12})
 
 
 if __name__ == '__main__':
