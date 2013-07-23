@@ -198,6 +198,15 @@ class Repository:
 		self._data["direct"] = str(bool(v)).lower()
 	
 	@property
+	def trust(self):
+		""" gives the trust level of the repository, default: semitrust """
+		return self._data.get("trust","semitrust")
+	@trust.setter
+	def trust(self,v):
+		assert v in ("semitrust","trust","untrust"), "Trust has to be valid, is '%s'." % v
+		self._data["trust"] = v
+
+	@property
 	def files(self):
 		""" determines which files should be kept in the repository, default: None """
 		return self._data.get("files")
@@ -222,16 +231,6 @@ class Repository:
 	@strict.setter
 	def strict(self,v):
 		self._data["strict"] = str(bool(v)).lower()
-
-	@property
-	def trust(self):
-		""" gives the trust level of the repository, default: semitrust """
-		return self._data.get("trust","semitrust")
-	@trust.setter
-	def trust(self,v):
-		assert v in ("semitrust","trust","untrust"), "Trust has to be valid, is '%s'." % v
-		self._data["trust"] = v
-
 	
 	def connectedRepositories(self):
 		""" find all connected repositories, returns a dictionary: repository -> set of connections """
@@ -266,15 +265,19 @@ class Repository:
 		# make really sure that we are, where we want to be
 		assert os.path.normpath(os.getcwd()) == path, "We are in the wrong directory?!?"
 
+		# init git
 		if not os.path.isdir(os.path.join(path,".git")):
 			subprocess.check_call(["git","init"])
 		else:
 			print("It is already a git repository.")
+		
+		# init git annex
 		if not os.path.isdir(os.path.join(path,".git/annex")):
 			subprocess.check_call(["git","annex","init",self.annex.name])
 		else:
 			print("It is already a git annex repository.")
 		
+		# set the flags
 		self.setFlags()
 	
 	def setFlags(self):

@@ -274,10 +274,14 @@ class StructureTest(unittest.TestCase):
 	def test_gitAnnexCapabilities(self):
 		app = application.Application(self.path)
 		
-		capabilities = app.gitAnnexCapabilities()
+		capabilities = app.gitAnnexCapabilities
 		self.assertIn("version",capabilities)
 		self.assertIn("date",capabilities)
 		self.assertIn("direct",capabilities)
+		
+		# the second call is from a cache
+		capabilities2 = app.gitAnnexCapabilities
+		self.assertEqual(capabilities,capabilities2)
 
 	def test_repo_init(self):
 		app = application.Application(self.path)

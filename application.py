@@ -70,11 +70,17 @@ class Application:
 		return self.currentHost().repositories()
 	
 	
+	@property
 	def gitAnnexCapabilities(self):
 		"""
 			checks if the current git annex version supports certain
 			operations, e.g. direct mode, certain special remotes, etc.
 		"""
+		
+		# if there is a cache, use it
+		if hasattr(self,"_gitAnnexCapabilities_Cache"):
+			return self._gitAnnexCapabilities_Cache
+		
 		capabilities = {}
 		
 		# call git annex
@@ -98,4 +104,8 @@ class Application:
 		# it supports direct mode (this date is just a guess)
 		capabilities["direct"] = ( date >= (2013,8,1) )
 		
+		# cache it
+		self._gitAnnexCapabilities_Cache = capabilities
+		
+		# return
 		return capabilities
