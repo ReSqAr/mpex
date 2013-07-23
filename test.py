@@ -279,6 +279,23 @@ class StructureTest(unittest.TestCase):
 		self.assertIn("date",capabilities)
 		self.assertIn("direct",capabilities)
 
+	def test_repo_init(self):
+		app = application.Application(self.path)
+		
+		# short cuts
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+
+		# create objects
+		host1 = h.create("Host1")
+		annex1 = a.create("Annex1")
+		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"))
+		
+		# init
+		repo11.init()
+		
+		self.assertTrue(os.path.isdir(os.path.join(repo11.path,".git")))
+		self.assertTrue(os.path.isdir(os.path.join(repo11.path,".git/annex")))
+
 
 if __name__ == '__main__':
 	unittest.main()

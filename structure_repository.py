@@ -1,4 +1,6 @@
 import collections
+import os
+import subprocess
 
 import structure_base
 import structure_host
@@ -182,6 +184,12 @@ class Repository:
 		return self._path
 	
 	@property
+	def localpath(self):
+		""" returns the path on the local machine """
+		# TODO: fix for non-local repositories
+		return self.path
+	
+	@property
 	def direct(self):
 		""" determines if the repository should be in direct mode, default: False """
 		return self._data.get("direct","false").lower() == "true"
@@ -238,6 +246,41 @@ class Repository:
 		
 		# return the desired dictionary
 		return {r:connections[r.host] for r in repositories if r.host in connections}
+
+	
+	#
+	# file system methods
+	#
+	def init(self):
+		""" inits the repository """
+		# get path
+		path = os.path.normpath(self.localpath)
+		
+		print("\033[1;37;44m initialise %s in %s \033[0m" % (self.annex.name,path))
+		
+		# create the path if needed
+		if not os.path.isdir(path):
+			os.makedirs(path)
+		# change to it
+		os.chdir(path)
+		# make really sure that we are, where we want to be
+		assert os.path.normpath(os.getcwd()) == path, "We are in the wrong directory?!?"
+
+		if not os.path.isdir(os.path.join(path,".git")):
+			subprocess.check_call(["git","init"])
+		else:
+			print("It is already a git repository.")
+		if not os.path.isdir(os.path.join(path,".git/annex")):
+			subprocess.check_call(["git","annex","init",self.annex.name])
+		else:
+			print("It is already a git annex repository.")
+		
+		self.setFlags()
+	
+	def setFlags(self):
+		""" sets the flags for the current repository """
+		pass
+
 
 	#
 	# hashable type mehods, hashable is needed for dict keys and sets
