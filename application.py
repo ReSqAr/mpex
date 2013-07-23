@@ -1,5 +1,6 @@
 import os.path
 import io
+import subprocess
 
 import structure_host
 import structure_annex
@@ -67,3 +68,34 @@ class Application:
 	def getHostedRepositories(self):
 		""" get all repositories which are hosted on the current machine """
 		return self.currentHost().repositories()
+	
+	
+	def gitAnnexCapabilities(self):
+		"""
+			checks if the current git annex version supports certain
+			operations, e.g. direct mode, certain special remotes, etc.
+		"""
+		capabilities = {}
+		
+		# call git annex
+		version_string = subprocess.check_output(["git-annex","version"])
+		version_string = version_string.decode("UTF8")
+		
+		for line in version_string.splitlines():
+			# extract the line 'git-annex version: *'
+			s = "git-annex version:"
+			if s in line:
+				capabilities["version"] = line[len(s):].strip()
+		
+		# parse the version string
+		_,date,_ = capabilities["version"].split('.')
+		assert len(date) == 8, "Version string is unexcepted format: %s" % capabilities["version"]
+		year,month,day = date[:4],date[4:6],date[6:]
+		year,month,day = int(year),int(month),int(day)
+		date = capabilities["date"] = year,month,day
+		
+		# if the current git annex version is newer than the 2013-04-01 version,
+		# it supports direct mode (this date is just a guess)
+		capabilities["direct"] = ( date >= (2013,8,1) )
+		
+		return capabilities

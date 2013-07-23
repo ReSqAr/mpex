@@ -270,6 +270,14 @@ class StructureTest(unittest.TestCase):
 		app = application.Application(self.path)
 
 		self.assertEqual(app.getHostedRepositories(),{repo11,repo12})
+	
+	def test_gitAnnexCapabilities(self):
+		app = application.Application(self.path)
+		
+		capabilities = app.gitAnnexCapabilities()
+		self.assertIn("version",capabilities)
+		self.assertIn("date",capabilities)
+		self.assertIn("direct",capabilities)
 
 
 if __name__ == '__main__':
