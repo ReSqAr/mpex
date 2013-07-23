@@ -36,7 +36,8 @@ class Repositories(structure_base.Collection):
 class Repository:
 	""" one repository """
 	
-	OPERATORS = ["(",")","+","-","^","&"]
+	OPERATORS = ("(",")","+","-","^","&")
+	TRUST_LEVEL = ("semitrust","trust","untrust")
 	
 	def __init__(self, app, host, annex, path, **data):
 		# save options
@@ -50,7 +51,7 @@ class Repository:
 		assert isinstance(self._host,structure_host.Host), "%s: host has to be an instance of Host" % self
 		assert isinstance(self._annex,structure_annex.Annex), "%s: annex has to be an instance of Annex" % self
 		assert self._path.startswith("/"), "%s: path has to an absolute path" % self
-		assert self.trust in ("semitrust","trust","untrust"), "%s: trust has to be valid." % self
+		assert self.trust in self.TRUST_LEVEL, "%s: trust has to be valid." % self
 		
 		# sanitise the files expression
 		self.files = self.files
@@ -176,7 +177,7 @@ class Repository:
 		return self._data.get("trust","semitrust")
 	@trust.setter
 	def trust(self,v):
-		assert v in ("semitrust","trust","untrust"), "Trust has to be valid, is '%s'." % v
+		assert v in self.TRUST_LEVEL, "Trust has to be valid, is '%s'." % v
 		self._data["trust"] = v
 
 	@property
@@ -262,35 +263,90 @@ class Repository:
 		
 		# and return it
 		return output
-
+	
+	def getGitAnnexStatus(self):
+		""" calls 'git-annex status --fast' and parses the output """
+		
+		# call the command
+		cmd = ["git-annex","status","--fast"]
+		output = subprocess.check_output(cmd,stderr=subprocess.DEVNULL).decode("UTF-8")
+		
+		# parse it
+		status,lastkey = {},None
+		for line in output.splitlines():
+			# ignore empty lines
+			if not line.strip():
+				continue
+			
+			# if the line does not start with a space, we have line of type 'key: value'
+			if not line[0].isspace():
+				# split it
+				key, value = line.split(':',1)
+				# remove white spaces
+				key, value = key.strip(), value.strip()
+				# recored it
+				status[key] = value
+				lastkey = key
+			else:
+				# if we have a line which starts with a white space,
+				# then add it to '$lastkey - list'
+				assert lastkey is not None, "invalid output"
+				key = "%s - list" % lastkey
+				
+				# create the list if necessary
+				if key not in status:
+					status[key] = []
+				
+				# append the current line
+				status[key].append(line.strip())
+		
+		return status
+		
 	def getAnnexUUID(self):
 		""" get the git annex uuid of the current repository """
 		return self.readGitKey("annex.uuid")
 	
 	def onDiskDirectMode(self):
 		""" finds the on disk direct mode """
-
-		# change into the right directory
-		path = self.changePath()
 		
+		# if the current version does not have direct mode capability, return indirect
 		if not self.app.gitAnnexCapabilities["direct"]:
 			return "indirect"
 		
-		# call 'git-annex status --fast'
-		output = subprocess.check_output(["git-annex","status","--fast"]).decode("UTF-8")
+		# get git annex status
+		status = self.getGitAnnexStatus()
 		
-		for line in output.splitlines():
-			x = "repository mode:"
-			# find the line in the output
-			if not line.startswith(x):
+		# read the mode
+		assert "repository mode" in status, "Invalid git-annex output"
+		mode = status["repository mode"]
+		assert mode in ("direct","indirect"), "Unknown direct mode detected: %s" % mode
+		return mode
+
+	def onDiskTrustLevel(self):
+		""" determines the current trust level """
+
+		# get git annex status and git annex uuid
+		uuid = self.getAnnexUUID()
+		status = self.getGitAnnexStatus()
+		
+		for level in self.TRUST_LEVEL:
+			# create key
+			key = "%sed repositories - list" % level
+			
+			# if there is repository on the current trust level, ignore it
+			if key not in status:
 				continue
-			# get the value of the line
-			status = line[len(x):].strip()
-			# check that the found status makes sense
-			assert status in ("direct","indirect"), "Unknown status detected: %s" % status
-			return status
+			
+			# read the list of repositories, format: UUID -- name
+			repos = status[key]
+			
+			for repo in repos:
+				# find the repository with our current uuid
+				if repo.startswith(uuid):
+					return level
 		else:
-			raise ValueError("Invalid git-annex output")
+			raise ValueError("Unable to determine the trust level.")
+
 
 	def init(self):
 		""" inits the repository """
@@ -333,8 +389,9 @@ class Repository:
 			if self.direct:
 				print("direct mode is requested, however it is not supported by your git-annex version.")
 		
-		# set trust level
-		self.execute_command(["git-annex",self.trust,"here"])
+		# set trust level if necessary
+		if self.onDiskTrustLevel() != self.trust:
+			self.execute_command(["git-annex",self.trust,"here"])
 		
 		# set git remotes
 		for repo, connections in self.connectedRepositories().items():
