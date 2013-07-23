@@ -450,6 +450,9 @@ class Test(unittest.TestCase):
 		# sync changes on host1
 		repo1.sync()
 		
+		# sync with unknown repo
+		self.assertRaises(subprocess.CalledProcessError,repo1.sync,["yeah"])
+		
 		# sync changes on host2
 		app.setCurrentHost(host2)
 		repo2.sync()
@@ -458,6 +461,9 @@ class Test(unittest.TestCase):
 		f_path2 = os.path.join(path2,"test")
 		self.assertTrue(os.path.isfile(f_path2) or os.path.islink(f_path2))
 		
+		# sync changes on host1
+		app.setCurrentHost(host1)
+		repo1.sync()
 		
 		
 if __name__ == '__main__':
