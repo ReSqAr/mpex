@@ -66,7 +66,7 @@ class Repository:
 			TODO
 	"""
 	
-	OPERATORS = ("(",")","+","-","^","&","|")
+	OPERATORS = ("(",")","+","-","~","&","|")
 	TRUST_LEVEL = ("semitrust","trust","untrust")
 	VALID_DESC_CHARS = set(string.ascii_letters + string.digits + "_")
 	
@@ -604,16 +604,15 @@ class Repository:
 					cmd.extend(["--in=%s"%host])
 				else:
 					cmd.extend(["-(", "--not", "--in=%s"%host, "-)"])
+			elif token == "~":
+				# example: ~ Host2, effect: selects the files which are not present on the remote
+				cmd.extend(["--not"])
 			elif token == "&":
 				# example: Host1 & Host2, effect: selects files which are present on both remotes
 				cmd.extend(["--and"])
 			elif token == "|":
 				# example: Host1 | Host2, effect: selects files which are present on at least one remotes
 				cmd.extend(["--or"])
-			elif token == "^":
-				# example: Host1 ^ Host2, effect: selects files which are present on exactly one remotes
-				# TODO: write bug report
-				raise NotImplementedError
 			else:
 				raise ValueError("Programming error: %s" % token)
 		
