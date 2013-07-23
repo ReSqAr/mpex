@@ -1,6 +1,7 @@
 import collections
 import os
 import subprocess
+import datetime
 
 import structure_base
 import structure_host
@@ -354,7 +355,7 @@ class Repository:
 		# change into the right directory, create it if necessary
 		path = self.changePath(create=True)
 
-		print("\033[1;37;44m initialise %s in %s \033[0m" % (self.annex.name,path))
+		print("\033[1;37;44m initialise %s at %s \033[0m" % (self.annex.name,path))
 
 		# init git
 		if not os.path.isdir(os.path.join(path,".git")):
@@ -372,12 +373,12 @@ class Repository:
 		self.setProperties()
 	
 	def setProperties(self):
-		""" sets the properties  the current repository """
+		""" sets the properties of the current repository """
 		
 		# change into the right directory
 		path = self.changePath()
 
-		print("\033[1;37;44m setting properties of %s in %s \033[0m" % (self.annex.name,path))
+		print("\033[1;37;44m setting properties of %s at %s \033[0m" % (self.annex.name,path))
 		
 		# set the requested direct mode, if doable
 		if self.app.gitAnnexCapabilities["direct"]:
@@ -422,7 +423,23 @@ class Repository:
 					raise RuntimeError("The url set for the connection %s does not match the computed one." % connection)
 				else:
 					continue
-			
+	
+	
+	def finalise(self):
+		""" calls git-annex add and commits all changes """
+
+		# change into the right directory
+		path = self.changePath()
+
+		print("\033[1;37;44m commiting changes in %s at %s \033[0m" % (self.annex.name,path))
+		
+		# call 'git-annex add'
+		self.execute_command(["git-annex","add"])
+		
+		# commit it
+		utc = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M:%S")
+		msg = "Host: '%s' UTC: %s" % (self.host.name,utc)
+		self.execute_command(["git","commit","-a","-m",msg])
 
 
 	#

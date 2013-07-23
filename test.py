@@ -354,7 +354,63 @@ class StructureTest(unittest.TestCase):
 		# doing bad stuff
 		conn12._path = "/abcd/"
 		self.assertRaisesRegex(RuntimeError,"does not match",repo13.setProperties)
+	
+	def test_finalise(self):
+		app = application.Application(self.path)
 		
+		# short cuts
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+
+		# create objects
+		host = h.create("Host1")
+		app.setCurrentHost(host)
+		annex = a.create("Annex1")
+		
+		# create & init
+		path = os.path.join(self.path,"repo_indirect")
+		repo_indirect = r.create(host,annex,path)
+		repo_indirect.init()
+		
+		# create file
+		f_path = os.path.join(path,"test")
+		with open(f_path,"wt") as fd:
+			fd.write("test")
+		
+		# nothing commited?
+		self.assertIn("test",subprocess.check_output(["git","status","-s"]).decode("UTF8"))
+
+		# finalise
+		repo_indirect.finalise()
+		
+		# still there?
+		with open(f_path,"rt") as fd:
+			self.assertEqual(fd.read(),"test")
+			
+		# everything commited?
+		self.assertEqual(subprocess.check_output(["git","status","-s"]).decode("UTF8"),"")
+		
+		# create & init
+		path = os.path.join(self.path,"repo_direct")
+		repo_direct = r.create(host,annex,path)
+		repo_direct.init()
+		
+		# create file
+		f_path = os.path.join(path,"test")
+		with open(f_path,"wt") as fd:
+			fd.write("test")
+		
+		# nothing commited?
+		self.assertIn("test",subprocess.check_output(["git","status","-s"]).decode("UTF8"))
+
+		# finalise
+		repo_direct.finalise()
+		
+		# still there?
+		with open(f_path,"rt") as fd:
+			self.assertEqual(fd.read(),"test")
+			
+		# everything commited?
+		self.assertEqual(subprocess.check_output(["git","status","-s"]).decode("UTF8"),"")
 
 if __name__ == '__main__':
 	unittest.main()
