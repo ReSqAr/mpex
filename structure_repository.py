@@ -635,7 +635,7 @@ class Repository:
 		
 		if annex_descs is not None:
 			# delete all with wrong description
-			for repo in repos.keys():
+			for repo in list(repos.keys()):
 				if repo.description not in annex_descs:
 					del repos[repo]
 		

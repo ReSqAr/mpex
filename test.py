@@ -457,7 +457,7 @@ class Test(unittest.TestCase):
 		app.setCurrentHost(host2)
 		repo2.sync()
 		
-		# where?
+		# there?
 		f_path2 = os.path.join(path2,"test")
 		self.assertTrue(os.path.isfile(f_path2) or os.path.islink(f_path2))
 		
@@ -474,18 +474,23 @@ class Test(unittest.TestCase):
 		# create objects
 		host1 = h.create("Host1")
 		host2 = h.create("Host2")
+		host3 = h.create("Host3")
 		annex = a.create("Annex")
 		conn12 = c.create(host1,host2,"/",alwayson="true")
+		conn13 = c.create(host1,host3,"/",alwayson="true")
 		
 		# create & init
 		path1 = os.path.join(self.path,"repo_host1")
 		repo1 = r.create(host1,annex,path1,description="test_repo_1")
 		path2 = os.path.join(self.path,"repo_host2")
 		repo2 = r.create(host2,annex,path2,description="test_repo_2")
+		path3 = os.path.join(self.path,"repo_host3")
+		repo3 = r.create(host3,annex,path3,description="test_repo_3")
 		
+		app.setCurrentHost(host3)
+		repo3.init()
 		app.setCurrentHost(host2)
 		repo2.init()
-		
 		app.setCurrentHost(host1)
 		repo1.init()
 		
@@ -493,18 +498,39 @@ class Test(unittest.TestCase):
 		f_path1 = os.path.join(path1,"test")
 		with open(f_path1,"wt") as fd:
 			fd.write("test")
-		
 		# sync changes on host1
 		repo1.copy()
+
+		# create file on host1
+		f2_path1 = os.path.join(path1,"test_only_in2")
+		with open(f2_path1,"wt") as fd:
+			fd.write("test_only_in2")
+		# sync changes on host1 only to host2
+		repo1.copy(["test_repo_2"])
 
 		# sync changes on host2
 		app.setCurrentHost(host2)
 		repo2.sync()
+
+		# sync changes on host3
+		app.setCurrentHost(host3)
+		repo3.sync()
 		
-		# where?
+		# there?
 		f_path2 = os.path.join(path2,"test")
 		with open(f_path2,"rt") as fd:
 			self.assertEqual(fd.read(),"test")
+		f2_path2 = os.path.join(path2,"test_only_in2")
+		with open(f2_path2,"rt") as fd:
+			self.assertEqual(fd.read(),"test_only_in2")
+		
+		# there?
+		f_path3 = os.path.join(path3,"test")
+		with open(f_path3,"rt") as fd:
+			self.assertEqual(fd.read(),"test")
+		f2_path3 = os.path.join(path3,"test_only_in2")
+		self.assertFalse(os.path.isfile(f2_path3))
+			
 		
 		
 if __name__ == '__main__':
