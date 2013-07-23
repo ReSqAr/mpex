@@ -380,7 +380,7 @@ class Repository:
 		
 		# init git annex
 		if not os.path.isdir(os.path.join(path,".git/annex")):
-			self.execute_command(["git-annex","init",self.annex.name])
+			self.execute_command(["git-annex","init",self.host.name])
 		else:
 			print("It is already a git annex repository.")
 		
