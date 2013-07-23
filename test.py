@@ -167,7 +167,7 @@ class StructureTest(unittest.TestCase):
 
 		self.assertRaisesRegex(AssertionError, "source", c.create, "", host2, "/")
 		self.assertRaisesRegex(AssertionError, "dest", c.create, host1, "", "/")
-		self.assertRaisesRegex(AssertionError, "protocol", c.create, host1, host2, "xxx")
+		self.assertRaisesRegex(ValueError, "protocol", c.create, host1, host2, "xxx")
 
 		# always on
 		hostx = h.create("HostX")
@@ -181,6 +181,15 @@ class StructureTest(unittest.TestCase):
 		self.assertTrue(conn1y.alwaysOn)
 		conn1y.alwaysOn = False
 		self.assertFalse(conn1y.alwaysOn)
+		
+		# protocol
+		hostlocal = h.create("HostLocal")
+		conn1local = c.create(host1,hostlocal,"/")
+		self.assertEqual(conn1local.protocol(),"mount")
+
+		hostserver = h.create("HostServer")
+		conn1server = c.create(host1,hostserver,"ssh://server")
+		self.assertEqual(conn1server.protocol(),"ssh")
 		
 		# test relational methods
 		self.assertEqual(host2.repositories(), {repo22,repo23})
@@ -291,7 +300,10 @@ class StructureTest(unittest.TestCase):
 
 		# create objects
 		host1 = h.create("Host1")
+		app.setCurrentHost(host1)
+		host2 = h.create("Host2")
 		annex1 = a.create("Annex1")
+		conn12 = c.create(host1,host2,"/")
 		
 		# create & init
 		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"))
@@ -304,6 +316,11 @@ class StructureTest(unittest.TestCase):
 		repo12 = r.create(host1,annex1,os.path.join(self.path,"repo12"),direct="true")
 		self.assertRaisesRegex(AssertionError,"is not a git annex", repo12.setProperties)
 		repo12.init()
+		
+		# create & init
+		repo13 = r.create(host1,annex1,os.path.join(self.path,"repo13"))
+		repo23 = r.create(host2,annex1,os.path.join(self.path,"repo13"))
+		repo13.init()
 
 
 if __name__ == '__main__':

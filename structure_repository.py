@@ -186,7 +186,8 @@ class Repository:
 	@property
 	def localpath(self):
 		""" returns the path on the local machine """
-		# TODO: fix for non-local repositories
+		if self.app.currentHost() != self.host:
+			raise ValueError("The current host is not the host of the repository. (%s != %s)" % (self.app.currentHost(),self.host))
 		return self.path
 	
 	@property
@@ -250,6 +251,11 @@ class Repository:
 	#
 	# file system methods
 	#
+	def execute_command(self, cmd):
+		""" print and execute the command """
+		print("command:"," ".join(cmd))
+		return subprocess.check_call(cmd)
+
 	def init(self):
 		""" inits the repository """
 		# get path
@@ -266,13 +272,13 @@ class Repository:
 
 		# init git
 		if not os.path.isdir(os.path.join(path,".git")):
-			subprocess.check_call(["git","init"])
+			self.execute_command(["git","init"])
 		else:
 			print("It is already a git repository.")
 		
 		# init git annex
 		if not os.path.isdir(os.path.join(path,".git/annex")):
-			subprocess.check_call(["git-annex","init",self.annex.name])
+			self.execute_command(["git-annex","init",self.annex.name])
 		else:
 			print("It is already a git annex repository.")
 		
@@ -294,13 +300,29 @@ class Repository:
 		# set the requested direct mode, if doable
 		if self.app.gitAnnexCapabilities["direct"]:
 			d = "direct" if self.direct else "indirect"
-			subprocess.check_call(["git-annex",d])
+			self.execute_command(["git-annex",d])
 		else:
 			if self.direct:
 				print("direct mode requested but not supported by your git-annex version.")
 		
 		# set trust level
-		subprocess.check_call(["git-annex",self.trust,"here"])
+		self.execute_command(["git-annex",self.trust,"here"])
+		
+		# set git remotes
+		for repo, connections in self.connectedRepositories().items():
+			# make sure that we have only one connection
+			assert connections, "Programming error."
+			assert len(connections) == 1, "Git supports only up to one connection."
+			
+			# select connection
+			connection = connections.pop()
+			
+			# get details
+			gitID   = connection.gitID
+			gitPath = connection.gitPath(repo)
+			
+			# set it
+			self.execute_command(["git","remote","add",gitID,gitPath])
 
 
 	#

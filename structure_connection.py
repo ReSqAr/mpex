@@ -1,4 +1,5 @@
 import string
+import os.path
 
 import structure_base
 import structure_host
@@ -44,7 +45,9 @@ class Connection:
 		# path maybe: ssh://<host> or <absolute path>
 		assert isinstance(self._source,structure_host.Host), "%s: source has to be an instance of Host" % self
 		assert isinstance(self._dest,structure_host.Host), "%s: dest has to be an instance of Host" % self
-		assert self._path.startswith("ssh://") or self._path.startswith("/"), "%s: unknown protocol specified in path" % self
+		
+		# see if we can find a valid protocol
+		self.protocol()
 
 	@property
 	def source(self):
@@ -81,7 +84,38 @@ class Connection:
 			raise ValueError("%s: cannot generate a valid git id." % self)
 		# return
 		return "".join(gitid)
-
+	
+	#
+	# derived methods
+	#
+	def protocol(self):
+		""" returns the used protocol """
+		if self._path.startswith("/"):
+			return "mount"
+		elif self._path.startswith("ssh://"):
+			return "ssh"
+		else:
+			raise ValueError("Unknown protocol specified in %s." % self)
+	
+	def gitPath(self, repo):
+		""" computes the path used by git to access the repository over the connection """
+		
+		# get the protocol
+		protocol = self.protocol()
+		
+		if protocol == "mount":
+			# if the other directory is mounted, then join the paths
+			return os.path.join(self.path,repo.path)
+		elif protocol == "ssh":
+			# if we can connect via ssh, use it
+			ssh = self.path
+			# kill the trailing /
+			if ssh.endswith("/"):
+				ssh = ssh[:-1]
+			return ssh + repo.path
+		else:
+			raise ValueError("Programming error.")
+		
 	#
 	# hashable type mehods, hashable is needed for dict keys and sets
 	# (source: http://docs.python.org/2/library/stdtypes.html#mapping-types-dict)
