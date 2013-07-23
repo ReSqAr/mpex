@@ -62,8 +62,6 @@ class Repository:
 		
 		# list of tokens
 		tokens = []
-		# get list of known hosts
-		known_hosts = self.app.hosts.getAll()
 		
 		while s:
 			# if the first character is a white space, ignore it
@@ -92,42 +90,16 @@ class Repository:
 				indices = [s.find(op) for op in self.OPERATORS]
 				indices = [index for index in indices if index >= 0]
 				
-				if indices:
-					# if there is a next operator, use it
-					i = min(indices)
-				else:
-					# otherwise, use the end of the string
-					i = len(s)
-				
+				# if there is a next operator, use it,
+				# otherwise use the end of the string
+				i = min(indices) if indices else len(s)
 				# extract host name and set new s
 				host = s[:i]
 				s = s[i:]
 			
 			# we have found a host name, now parse it
-			host = host.strip()
-			
-			fuzzy_match = []
-			# try to match host to a known host
-			for known_host in known_hosts:
-				# in case of an exact match, add the token and end the loop
-				if known_host.name == host:
-					#print(host,"->",known_host)
-					tokens.append(known_host.name)
-					break
-				# in case of a fuzzy match, add the host to the fuzzy match list
-				fuzzy = lambda s: s.lower().replace(' ','')
-				if fuzzy(known_host.name) == fuzzy(host):
-					#print(host,"~>",known_host)
-					fuzzy_match.append(known_host)
-			else:
-				# if there was no exact match, see if we have at least fuzzy matches
-				if len(fuzzy_match) == 0:
-					raise ValueError("Could not parse the host name '%s': no candidates." % host)
-				elif len(fuzzy_match) >= 2:
-					raise ValueError("Could not parse the host name '%s': too many candidates." % host)
-				else:
-					# if there is only one fuzzy match, use it
-					tokens.append(fuzzy_match[0].name)
+			host = self.app.hosts.fuzzyMatch(host)
+			tokens.append(host.name)
 		
 		# return the list of tokens
 		return tokens

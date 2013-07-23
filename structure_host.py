@@ -19,6 +19,34 @@ class Hosts(structure_base.Collection):
 	def rawDataToArgDict(self, raw):
 		""" brings obj into a form which can be consumed by cls """
 		return {"name": raw["name"]}
+	
+	def fuzzyMatch(self, hostname):
+		""" matches the host name in a fuzzy way against the known hosts """
+		
+		hostname = hostname.strip()
+		fuzzy_match = []
+		
+		# try to match host to a known host
+		for known_host in self.getAll():
+			# in case of an exact match, add the token and end the loop
+			if known_host.name == hostname:
+				#print(host,"->",known_host)
+				return known_host
+			# in case of a fuzzy match, add the host to the fuzzy match list
+			fuzzy = lambda s: s.lower().replace(' ','')
+			if fuzzy(known_host.name) == fuzzy(hostname):
+				#print(host,"~>",known_host)
+				fuzzy_match.append(known_host)
+		else:
+			# if there was no exact match, see if we have at least fuzzy matches
+			if len(fuzzy_match) == 0:
+				raise ValueError("Could not parse the host name '%s': no candidates." % hostname)
+			elif len(fuzzy_match) >= 2:
+				raise ValueError("Could not parse the host name '%s': too many candidates: %s" % (hostname,fuzzy_match))
+			else:
+				# if there is only one fuzzy match, use it
+				return fuzzy_match[0]
+
 
 class Host:
 	""" encodes information of one host """
