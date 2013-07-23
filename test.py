@@ -292,13 +292,18 @@ class StructureTest(unittest.TestCase):
 		# create objects
 		host1 = h.create("Host1")
 		annex1 = a.create("Annex1")
-		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"))
 		
-		# init
+		# create & init
+		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"))
 		repo11.init()
 		
 		self.assertTrue(os.path.isdir(os.path.join(repo11.path,".git")))
 		self.assertTrue(os.path.isdir(os.path.join(repo11.path,".git/annex")))
+		
+		# create & init
+		repo12 = r.create(host1,annex1,os.path.join(self.path,"repo12"),direct="true")
+		self.assertRaisesRegex(AssertionError,"is not a git annex", repo12.setProperties)
+		repo12.init()
 
 
 if __name__ == '__main__':

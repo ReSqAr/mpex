@@ -254,9 +254,6 @@ class Repository:
 		""" inits the repository """
 		# get path
 		path = os.path.normpath(self.localpath)
-		
-		print("\033[1;37;44m initialise %s in %s \033[0m" % (self.annex.name,path))
-		
 		# create the path if needed
 		if not os.path.isdir(path):
 			os.makedirs(path)
@@ -264,6 +261,8 @@ class Repository:
 		os.chdir(path)
 		# make really sure that we are, where we want to be
 		assert os.path.normpath(os.getcwd()) == path, "We are in the wrong directory?!?"
+
+		print("\033[1;37;44m initialise %s in %s \033[0m" % (self.annex.name,path))
 
 		# init git
 		if not os.path.isdir(os.path.join(path,".git")):
@@ -273,16 +272,35 @@ class Repository:
 		
 		# init git annex
 		if not os.path.isdir(os.path.join(path,".git/annex")):
-			subprocess.check_call(["git","annex","init",self.annex.name])
+			subprocess.check_call(["git-annex","init",self.annex.name])
 		else:
 			print("It is already a git annex repository.")
 		
-		# set the flags
-		self.setFlags()
+		# set the properties
+		self.setProperties()
 	
-	def setFlags(self):
-		""" sets the flags for the current repository """
-		pass
+	def setProperties(self):
+		""" sets the properties  the current repository """
+		# get path
+		path = os.path.normpath(self.localpath)
+		assert os.path.isdir(os.path.join(path,".git/annex")), "This is not a git annex repository."
+		# change to it
+		os.chdir(path)
+		# make really sure that we are, where we want to be
+		assert os.path.normpath(os.getcwd()) == path, "We are in the wrong directory?!?"
+
+		print("\033[1;37;44m setting properties of %s in %s \033[0m" % (self.annex.name,path))
+		
+		# set the requested direct mode, if doable
+		if self.app.gitAnnexCapabilities["direct"]:
+			d = "direct" if self.direct else "indirect"
+			subprocess.check_call(["git-annex",d])
+		else:
+			if self.direct:
+				print("direct mode requested but not supported by your git-annex version.")
+		
+		# set trust level
+		subprocess.check_call(["git-annex",self.trust,"here"])
 
 
 	#
