@@ -37,7 +37,7 @@ class Collection:
 		# get set of all known objects
 		list_of_objects = list(self._objects.items())
 		# convert it to a sorted list of raw data elements
-		list_of_objects.sort(key=lambda kv:kv[0])
+		list_of_objects.sort(key=lambda kv:str(kv[0]))
 		list_of_objects = [self.objToRawData(kv[1]) for kv in list_of_objects]
 
 		# open the file in write mode

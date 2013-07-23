@@ -29,7 +29,13 @@ class Application:
 		self.repositories = structure_repository.Repositories(self)
 		# initialise connections
 		self.connections = structure_connection.Connections(self)
-		
+	
+	def save(self):
+		""" saves all data """
+		self.hosts.save()
+		self.annexes.save()
+		self.repositories.save()
+		self.connections.save()
 		
 	def currentHost(self):
 		""" get the current host """

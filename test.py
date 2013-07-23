@@ -191,6 +191,66 @@ class StructureTest(unittest.TestCase):
 		self.assertEqual(annex3.repositories(), {repo13,repo23,repo33})
 		self.assertEqual(repo33.connectedRepositories(),{repo23:{conn32}})
 
+	def test_save(self):
+		app = application.Application(self.path)
+	
+		# short cuts
+		h = app.hosts
+		a = app.annexes
+		r = app.repositories
+		c = app.connections
+	
+		# create objects
+		host1 = h.create("Host1")
+		host2 = h.create("Host2")
+		host3 = h.create("Host3")
+
+		annex1 = a.create("Annex1")
+		annex2 = a.create("Annex2")
+		annex3 = a.create("Annex3")
+		
+		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"),direct="true",strict="true")
+		repo12 = r.create(host1,annex2,os.path.join(self.path,"repo12"),files="+host3",trust="untrust")
+		repo13 = r.create(host1,annex3,os.path.join(self.path,"repo13"),trust="trust")
+
+		conn12 = c.create(host1,host2,"/",alwayson="true")
+		conn13 = c.create(host1,host3,"/")
+		conn23 = c.create(host2,host3,"/")
+		
+		# save
+		app.save()
+		
+		
+		
+		# restart
+		app = application.Application(self.path)
+	
+		# short cuts
+		h = app.hosts
+		a = app.annexes
+		r = app.repositories
+		c = app.connections
+	
+
+		self.assertEqual(h.getAll(),{host1,host2,host3})
+		self.assertEqual(a.getAll(),{annex1,annex2,annex3})
+		self.assertEqual(r.getAll(),{repo11,repo12,repo13})
+		self.assertEqual(c.getAll(),{conn12,conn13,conn23})
+		
+		repo11 = r.get(host1,annex1,os.path.join(self.path,"repo11"))
+		repo12 = r.get(host1,annex2,os.path.join(self.path,"repo12"))
+		repo13 = r.get(host1,annex3,os.path.join(self.path,"repo13"))
+		self.assertTrue(repo11.direct)
+		self.assertTrue(repo11.strict)
+		self.assertEqual(repo12.files,"+ Host3")
+		self.assertEqual(repo12.trust,"untrust")
+		self.assertEqual(repo13.trust,"trust")
+		
+		conn12 = c.get(host1,host2,"/")
+		self.assertTrue(conn12.alwaysOn)
+
+
+
 
 if __name__ == '__main__':
 	unittest.main()
