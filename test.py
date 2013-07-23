@@ -316,14 +316,21 @@ class StructureTest(unittest.TestCase):
 		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"))
 		repo11.init()
 		
+		output = subprocess.check_output(["git-annex","status"]).decode("UTF-8")
+		self.assertIn("repository mode: indirect", output)
+		self.assertIn("semitrusted repositories: 2", output)
+		
 		self.assertTrue(os.path.isdir(os.path.join(repo11.path,".git")))
 		self.assertTrue(os.path.isdir(os.path.join(repo11.path,".git/annex")))
 		
 		# create & init
-		repo12 = r.create(host1,annex1,os.path.join(self.path,"repo12"),direct="true")
-		# TODO: check direct, trust
+		repo12 = r.create(host1,annex1,os.path.join(self.path,"repo12"),direct="true",trust="trust")
 		self.assertRaisesRegex(AssertionError,"is not a git annex", repo12.setProperties)
 		repo12.init()
+		
+		output = subprocess.check_output(["git-annex","status"]).decode("UTF-8")
+		self.assertIn("repository mode: direct", output)
+		self.assertIn("trusted repositories: 1", output)
 		
 		# create & init
 		repo13 = r.create(host1,annex1,os.path.join(self.path,"repo13"))
