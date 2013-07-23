@@ -504,6 +504,8 @@ class Repository:
 		# call 'git-annex sync'
 		if annex_descs:
 			self.execute_command(["git-annex","sync"] + list(annex_descs))
+		else:
+			print("no other annex is online, ignored")
 		
 		self.repairMaster()
 	
