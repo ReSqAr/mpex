@@ -35,6 +35,35 @@ class Repositories(structure_base.Collection):
 		# build dictionary
 		return raw
 
+	def fuzzyMatch(self, annex, annex_desc):
+		""" matches the annex description in a fuzzy way against the known repositories """
+		
+		annex_desc = annex_desc.strip()
+		fuzzy_match = []
+		
+		# try to match annex_desc to a known repository
+		for known_repo in self.getAll():
+			# only look for repositories which belong to the same annex
+			if not known_repo.annex == annex:
+				continue
+			
+			# in case of an exact match, add the token and end the loop
+			if known_repo.description == annex_desc:
+				return known_repo
+			# in case of a fuzzy match, add the host to the fuzzy match list
+			fuzzy = lambda s: s.lower().replace(' ','')
+			if fuzzy(known_repo.description) == fuzzy(annex_desc):
+				fuzzy_match.append(known_repo)
+		else:
+			# if there was no exact match, see if we have at least fuzzy matches
+			if len(fuzzy_match) == 0:
+				raise ValueError("Could not parse the annex description '%s': no candidates." % annex_desc)
+			elif len(fuzzy_match) >= 2:
+				raise ValueError("Could not parse the annex description '%s': too many candidates: %s" % (annex_desc,fuzzy_match))
+			else:
+				# if there is only one fuzzy match, use it
+				return fuzzy_match[0]
+
 class Repository:
 	"""
 		one repository
@@ -85,11 +114,9 @@ class Repository:
 		assert self.trust in self.TRUST_LEVEL, "%s: trust has to be valid." % self
 		assert self.description, "%s: the git annex description has to be non-empty"
 		assert set(self.description).issubset(self.VALID_DESC_CHARS), "%s: invalid character detected." % self
-
 		
-		# sanitise the files expression
-		self.files = self.files
-	
+		# unable to check files
+
 	def tokeniseFileExpression(self, s):
 		""" tokenises the file expression, returns a list of tokens """
 		if s is None:
@@ -113,15 +140,15 @@ class Repository:
 				s = s[1:]
 				continue
 			
-			# hence, we have a host name
+			# hence, we have a annex description
 			if s[0] in {"'",'"'}:
-				# the host name is enclosed in "" -> look for the next occurence
+				# the annex description is enclosed in "" -> look for the next occurence
 				i = s.find(s[0],1)
 				if i == -1:
 					# if an error occured, fail loud
 					raise ValueError("Failed to parse '%s': non-closed %s found." % (orig,s[0]))
-				# otherwise we found the host name
-				host = s[1:i]
+				# otherwise we found the annex description
+				annex_desc = s[1:i]
 				s = s[i+1:]
 			else:
 				# find the next operator (or the end of the string)
@@ -131,13 +158,13 @@ class Repository:
 				# if there is a next operator, use it,
 				# otherwise use the end of the string
 				i = min(indices) if indices else len(s)
-				# extract host name and set new s
-				host = s[:i]
+				# extract annex description set new s
+				annex_desc = s[:i]
 				s = s[i:]
 			
-			# we have found a host name, now parse it
-			host = self.app.hosts.fuzzyMatch(host)
-			tokens.append(host.name)
+			# we have found an annex description, now parse it
+			annex_desc = self.app.repositories.fuzzyMatch(self.annex,annex_desc)
+			tokens.append(annex_desc.description)
 		
 		# return the list of tokens
 		return tokens
@@ -167,7 +194,7 @@ class Repository:
 		# reformat files
 		files = ""
 		for token in tokens:
-			# if the host contains a white space, add around it ''
+			# if the annex description contains a white space, add around it ''
 			if ' ' in token:
 				token = "'%s'" % token
 			# kill the last white space in case of )
@@ -232,7 +259,9 @@ class Repository:
 	@property
 	def files(self):
 		""" determines which files should be kept in the repository, default: None """
-		return self._data.get("files")
+		files = self._data.get("files")
+		files = self.sanitiseFilesExpression(files)
+		return files
 	
 	@files.setter
 	def files(self,v):

@@ -72,6 +72,7 @@ class Test(unittest.TestCase):
 		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"))
 		repo12 = r.create(host1,annex2,os.path.join(self.path,"repo12"))
 		repo13 = r.create(host1,annex3,os.path.join(self.path,"repo13"))
+		repo21 = r.create(host2,annex1,os.path.join(self.path,"repo11"))
 		repo22 = r.create(host2,annex2,os.path.join(self.path,"repo22"))
 		repo23 = r.create(host2,annex3,os.path.join(self.path,"repo23"))
 		repo33 = r.create(host3,annex3,os.path.join(self.path,"repo33"))
@@ -81,7 +82,7 @@ class Test(unittest.TestCase):
 		self.assertEqual(repo11,repo11p)
 		self.assertEqual(id(repo11),id(repo11p))
 
-		self.assertEqual(r.getAll(),{repo11,repo12,repo13,repo22,repo33,repo23})
+		self.assertEqual(r.getAll(),{repo11,repo12,repo13,repo22,repo33,repo23,repo21})
 		
 		# test error conditions
 		# use repoxx, some paths are already taken, hence the identity map applies
@@ -98,17 +99,18 @@ class Test(unittest.TestCase):
 					host1,annex1,rxx,description="ü")
 		self.assertRaisesRegex(AssertionError, "trust has to be valid", r.create,
 					host1,annex1,rxx,trust="unknown")
-		self.assertRaisesRegex(ValueError, "non-closed", r.create,
-					host1,annex1,rxx,files="'")
-		self.assertRaisesRegex(ValueError, "no candidates", r.create,
-					host1,annex1,rxx,files="Host5")
+		self.assertRaisesRegex(ValueError, "non-closed", setattr,
+					repo13,"files","'")
+		self.assertRaisesRegex(ValueError, "no candidates", setattr,
+					repo13,"files","Host5")
 		host1pp = h.create("HOST1")
-		self.assertRaisesRegex(ValueError, "too many candidates", r.create,
-					host1,annex1,rxx,files="host1")
-		self.assertRaisesRegex(ValueError, "too many '[)]'", r.create,
-					host1,annex1,rxx,files="(())())")
-		self.assertRaisesRegex(ValueError, "too many '[(]'", r.create,
-					host1,annex1,rxx,files="(())(")
+		repo13pp = r.create(host1pp,annex3,os.path.join(self.path,"repo13"))
+		self.assertRaisesRegex(ValueError, "too many candidates", setattr,
+					repo13,"files","host1")
+		self.assertRaisesRegex(ValueError, "too many '[)]'", setattr,
+					repo13,"files","(())())")
+		self.assertRaisesRegex(ValueError, "too many '[(]'", setattr,
+					repo13,"files","(())(")
 		
 		# test truthful representation of the input data
 		# default value
@@ -201,9 +203,9 @@ class Test(unittest.TestCase):
 		self.assertEqual(conn1server.protocol(),"ssh")
 		
 		# test relational methods
-		self.assertEqual(host2.repositories(), {repo22,repo23})
+		self.assertEqual(host2.repositories(), {repo21,repo22,repo23})
 		self.assertEqual(host2.connections(), {conn23,conn21})
-		self.assertEqual(annex3.repositories(), {repo13,repo23,repo33})
+		self.assertEqual(annex3.repositories(), {repo13,repo23,repo33,repo13pp})
 		self.assertEqual(repo33.connectedRepositories(),{repo23:{conn32}})
 
 	def test_save(self):
@@ -222,7 +224,7 @@ class Test(unittest.TestCase):
 		annex3 = a.create("Annex3")
 		
 		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"),direct="true",strict="true")
-		repo12 = r.create(host1,annex2,os.path.join(self.path,"repo12"),files="+host3",trust="untrust")
+		repo12 = r.create(host1,annex2,os.path.join(self.path,"repo12"),files="+host1",trust="untrust")
 		repo13 = r.create(host1,annex3,os.path.join(self.path,"repo13"),trust="trust")
 
 		conn12 = c.create(host1,host2,"/",alwayson="true")
@@ -251,7 +253,7 @@ class Test(unittest.TestCase):
 		repo13 = r.get(host1,annex3,os.path.join(self.path,"repo13"))
 		self.assertTrue(repo11.direct)
 		self.assertTrue(repo11.strict)
-		self.assertEqual(repo12.files,"+ Host3")
+		self.assertEqual(repo12.files,"+ Host1")
 		self.assertEqual(repo12.trust,"untrust")
 		self.assertEqual(repo13.trust,"trust")
 		
@@ -485,7 +487,7 @@ class Test(unittest.TestCase):
 		path2 = os.path.join(self.path,"repo_host2")
 		repo2 = r.create(host2,annex,path2,description="test_repo_2")
 		path3 = os.path.join(self.path,"repo_host3")
-		repo3 = r.create(host3,annex,path3,description="test_repo_3")
+		repo3 = r.create(host3,annex,path3,description="test_repo_3",files="test_repo_1-test_repo_2")
 		
 		app.setCurrentHost(host3)
 		repo3.init()
@@ -507,6 +509,13 @@ class Test(unittest.TestCase):
 			fd.write("test_only_in2")
 		# sync changes on host1 only to host2
 		repo1.copy(["test_repo_2"])
+		
+		# create file on host1
+		f3_path1 = os.path.join(path1,"test_only_in3")
+		with open(f3_path1,"wt") as fd:
+			fd.write("test_only_in3")
+		
+		repo1.copy()
 
 		# sync changes on host2
 		app.setCurrentHost(host2)
