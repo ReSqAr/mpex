@@ -457,13 +457,54 @@ class Test(unittest.TestCase):
 		app.setCurrentHost(host2)
 		repo2.sync()
 		
-		# there?
+		# where?
 		f_path2 = os.path.join(path2,"test")
 		self.assertTrue(os.path.isfile(f_path2) or os.path.islink(f_path2))
 		
 		# sync changes on host1
 		app.setCurrentHost(host1)
 		repo1.sync()
+	
+	def test_copy(self):
+		app = application.Application(self.path)
+		
+		# short cuts
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+
+		# create objects
+		host1 = h.create("Host1")
+		host2 = h.create("Host2")
+		annex = a.create("Annex")
+		conn12 = c.create(host1,host2,"/",alwayson="true")
+		
+		# create & init
+		path1 = os.path.join(self.path,"repo_host1")
+		repo1 = r.create(host1,annex,path1,description="test_repo_1")
+		path2 = os.path.join(self.path,"repo_host2")
+		repo2 = r.create(host2,annex,path2,description="test_repo_2")
+		
+		app.setCurrentHost(host2)
+		repo2.init()
+		
+		app.setCurrentHost(host1)
+		repo1.init()
+		
+		# create file on host1
+		f_path1 = os.path.join(path1,"test")
+		with open(f_path1,"wt") as fd:
+			fd.write("test")
+		
+		# sync changes on host1
+		repo1.copy()
+
+		# sync changes on host2
+		app.setCurrentHost(host2)
+		repo2.sync()
+		
+		# where?
+		f_path2 = os.path.join(path2,"test")
+		with open(f_path2,"rt") as fd:
+			self.assertEqual(fd.read(),"test")
 		
 		
 if __name__ == '__main__':

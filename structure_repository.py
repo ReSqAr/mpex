@@ -36,9 +36,37 @@ class Repositories(structure_base.Collection):
 		return raw
 
 class Repository:
-	""" one repository """
+	"""
+		one repository
+		
+		
+		main methods:
+			init()
+			setProperties()
+			finalise()
+			sync(annex descriptions)
+			repairMaster()
+			copy(annex descriptions, files expression, strict=True/false)
+			
+		other methods:
+			changePath()
+
+			readGitKey(key) -> reads key
+			gitBranches() -> list of branches
+			hasUncommitedChanges() -> True/False
+
+			getGitAnnexStatus() -> dictionary
+			getAnnexUUID() -> uuid
+			onDiskDirectMode() -> "direct"/"indirect"
+			onDiskTrustLevel() -> element of TRUST_LEVEL
+			
+			activeAnnexDescriptions() -> dictionary online repositories -> connection
+		
+		syntax of a 'files expression':
+			TODO
+	"""
 	
-	OPERATORS = ("(",")","+","-","^","&")
+	OPERATORS = ("(",")","+","-","^","&","|")
 	TRUST_LEVEL = ("semitrust","trust","untrust")
 	VALID_DESC_CHARS = set(string.ascii_letters + string.digits + "_")
 	
@@ -64,6 +92,9 @@ class Repository:
 	
 	def tokeniseFileExpression(self, s):
 		""" tokenises the file expression, returns a list of tokens """
+		if s is None:
+			return []
+		
 		# for debugging purposes, keep the original string
 		orig = s
 		
@@ -218,7 +249,7 @@ class Repository:
 	
 	@property
 	def strict(self):
-		""" determines if ONLY files which match the files epxression should be kept, default: False """
+		""" determines if ONLY files which match the files expression should be kept, default: False """
 		return self._data.get("strict","false").lower() == "true"
 	@strict.setter
 	def strict(self,v):
@@ -247,6 +278,7 @@ class Repository:
 		print("command:"," ".join(cmd))
 		return subprocess.check_call(cmd)
 
+
 	def changePath(self, create=False):
 		""" change the path to the current repository """
 
@@ -269,6 +301,7 @@ class Repository:
 		
 		return path
 	
+	
 	def readGitKey(self, key):
 		""" read a git key """
 		
@@ -281,6 +314,23 @@ class Repository:
 		
 		# and return it
 		return output
+	
+	def gitBranches(self):
+		""" returns all known branches """
+		# call 'git branch'
+		output = subprocess.check_output(["git","branch"]).decode("UTF8")
+		# the first two characters are noise
+		return [line[2:].strip() for line in output.splitlines() if line.strip()]
+
+	def hasUncommitedChanges(self):
+		""" has the current repository uncommited changes? """
+
+		# change into the right directory
+		path = self.changePath()
+
+		return bool(subprocess.check_output(["git","status","-s"]).decode("UTF8").strip())
+	
+	
 	
 	def getGitAnnexStatus(self):
 		""" calls 'git-annex status --fast' and parses the output """
@@ -365,32 +415,22 @@ class Repository:
 		else:
 			raise ValueError("Unable to determine the trust level.")
 
-	def hasUncommitedChanges(self):
-		""" has the current repository uncommited changes? """
 
-		# change into the right directory
-		path = self.changePath()
 
-		return bool(subprocess.check_output(["git","status","-s"]).decode("UTF8").strip())
-	
-	def gitBranches(self):
-		""" returns all known branches """
-		# call 'git branch'
-		output = subprocess.check_output(["git","branch"]).decode("UTF8")
-		# the first two characters are noise
-		return [line[2:].strip() for line in output.splitlines() if line.strip()]
-
-	def activeAnnexDescriptions(self):
+	def activeRepositories(self):
 		""" determine repositories which are online """
-		annex_descs = set()
+		active_repos = collections.defaultdict(set)
+		
 		for repository, connections in self.connectedRepositories().items():
 			for connection in connections:
 				if connection.isOnline():
-					# add the online repository's description
-					annex_descs.add(repository.description)
-					break
+					# add the connection
+					active_repos[repository].add(connection)
 		
-		return annex_descs
+		return active_repos
+
+
+
 
 
 	def init(self):
@@ -492,7 +532,6 @@ class Repository:
 			calls finalise and git-annex sync, when annex_descs (list of annex
 			# descriptions) is given, use this list instead of hosts with an active annex
 		"""
-		
 		# change into the right directory
 		path = self.changePath()
 
@@ -500,9 +539,9 @@ class Repository:
 		
 		print("\033[1;37;44m syncing %s \033[0m" % (self.annex.name,))
 		
-		# if a list of hosts is not given,
+		# if a list of hosts is not given
 		if annex_descs is None:
-			annex_descs = self.activeAnnexDescriptions()
+			annex_descs = {repo.description for repo in self.activeRepositories().keys()}
 		
 		# call 'git-annex sync'
 		if annex_descs:
@@ -535,17 +574,115 @@ class Repository:
 		# checkout master branch
 		self.execute_command(["git","checkout","master"])
 	
+	
+	def tokenisedFilesExpressionToCmd(self, tokens):
+		""" converts a list of tokens into a command """
+		debug = " ".join(tokens)
+		tokens,cmd = list(tokens),[]
+		
+		while tokens:
+			# get first token
+			token = tokens.pop(0)
+			
+			if not token in self.OPERATORS:
+				# example: Host1, effect: selects all files on this remote
+				cmd.extend(["--in=%s"%token])
+			elif token == "(":
+				cmd.extend(["-("])
+			elif token == ")":
+				cmd.extend(["-)"])
+			elif token in ("+","-"):
+				# example: + Host1, effect: selects all files on this remote
+				# example: - Host1, effect: selects all files NOT on this remote
+				if not tokens:
+					raise ValueError("'%s' ended unexpectedly." % debug)
+				# get next token
+				host = tokens.pop(0)
+				if host in self.OPERATORS:
+					raise ValueError("'%s' malformed." % debug)
+				if token == "+":
+					cmd.extend(["--in=%s"%host])
+				else:
+					cmd.extend(["-(", "--not", "--in=%s"%host, "-)"])
+			elif token == "&":
+				# example: Host1 & Host2, effect: selects files which are present on both remotes
+				cmd.extend(["--and"])
+			elif token == "|":
+				# example: Host1 | Host2, effect: selects files which are present on at least one remotes
+				cmd.extend(["--or"])
+			elif token == "^":
+				# example: Host1 ^ Host2, effect: selects files which are present on exactly one remotes
+				# TODO: write bug report
+				raise NotImplementedError
+			else:
+				raise ValueError("Programming error: %s" % token)
+		
+		return cmd
+	
 	def copy(self, annex_descs=None, files=None, strict=None):
 		"""
 			copy files, arguments:
 			- annex_descs: target machines, if not specified all online machines are used
-			- files: expression which specifies files should be transfered,
-			         defaults to the target repositories files entry, if nothing is given,
-			         no file is transfered
+			- files: expression which specifies which files should be transfered,
+			         defaults to the local repositories files entry, if nothing is given,
+			         all files are transfered
 			- strict: drop all files which do not match the local files expression
 		"""
-		pass
+		# change into the right directory
+		path = self.changePath()
+
+		# get active repositories
+		repos = self.activeRepositories()
+		
+		if annex_descs is not None:
+			# delete all with wrong description
+			for repo in repos.keys():
+				if repo.description not in annex_descs:
+					del repos[repo]
+		
+		# sync
+		self.sync(annex_descs)
+		
+		print("\033[1;37;44m copying files %s \033[0m" % (self.annex.name,))
+		
+		
+		# if there are no targets, ignore
+		if not repos:
+			print("no other annex is online, ignored")
+			return
+		
+		#
+		# pull
+		#
+		
+		# use files expression of the current repository, if none is given
+		if files is None:
+			files = self.files
+		# parse files expression
+		files = self.sanitiseFilesExpression(files)
+		files = self.tokeniseFileExpression(files)
+		files_cmd = self.tokenisedFilesExpressionToCmd(files)
+		
+		# call 'git-annex copy --from=target <files expression as command>'
+		for repo in repos:
+			cmd = ["git-annex","copy","--from=%s"%repo.description] + files_cmd
+			self.execute_command(cmd)
 	
+		#
+		# push
+		#
+		
+		for repo in repos:
+			# parse remote files expression
+			files = self.sanitiseFilesExpression(repo.files)
+			files = self.tokeniseFileExpression(files)
+			files_cmd = self.tokenisedFilesExpressionToCmd(files)
+
+			# call 'git-annex copy --to=target <files expression as command>'
+			cmd = ["git-annex","copy","--to=%s"%repo.description] + files_cmd
+			self.execute_command(cmd)
+		
+		
 	#
 	# hashable type mehods, hashable is needed for dict keys and sets
 	# (source: http://docs.python.org/2/library/stdtypes.html#mapping-types-dict)
