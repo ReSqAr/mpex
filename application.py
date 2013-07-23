@@ -1,7 +1,10 @@
 import os.path
 import io
 
-import structure
+import structure_host
+import structure_annex
+import structure_repository
+import structure_connection
 
 #
 # check python version
@@ -19,13 +22,13 @@ class Application:
 		self.path = path
 		
 		# initialise hosts
-		self.hosts = structure.Hosts(self)
+		self.hosts = structure_host.Hosts(self)
 		# initialise annexes
-		self.annexes = structure.Annexes(self)
+		self.annexes = structure_annex.Annexes(self)
 		# initialise repositories
-		self.repositories = structure.Repositories(self)
+		self.repositories = structure_repository.Repositories(self)
 		# initialise connections
-		self.connections = structure.Connections(self)
+		self.connections = structure_connection.Connections(self)
 		
 		
 	def currentHost(self):
