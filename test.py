@@ -316,8 +316,9 @@ class StructureTest(unittest.TestCase):
 		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"))
 		repo11.init()
 		
+		self.assertEqual(repo11.onDiskDirectMode(),"indirect")
+
 		output = subprocess.check_output(["git-annex","status"]).decode("UTF-8")
-		self.assertIn("repository mode: indirect", output)
 		self.assertIn("semitrusted repositories: 2", output)
 		
 		self.assertTrue(os.path.isdir(os.path.join(repo11.path,".git")))
@@ -327,9 +328,11 @@ class StructureTest(unittest.TestCase):
 		repo12 = r.create(host1,annex1,os.path.join(self.path,"repo12"),direct="true",trust="trust")
 		self.assertRaisesRegex(AssertionError,"is not a git annex", repo12.setProperties)
 		repo12.init()
+		repo12.setProperties()
+		
+		self.assertEqual(repo12.onDiskDirectMode(),"direct")
 		
 		output = subprocess.check_output(["git-annex","status"]).decode("UTF-8")
-		self.assertIn("repository mode: direct", output)
 		self.assertIn("trusted repositories: 1", output)
 		
 		# create & init
@@ -337,7 +340,10 @@ class StructureTest(unittest.TestCase):
 		repo23 = r.create(host2,annex1,os.path.join(self.path,"repo23"))
 		repo33 = r.create(host3,annex1,os.path.join(self.path,"repo33"))
 		repo13.init()
-		
+		repo13.setProperties()
+
+		self.assertEqual(repo13.onDiskDirectMode(),"indirect")
+
 		self.assertIn("Host2",subprocess.check_output(["git","remote","show"]).decode("UTF8"))
 		self.assertIn("Host3",subprocess.check_output(["git","remote","show"]).decode("UTF8"))
 		with open(os.path.join(repo13.path,".git/config")) as fd:

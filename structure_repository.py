@@ -221,24 +221,65 @@ class Repository:
 
 	
 	#
-	# file system methods
+	# file system interaction
 	#
 	def execute_command(self, cmd):
 		""" print and execute the command """
 		print("command:"," ".join(cmd))
 		return subprocess.check_call(cmd)
 
-	def init(self):
-		""" inits the repository """
+	def changePath(self, create=False):
+		""" change the path to the current repository """
+
 		# get path
 		path = os.path.normpath(self.localpath)
-		# create the path if needed
-		if not os.path.isdir(path):
-			os.makedirs(path)
+		
+		if create:
+			# create the path if needed
+			if not os.path.isdir(path):
+				os.makedirs(path)
+		else:
+			# if we are not allowed to create it, it has to be git annex archive
+			assert os.path.isdir(os.path.join(path,".git/annex")), "This is not a git annex repository."
+			
 		# change to it
 		os.chdir(path)
+		
 		# make really sure that we are, where we want to be
 		assert os.path.normpath(os.getcwd()) == path, "We are in the wrong directory?!?"
+		
+		return path
+		
+	def onDiskDirectMode(self):
+		""" finds the on disk direct mode """
+
+		# change into the right directory
+		path = self.changePath()
+		
+		if not self.app.gitAnnexCapabilities["direct"]:
+			return "indirect"
+		
+		# call 'git-annex status --fast'
+		output = subprocess.check_output(["git-annex","status","--fast"]).decode("UTF-8")
+		
+		for line in output.splitlines():
+			x = "repository mode:"
+			# find the line in the output
+			if not line.startswith(x):
+				continue
+			# get the value of the line
+			status = line[len(x):].strip()
+			# check that the found status makes sense
+			assert status in ("direct","indirect"), "Unknown status detected: %s" % status
+			return status
+		else:
+			raise ValueError("Invalid git-annex output")
+
+	def init(self):
+		""" inits the repository """
+		
+		# change into the right directory, create it if necessary
+		path = self.changePath(create=True)
 
 		print("\033[1;37;44m initialise %s in %s \033[0m" % (self.annex.name,path))
 
@@ -259,23 +300,21 @@ class Repository:
 	
 	def setProperties(self):
 		""" sets the properties  the current repository """
-		# get path
-		path = os.path.normpath(self.localpath)
-		assert os.path.isdir(os.path.join(path,".git/annex")), "This is not a git annex repository."
-		# change to it
-		os.chdir(path)
-		# make really sure that we are, where we want to be
-		assert os.path.normpath(os.getcwd()) == path, "We are in the wrong directory?!?"
+		
+		# change into the right directory
+		path = self.changePath()
 
 		print("\033[1;37;44m setting properties of %s in %s \033[0m" % (self.annex.name,path))
 		
 		# set the requested direct mode, if doable
 		if self.app.gitAnnexCapabilities["direct"]:
+			# change only if needed
 			d = "direct" if self.direct else "indirect"
-			self.execute_command(["git-annex",d])
+			if self.onDiskDirectMode() != d:
+				self.execute_command(["git-annex",d])
 		else:
 			if self.direct:
-				print("direct mode requested but not supported by your git-annex version.")
+				print("direct mode is requested, however it is not supported by your git-annex version.")
 		
 		# set trust level
 		self.execute_command(["git-annex",self.trust,"here"])
@@ -296,6 +335,12 @@ class Repository:
 			# get details
 			gitID   = connection.gitID
 			gitPath = connection.gitPath(repo)
+			
+			# get already registered remotes
+			remotes = subprocess.check_output(["git","remote","show"]).decode("UTF8")
+			if gitID in remotes.splitlines():
+				print("The connection %s is already registered, ignored." % connection)
+				continue
 			
 			# set it
 			self.execute_command(["git","remote","add",gitID,gitPath])
