@@ -316,6 +316,7 @@ class StructureTest(unittest.TestCase):
 		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"))
 		repo11.init()
 		
+		self.assertTrue(bool(repo11.getAnnexUUID()))
 		self.assertEqual(repo11.onDiskDirectMode(),"indirect")
 
 		output = subprocess.check_output(["git-annex","status"]).decode("UTF-8")

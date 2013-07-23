@@ -249,7 +249,24 @@ class Repository:
 		assert os.path.normpath(os.getcwd()) == path, "We are in the wrong directory?!?"
 		
 		return path
+	
+	def readGitKey(self, key):
+		""" read a git key """
 		
+		# change path
+		self.changePath()
+		
+		# get output of 'git config $key'
+		output = subprocess.check_output(["git","config",key]).decode("UTF-8").strip()
+		assert output, "Error."
+		
+		# and return it
+		return output
+
+	def getAnnexUUID(self):
+		""" get the git annex uuid of the current repository """
+		return self.readGitKey("annex.uuid")
+	
 	def onDiskDirectMode(self):
 		""" finds the on disk direct mode """
 
