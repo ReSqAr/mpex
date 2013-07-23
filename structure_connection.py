@@ -105,19 +105,24 @@ class Connection:
 		# get the protocol
 		protocol = self.protocol()
 		
-		if protocol == "mount":
-			# if the other directory is mounted, then join the paths
-			return os.path.join(self.path,repo.path)
-		elif protocol == "ssh":
-			# if we can connect via ssh, use it
-			ssh = self.path
+		if protocol in ("mount","ssh"):
+			# if we it is mounted or we can connect via ssh, just join them together
+			path = self.path
 			# kill the trailing /
-			if ssh.endswith("/"):
-				ssh = ssh[:-1]
-			return ssh + repo.path
+			if path.endswith("/"):
+				path = path[:-1]
+			return path + repo.path
 		else:
 			raise ValueError("Programming error.")
+	
+	def isOnline(self):
+		""" checks if the connection is online """
+		if self.alwaysOn:
+			return True
 		
+		# TODO: implement
+		raise NotImplementedError
+	
 	#
 	# hashable type mehods, hashable is needed for dict keys and sets
 	# (source: http://docs.python.org/2/library/stdtypes.html#mapping-types-dict)

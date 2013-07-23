@@ -1,6 +1,7 @@
 import unittest
 import tempfile
 import os.path
+import subprocess
 
 import application
 
@@ -170,7 +171,7 @@ class StructureTest(unittest.TestCase):
 		self.assertRaisesRegex(ValueError, "protocol", c.create, host1, host2, "xxx")
 		self.assertRaises(AssertionError,conn12.gitPath,repo11)
 		
-		self.assertEqual(conn12.gitPath(repo22),os.path.join("/abc",self.path,"repo22"))
+		self.assertEqual(conn12.gitPath(repo22),"/abc" + self.path + "/repo22")
 		self.assertEqual(conn32.gitPath(repo22),"ssh://server" + os.path.join(self.path,"repo22"))
 		
 		# always on
@@ -306,8 +307,10 @@ class StructureTest(unittest.TestCase):
 		host1 = h.create("Host1")
 		app.setCurrentHost(host1)
 		host2 = h.create("Host2")
+		host3 = h.create("Host3")
 		annex1 = a.create("Annex1")
-		conn12 = c.create(host1,host2,"/")
+		conn12 = c.create(host1,host2,"/abc/",alwayson="true")
+		conn13 = c.create(host1,host3,"ssh://yeah/",alwayson="true")
 		
 		# create & init
 		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"))
@@ -318,13 +321,22 @@ class StructureTest(unittest.TestCase):
 		
 		# create & init
 		repo12 = r.create(host1,annex1,os.path.join(self.path,"repo12"),direct="true")
+		# TODO: check direct, trust
 		self.assertRaisesRegex(AssertionError,"is not a git annex", repo12.setProperties)
 		repo12.init()
 		
 		# create & init
 		repo13 = r.create(host1,annex1,os.path.join(self.path,"repo13"))
-		repo23 = r.create(host2,annex1,os.path.join(self.path,"repo13"))
+		repo23 = r.create(host2,annex1,os.path.join(self.path,"repo23"))
+		repo33 = r.create(host3,annex1,os.path.join(self.path,"repo33"))
 		repo13.init()
+		
+		self.assertIn("Host2",subprocess.check_output(["git","remote","show"]).decode("UTF8"))
+		self.assertIn("Host3",subprocess.check_output(["git","remote","show"]).decode("UTF8"))
+		with open(os.path.join(repo13.path,".git/config")) as fd:
+			x = fd.read()
+			self.assertIn("/abc" + repo23.path, x)
+			self.assertIn("ssh://yeah" + repo33.path, x)
 
 
 if __name__ == '__main__':

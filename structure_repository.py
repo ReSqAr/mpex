@@ -316,6 +316,10 @@ class Repository:
 			
 			# select connection
 			connection = connections.pop()
+			# test if the connection is available
+			if not connection.isOnline():
+				print("The connection %s is currently unavailable, ignored." % connection)
+				continue
 			
 			# get details
 			gitID   = connection.gitID
