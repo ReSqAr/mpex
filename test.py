@@ -153,12 +153,12 @@ class StructureTest(unittest.TestCase):
 		#
 		# test connections
 		#
-		conn12 = c.create(host1,host2,"/")
+		conn12 = c.create(host1,host2,"/abc/")
 		conn13 = c.create(host1,host3,"/")
 		conn23 = c.create(host2,host3,"/")
 		conn21 = c.create(host2,host1,"/")
-		conn32 = c.create(host3,host2,"/")
-		conn12p= c.create(host1,host2,"/")
+		conn32 = c.create(host3,host2,"ssh://server")
+		conn12p= c.create(host1,host2,"/abc/")
 		
 		self.assertEqual(conn12,conn12p)
 		self.assertEqual(id(conn12),id(conn12p))
@@ -168,7 +168,11 @@ class StructureTest(unittest.TestCase):
 		self.assertRaisesRegex(AssertionError, "source", c.create, "", host2, "/")
 		self.assertRaisesRegex(AssertionError, "dest", c.create, host1, "", "/")
 		self.assertRaisesRegex(ValueError, "protocol", c.create, host1, host2, "xxx")
-
+		self.assertRaises(AssertionError,conn12.gitPath,repo11)
+		
+		self.assertEqual(conn12.gitPath(repo22),os.path.join("/abc",self.path,"repo22"))
+		self.assertEqual(conn32.gitPath(repo22),"ssh://server" + os.path.join(self.path,"repo22"))
+		
 		# always on
 		hostx = h.create("HostX")
 		conn1x = c.create(host1,hostx,"/",alwayson="false")

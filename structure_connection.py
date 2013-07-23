@@ -100,6 +100,8 @@ class Connection:
 	def gitPath(self, repo):
 		""" computes the path used by git to access the repository over the connection """
 		
+		assert self.dest == repo.host, "Programming error."
+		
 		# get the protocol
 		protocol = self.protocol()
 		
