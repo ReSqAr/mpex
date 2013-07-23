@@ -401,23 +401,28 @@ class Repository:
 			
 			# select connection
 			connection = connections.pop()
-			# test if the connection is available
-			if not connection.isOnline():
-				print("The connection %s is currently unavailable, ignored." % connection)
-				continue
 			
 			# get details
 			gitID   = connection.gitID
 			gitPath = connection.gitPath(repo)
 			
-			# get already registered remotes
-			remotes = subprocess.check_output(["git","remote","show"]).decode("UTF8")
-			if gitID in remotes.splitlines():
-				print("The connection %s is already registered, ignored." % connection)
-				continue
+			try:
+				# determine which url was already set
+				url = self.readGitKey("remote.%s.url" % gitID)
+			except subprocess.CalledProcessError:
+				# no url was yet set
+				url = None
 			
-			# set it
-			self.execute_command(["git","remote","add",gitID,gitPath])
+			if not url:
+				# if no url was yet set, set it
+				self.execute_command(["git","remote","add",gitID,gitPath])
+			else:
+				# otherwise, check that the correct one has been set
+				if url != gitPath:
+					raise RuntimeError("The url set for the connection %s does not match the computed one." % connection)
+				else:
+					continue
+			
 
 
 	#

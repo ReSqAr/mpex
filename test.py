@@ -313,15 +313,14 @@ class StructureTest(unittest.TestCase):
 		conn13 = c.create(host1,host3,"ssh://yeah/",alwayson="true")
 		
 		# create & init
-		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"))
+		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"),trust="untrust")
 		repo11.init()
-		
+		# check properties
 		self.assertTrue(bool(repo11.getAnnexUUID()))
 		self.assertEqual(repo11.onDiskDirectMode(),"indirect")
-
-		output = subprocess.check_output(["git-annex","status"]).decode("UTF-8")
-		self.assertIn("semitrusted repositories: 2", output)
+		self.assertEqual(repo11.onDiskTrustLevel(),"untrust")
 		
+		# check disk format
 		self.assertTrue(os.path.isdir(os.path.join(repo11.path,".git")))
 		self.assertTrue(os.path.isdir(os.path.join(repo11.path,".git/annex")))
 		
@@ -332,10 +331,8 @@ class StructureTest(unittest.TestCase):
 		repo12.setProperties()
 		
 		self.assertEqual(repo12.onDiskDirectMode(),"direct")
-		
-		output = subprocess.check_output(["git-annex","status"]).decode("UTF-8")
-		self.assertIn("trusted repositories: 1", output)
-		
+		self.assertEqual(repo12.onDiskTrustLevel(),"trust")
+
 		# create & init
 		repo13 = r.create(host1,annex1,os.path.join(self.path,"repo13"))
 		repo23 = r.create(host2,annex1,os.path.join(self.path,"repo23"))
@@ -344,14 +341,20 @@ class StructureTest(unittest.TestCase):
 		repo13.setProperties()
 
 		self.assertEqual(repo13.onDiskDirectMode(),"indirect")
-
+		self.assertEqual(repo13.onDiskTrustLevel(),"semitrust")
+		
+		# check remotes
 		self.assertIn("Host2",subprocess.check_output(["git","remote","show"]).decode("UTF8"))
 		self.assertIn("Host3",subprocess.check_output(["git","remote","show"]).decode("UTF8"))
 		with open(os.path.join(repo13.path,".git/config")) as fd:
 			x = fd.read()
 			self.assertIn("/abc" + repo23.path, x)
 			self.assertIn("ssh://yeah" + repo33.path, x)
-
+		
+		# doing bad stuff
+		conn12._path = "/abcd/"
+		self.assertRaisesRegex(RuntimeError,"does not match",repo13.setProperties)
+		
 
 if __name__ == '__main__':
 	unittest.main()
