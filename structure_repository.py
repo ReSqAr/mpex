@@ -380,6 +380,18 @@ class Repository:
 		# the first two characters are noise
 		return [line[2:].strip() for line in output.splitlines() if line.strip()]
 
+	def activeAnnexDescriptions(self):
+		""" determine repositories which are online """
+		annex_descs = set()
+		for repository, connections in self.connectedRepositories().items():
+			for connection in connections:
+				if connection.isOnline():
+					# add the online repository's description
+					annex_descs.add(repository.description)
+					break
+		
+		return annex_descs
+
 
 	def init(self):
 		""" inits the repository """
@@ -432,10 +444,8 @@ class Repository:
 			assert connections, "Programming error."
 			assert len(connections) == 1, "Git supports only up to one connection."
 			
-			# select connection
+			# select connection and get details
 			connection = connections.pop()
-			
-			# get details
 			gitID   = repo.description
 			gitPath = connection.gitPath(repo)
 			
@@ -492,14 +502,7 @@ class Repository:
 		
 		# if a list of hosts is not given,
 		if annex_descs is None:
-			# determine repositories which are online
-			annex_descs = set()
-			for repository, connections in self.connectedRepositories().items():
-				for connection in connections:
-					if connection.isOnline():
-						# add the online repository
-						annex_descs.add(repository.description)
-						break
+			annex_descs = self.activeAnnexDescriptions()
 		
 		# call 'git-annex sync'
 		if annex_descs:

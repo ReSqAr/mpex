@@ -432,9 +432,9 @@ class Test(unittest.TestCase):
 		
 		# create & init
 		path1 = os.path.join(self.path,"repo_host1")
-		repo1 = r.create(host1,annex,path1,description="genius_repo_1")
+		repo1 = r.create(host1,annex,path1,description="test_repo_1")
 		path2 = os.path.join(self.path,"repo_host2")
-		repo2 = r.create(host2,annex,path2,description="genius_repo_2")
+		repo2 = r.create(host2,annex,path2,description="test_repo_2")
 		
 		app.setCurrentHost(host2)
 		repo2.init()
