@@ -3,6 +3,7 @@ import os
 import os.path
 import io
 import string
+import collections
 
 
 
@@ -113,7 +114,8 @@ class Host:
 		# save options
 		self.app = app
 		self._name = name
-		
+
+		assert self.name, "name may not be empty"
 		assert set(self.name).issubset(self.VALID_CHARS), "%s: invalid character detected." % self
 		assert not self.name.startswith(" ") or not self.name.endswith(" "), "%s: name may not start nor end with a white space." % self
 	
@@ -176,6 +178,7 @@ class Annex:
 		self.app = app
 		self._name = name
 
+		assert self.name, "name may not be empty"
 		assert set(self.name).issubset(self.VALID_CHARS), "%s: invalid character detected." % self
 		assert not self.name.startswith(" ") or not self.name.endswith(" "), "%s: name may not start nor end with a white space." % self
 	
@@ -348,10 +351,10 @@ class Repository:
 			if token == "(": number_of_brackets += 1
 			if token == ")": number_of_brackets -= 1
 			if number_of_brackets < 0:
-				raise ValueError("Too many ')' in: %s" % files)
+				raise ValueError("too many ')' in: %s" % files)
 		else:
 			if number_of_brackets > 0:
-				raise ValueError("Too many '(' in: %s" % files)
+				raise ValueError("too many '(' in: %s" % files)
 		
 		# reformat files
 		files = ""
@@ -426,9 +429,19 @@ class Repository:
 		self._data["trust"] = v
 
 	
-	def connections(self):
-		""" all connections from the current repository to other repositories """
-		return self.host.connections() & {repo.host for repo in self.annex.repositories()}
+	def connectedRepositories(self):
+		""" find all connected repositories, returns a dictionary: repository -> set of connections """
+		
+		# convert connections to a dictionary dest -> set of connections to dest
+		connections = collections.defaultdict(set)
+		for connection in self.host.connections():
+			connections[connection.dest].add(connection)
+		
+		# get repositories
+		repositories = self.annex.repositories()
+		
+		# return the desired dictionary
+		return {r:connections[r.host] for r in repositories if r.host in connections}
 
 	#
 	# hashable type mehods, hashable is needed for dict keys and sets
@@ -444,7 +457,7 @@ class Repository:
 		return "Repository(%r,%r,%r,%r)" % (self._host,self._annex,self._path,self._data)
 
 	def __str__(self):
-		return "Repository(%s@%s:%s:%s)" % (self._annex.name,self._host.name,self._path,self._data)
+		return "Repository(%s@%s:%s:%s)" % (self._annex,self._host,self._path,self._data)
 
 
 
@@ -542,6 +555,6 @@ class Connection:
 		return "Connection(%r,%r,%r,%r)" % (self._source,self._dest,self._path,self._data)
 
 	def __str__(self):
-		return "Connection(%s->%s:%s:%s)" % (self._source.name,self._dest.name,self._path,self._data)
+		return "Connection(%s->%s:%s:%s)" % (self._source,self._dest,self._path,self._data)
 
  
