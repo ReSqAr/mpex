@@ -92,6 +92,10 @@ class Test(unittest.TestCase):
 					host1,"",rxx)
 		self.assertRaisesRegex(AssertionError, "absolute", r.create,
 					host1,annex1,"tmp")
+		self.assertRaisesRegex(AssertionError, "non-empty", r.create,
+					host1,annex1,rxx,description="")
+		self.assertRaisesRegex(AssertionError, "invalid", r.create,
+					host1,annex1,rxx,description="ü")
 		self.assertRaisesRegex(AssertionError, "trust has to be valid", r.create,
 					host1,annex1,rxx,trust="unknown")
 		self.assertRaisesRegex(ValueError, "non-closed", r.create,
@@ -378,7 +382,7 @@ class Test(unittest.TestCase):
 			fd.write("test")
 		
 		# test not commited?
-		self.assertFalse(self.hasUncommitedChanges())
+		self.assertTrue(repo_indirect.hasUncommitedChanges())
 
 		# finalise
 		repo_indirect.finalise()
@@ -388,7 +392,7 @@ class Test(unittest.TestCase):
 			self.assertEqual(fd.read(),"test")
 			
 		# everything commited?
-		self.assertTrue(self.hasUncommitedChanges())
+		self.assertFalse(repo_indirect.hasUncommitedChanges())
 		
 		# (direct mode)
 		# create & init
@@ -402,7 +406,7 @@ class Test(unittest.TestCase):
 			fd.write("test")
 		
 		# test not commited?
-		self.assertFalse(self.hasUncommitedChanges())
+		self.assertTrue(repo_direct.hasUncommitedChanges())
 
 		# finalise
 		repo_direct.finalise()
@@ -412,7 +416,7 @@ class Test(unittest.TestCase):
 			self.assertEqual(fd.read(),"test")
 			
 		# everything commited?
-		self.assertTrue(self.hasUncommitedChanges())
+		self.assertFalse(repo_direct.hasUncommitedChanges())
 	
 	def test_sync(self):
 		app = application.Application(self.path)
@@ -428,9 +432,9 @@ class Test(unittest.TestCase):
 		
 		# create & init
 		path1 = os.path.join(self.path,"repo_host1")
-		repo1 = r.create(host1,annex,path1)
+		repo1 = r.create(host1,annex,path1,description="genius_repo_1")
 		path2 = os.path.join(self.path,"repo_host2")
-		repo2 = r.create(host2,annex,path2)
+		repo2 = r.create(host2,annex,path2,description="genius_repo_2")
 		
 		app.setCurrentHost(host2)
 		repo2.init()

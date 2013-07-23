@@ -69,22 +69,6 @@ class Connection:
 	def alwaysOn(self,v):
 		self._data["alwayson"] = str(bool(v)).lower()
 
-	@property
-	def gitID(self):
-		""" specifies the ID used by git to identify the connection """
-		# extract git ID
-		gitid = self._data.get("gitid")
-		# if there was no git id, create a valid one based on the name of dest
-		if gitid is None:
-			gitid = self.dest.name
-		# filter unwanted characters
-		VALID_CHARS = set(string.ascii_letters + string.digits)
-		gitid = [c for c in gitid if c in VALID_CHARS]
-		if not gitid:
-			raise ValueError("%s: cannot generate a valid git id." % self)
-		# return
-		return "".join(gitid)
-	
 	#
 	# derived methods
 	#

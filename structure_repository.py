@@ -2,6 +2,7 @@ import collections
 import os
 import subprocess
 import datetime
+import string
 
 import structure_base
 import structure_host
@@ -39,6 +40,7 @@ class Repository:
 	
 	OPERATORS = ("(",")","+","-","^","&")
 	TRUST_LEVEL = ("semitrust","trust","untrust")
+	VALID_DESC_CHARS = set(string.ascii_letters + string.digits + "_")
 	
 	def __init__(self, app, host, annex, path, **data):
 		# save options
@@ -53,6 +55,9 @@ class Repository:
 		assert isinstance(self._annex,structure_annex.Annex), "%s: annex has to be an instance of Annex" % self
 		assert self._path.startswith("/"), "%s: path has to an absolute path" % self
 		assert self.trust in self.TRUST_LEVEL, "%s: trust has to be valid." % self
+		assert self.description, "%s: the git annex description has to be non-empty"
+		assert set(self.description).issubset(self.VALID_DESC_CHARS), "%s: invalid character detected." % self
+
 		
 		# sanitise the files expression
 		self.files = self.files
@@ -163,6 +168,18 @@ class Repository:
 		if self.app.currentHost() != self.host:
 			raise ValueError("The current host is not the host of the repository. (%s != %s)" % (self.app.currentHost(),self.host))
 		return self.path
+	
+	@property
+	def description(self):
+		""" the git annex description of the repository, default: host name """
+		if "description" not in self._data:
+			# filter unwanted characters
+			description = "".join(c for c in self.host.name if c in self.VALID_DESC_CHARS)
+			if not description:
+				raise ValueError("%s: cannot generate a valid git annex description." % self)
+			return description
+		else:
+			return self._data["description"]
 	
 	@property
 	def direct(self):
@@ -380,7 +397,7 @@ class Repository:
 		
 		# init git annex
 		if not os.path.isdir(os.path.join(path,".git/annex")):
-			self.execute_command(["git-annex","init",self.host.name])
+			self.execute_command(["git-annex","init",self.description])
 		else:
 			print("It is already a git annex repository.")
 		
@@ -419,7 +436,7 @@ class Repository:
 			connection = connections.pop()
 			
 			# get details
-			gitID   = connection.gitID
+			gitID   = repo.description
 			gitPath = connection.gitPath(repo)
 			
 			try:
@@ -460,10 +477,10 @@ class Repository:
 		msg = "Host: '%s' UTC: %s" % (self.host.name,utc)
 		self.execute_command(["git","commit","-a","-m",msg])
 
-	def sync(self, hosts=None):
+	def sync(self, annex_descs=None):
 		"""
-			calls finalise and git-annex sync, when hosts (list of Host) is given,
-			use this list instead of hosts with an active annex
+			calls finalise and git-annex sync, when annex_descs (list of annex
+			# descriptions) is given, use this list instead of hosts with an active annex
 		"""
 		
 		# change into the right directory
@@ -474,19 +491,19 @@ class Repository:
 		print("\033[1;37;44m syncing %s \033[0m" % (self.annex.name,))
 		
 		# if a list of hosts is not given,
-		if hosts is None:
+		if annex_descs is None:
 			# determine repositories which are online
-			hosts = set()
+			annex_descs = set()
 			for repository, connections in self.connectedRepositories().items():
 				for connection in connections:
 					if connection.isOnline():
 						# add the online repository
-						hosts.add(repository.host)
+						annex_descs.add(repository.description)
 						break
 		
 		# call 'git-annex sync'
-		if hosts:
-			self.execute_command(["git-annex","sync"] + [h.name for h in hosts])
+		if annex_descs:
+			self.execute_command(["git-annex","sync"] + list(annex_descs))
 		
 		self.repairMaster()
 	
