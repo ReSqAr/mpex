@@ -531,7 +531,18 @@ class Repository:
 		
 		# checkout master branch
 		self.execute_command(["git","checkout","master"])
-		
+	
+	def copy(self, annex_descs=None, files=None, strict=None):
+		"""
+			copy files, arguments:
+			- annex_descs: target machines, if not specified all online machines are used
+			- files: expression which specifies files should be transfered,
+			         defaults to the target repositories files entry, if nothing is given,
+			         no file is transfered
+			- strict: drop all files which do not match the local files expression
+		"""
+		pass
+	
 	#
 	# hashable type mehods, hashable is needed for dict keys and sets
 	# (source: http://docs.python.org/2/library/stdtypes.html#mapping-types-dict)
