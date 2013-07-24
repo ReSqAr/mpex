@@ -358,6 +358,18 @@ class Test(unittest.TestCase):
 			self.assertIn("/abc" + repo23.path, x)
 			self.assertIn("ssh://yeah" + repo33.path, x)
 		
+		# init non-empty directory
+		path = os.path.join(self.path,"repo-nonempty")
+		os.makedirs(path)
+		with open(os.path.join(path,"test"),"wt") as fd:
+			fd.write("test")
+		
+		repo_nonempty = r.create(host1,annex1,path)
+		self.assertRaisesRegex(RuntimeError,"non-empty directory",repo_nonempty.init)
+		# force creation and check disk format
+		repo_nonempty.init(ignorenonempty=True)
+		self.assertTrue(os.path.isdir(os.path.join(repo_nonempty.path,".git/annex")))
+		
 		# doing bad stuff
 		conn12._path = "/abcd/"
 		self.assertRaisesRegex(RuntimeError,"does not match",repo13.setProperties)

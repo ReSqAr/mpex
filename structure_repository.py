@@ -512,7 +512,7 @@ class Repository:
 
 
 
-	def init(self):
+	def init(self, ignorenonempty=False):
 		""" inits the repository """
 		
 		# change into the right directory, create it if necessary
@@ -522,7 +522,10 @@ class Repository:
 
 		# init git
 		if not os.path.isdir(os.path.join(path,".git")):
-			self.execute_command(["git","init"])
+			if os.listdir(path) and not ignorenonempty:
+				raise RuntimeError("Trying to run 'git init' in a non-empty directory, set ignorenonempty=True.")
+			else:
+				self.execute_command(["git","init"])
 		else:
 			print("It is already a git repository.")
 		
@@ -683,7 +686,7 @@ class Repository:
 		repos = self.activeRepositories()
 		
 		if annex_descs is not None:
-			# delete all with wrong description
+			# remove all with wrong description
 			for repo in list(repos.keys()):
 				if repo.description not in annex_descs:
 					del repos[repo]
