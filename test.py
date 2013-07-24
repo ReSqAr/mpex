@@ -814,5 +814,6 @@ class Test(unittest.TestCase):
 				else:
 					self.assertEqual(set(found),{2-1,3-1})
 
+
 if __name__ == '__main__':
 	unittest.main()

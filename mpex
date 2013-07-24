@@ -1,31 +1,168 @@
 #!/usr/bin/env python3
 
+import os
 import argparse
+import sys
 
 import application
 
+
+CONFIG_PATH = "~/.config/mpex/"
+CONFIG_PATH = os.path.expanduser(CONFIG_PATH)
+
+
+def parse_annex(app,args):
+	""" parse annexes supplied by the user """
+	# if nothing is given, return None
+	if not args.annex:
+		return None
+	
+	# save
+	annex_names = args.annex 
+	
+	# find all known names
+	known_annexes = {repo.annex for repo in app.getHostedRepositories()}
+	known_annexes = {annex.name for annex in known_annexes}
+	known_annexes_lower = {annex_name.lower() for annex_name in known_annexes}
+	
+	# make sure that all given annexes indeed exist
+	for annex_name in annex_names:
+		if annex_name.lower() not in known_annexes_lower:
+			print("Annex description '%s' is not known." % annex_name)
+			print("Known annexes: %s" % ", ".join(sorted(known_annexes)))
+			sys.exit()
+	
+	return annex_names
+
+def apply_function(args,f):
+	""" apply f to all given annex_names """
+	# create application
+	app = application.Application(CONFIG_PATH)
+	# parse annex names
+	annex_names = parse_annex(app,args)
+	# create lower case version
+	if annex_names is not None:
+		annex_names_lower = {annex_name.lower() for annex_name in annex_names}
+	
+	for repo in app.getHostedRepositories():
+		# if either
+		# a) all repositories should be iterated over, or
+		# b) the name matches
+		# execute f
+		if annex_names is None or repo.annex.name.lower() in annex_names_lower:
+			f(repo)
+	
+
 #
-# initialise all repositories
+# initialise repositories
 #
 def init_init(parsers):
-	parser = parsers.add_parser('init', help='Create all repositories.')
-	
+	parser = parsers.add_parser('init', help='create repositories.')
+	parser.add_argument('annex', nargs='*', help="Annex names")
+	parser.add_argument('--ignorenonempty', action='store_true', default=False,
+							help="initialise directories even if they are non empty")
 	parser.set_defaults(func=func_init)
 
 def func_init(args):
-	pass
-
+	def repo_init(repo):
+		repo.init(ignorenonempty=args.ignorenonempty)
+	apply_function(args,repo_init)
+	
 #
-# sync all repositories
+# reinitialise repositories
+#
+def init_reinit(parsers):
+	parser = parsers.add_parser('reinit', help='reinitialise repositories.')
+	parser.add_argument('annex', nargs='*', help="annex names")
+	parser.set_defaults(func=func_reinit)
+
+def func_reinit(args):
+	def repo_reinit(repo):
+		repo.setProperties()
+	apply_function(args,repo_reinit)
+	
+#
+# finalise repositories
+#
+def init_finalise(parsers):
+	parser = parsers.add_parser('finalise', help='finalise repositories.')
+	parser.add_argument('annex', nargs='*', help="annex names")
+	parser.set_defaults(func=func_finalise)
+
+def func_finalise(args):
+	def repo_finalise(repo):
+		repo.finalise()
+	apply_function(args,repo_finalise)
+	
+#
+# synchronise repositories
 #
 def init_sync(parsers):
-	parser = parsers.add_parser('sync', help='Synchronise all repositories.')
-	
+	parser = parsers.add_parser('sync', help='synchronise repositories.')
+	parser.add_argument('annex', nargs='*', help="annex names")
 	parser.set_defaults(func=func_sync)
 
 def func_sync(args):
-	pass
+	def repo_sync(repo):
+		repo.sync()
+	apply_function(args,repo_sync)
+	
 
+#
+# copy repositories
+#
+def init_copy(parsers):
+	parser = parsers.add_parser('copy', help='copy repositories.')
+	parser.add_argument('annex', nargs='*', help="annex names")
+	parser.add_argument('--files', default=None, help="files expression for the local host")
+	parser.add_argument('--strict', action="store_true", help="apply strict")
+	parser.add_argument('--nostrict', action="store_true", help="apply no strict")
+	parser.set_defaults(func=func_copy)
+
+def func_copy(args):
+	# get strict flag
+	strict = None
+	if args.strict:
+		strict = True
+	if args.nostrict:
+		strict = False
+	
+	def repo_copy(repo):
+		repo.copy(files=args.files,strict=strict)
+	apply_function(args,repo_copy)
+	
+
+#
+# show data
+#
+def init_show(parsers):
+	parser = parsers.add_parser('show', help='show.')
+	parser.set_defaults(func=func_show)
+
+def func_show(args):
+	raise NotImplementedError
+	
+#
+# show data
+#
+def init_show(parsers):
+	parser = parsers.add_parser('show', help='show data.')
+	parser.set_defaults(func=func_show)
+
+def func_show(args):
+	raise NotImplementedError
+	
+
+#
+# edit data
+#
+def init_edit(parsers):
+	parser = parsers.add_parser('edit', help='edit data.')
+	parser.set_defaults(func=func_edit)
+
+def func_edit(args):
+	raise NotImplementedError
+	
 
 
 
@@ -36,7 +173,12 @@ def runParser():
 	# create sub parsers
 	subparsers = parser.add_subparsers(help='There are some subcommands.')
 	init_init(subparsers)
+	init_reinit(subparsers)
+	init_finalise(subparsers)
 	init_sync(subparsers)
+	init_copy(subparsers)
+	init_show(subparsers)
+	init_edit(subparsers)
 
 	# parse arguments and call function
 	args = parser.parse_args()
