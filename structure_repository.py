@@ -213,6 +213,11 @@ class Repository:
 		debug = " ".join(tokens)
 		tokens,cmd = list(tokens),[]
 		
+		# special treatment of tokens = ["-"]
+		if tokens == ["-"]:
+			# this means, no file should be in the repository
+			return ["--exclude=*"]
+		
 		while tokens:
 			# get first token
 			token = tokens.pop(0)
@@ -341,10 +346,16 @@ class Repository:
 	#
 	# file system interaction
 	#
-	def execute_command(self, cmd):
+	def execute_command(self, cmd, ignoreexception=False):
 		""" print and execute the command """
 		print("command:"," ".join(cmd))
-		return subprocess.check_call(cmd)
+		try:
+			subprocess.check_call(cmd)
+		except subprocess.CalledProcessError:
+			if ignoreexception:
+				pass
+			else:
+				raise
 
 
 	def changePath(self, create=False):
@@ -723,7 +734,7 @@ class Repository:
 		if strict:
 			# call 'git-annex drop --not -( <files expression -)
 			cmd = ["git-annex","drop"] + ["--not", "-("] + cur_files_cmd + ["-)"]
-			self.execute_command(cmd)
+			self.execute_command(cmd, ignoreexception=True)
 		
 		# apply strict for remote repositories
 		for repo in sorted(repos.keys(),key=lambda k:str(k)):
@@ -734,7 +745,7 @@ class Repository:
 		
 			# call 'git-annex drop --from=target --not -( <files expression -)
 			cmd = ["git-annex","drop","--from=%s"%repo.description] + ["--not", "-("] + files_cmd + ["-)"]
-			self.execute_command(cmd)
+			self.execute_command(cmd, ignoreexception=True)
 
 		# sync again
 		self.sync(annex_descs)
