@@ -583,9 +583,19 @@ class Test(unittest.TestCase):
 		# doing bad stuff
 		conn12._path = "/abcd/"
 		self.assertRaisesRegex(RuntimeError,"does not match",repo.setProperties)
-	
-	def test_finalise(self):
-		""" test finalise """
+
+
+
+	def test_finalise_indirect(self):
+		"""
+			test finalise in indirect mode
+			procedure:
+			1. setup repository
+			2. create a file with content file (which is then uncommited)
+			3. call finalise
+			4. afterwards, the file should still be where
+			5. everything should commited
+		"""
 		# initialisation
 		app = application.Application(self.path)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
@@ -598,7 +608,6 @@ class Test(unittest.TestCase):
 		repo_indirect = r.create(host,annex,path)
 		repo_indirect.init()
 		
-		# (indirect mode)
 		# create file
 		f_path = os.path.join(path,"test")
 		with open(f_path,"wt") as fd:
@@ -617,7 +626,23 @@ class Test(unittest.TestCase):
 		# everything commited?
 		self.assertFalse(repo_indirect.hasUncommitedChanges())
 		
-		# (direct mode)
+	def test_finalise_direct(self):
+		"""
+			test finalise in indirect mode
+			procedure:
+			1. setup repository
+			2. create a file (which is then uncommited)
+			3. call finalise
+			4. afterwards, the file should still be where
+			5. everything should commited
+		"""
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host,annex = h.create("Host1"),a.create("Annex1")
+
+		app.setCurrentHost(host)
+
 		# create & init
 		path = os.path.join(self.path,"repo_direct")
 		repo_direct = r.create(host,annex,path)
@@ -640,9 +665,19 @@ class Test(unittest.TestCase):
 			
 		# everything commited?
 		self.assertFalse(repo_direct.hasUncommitedChanges())
-	
+
+
+
 	def test_sync(self):
-		""" test sync """
+		"""
+			test sync
+			procedure:
+			1. create two repositories
+			2. create file in the first repository
+			3. call sync
+			4. then a link to the file should exist in the other directory
+			5. call sync again
+		"""
 		# initialisation
 		app = application.Application(self.path)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
@@ -685,7 +720,22 @@ class Test(unittest.TestCase):
 		repo1.sync()
 	
 	def test_copy(self):
-		""" test copy """
+		"""
+			test copy
+			procedure:
+			1. create three repositories with this connections:
+			   alice (repo2) -> share (repo1) <- bob (repo3)
+			   share has set as files expression: '(alice - bob) + (bob - alice)'
+			   and strict flag set
+			2. create files in all possible repository combinations
+			3. sync all
+			4. call copy in repository repo2 and repo3 (in this order)
+			5. sync again
+			6. now the distribution of the files looks like that:
+			   share: the file which was only in bob's repository (file_3)
+			   alice: all except the file which was only in bob's repository (file_3)
+			   bob:   all files
+		"""
 		# initialisation
 		app = application.Application(self.path)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
@@ -710,11 +760,14 @@ class Test(unittest.TestCase):
 			app.setCurrentHost(repo.host)
 			repo.init()
 		
-		# create all possible combinations on files
 		n = 3
+		# create all possible combinations of files
+		# compute power set of {0,1,2}
 		for i in range(1,n+1):
 			for t in itertools.combinations(range(n), i):
+				# compute file name
 				name = "file_%s" % "".join(str(x+1) for x in t)
+				# create files in the individual paths
 				for j in t:
 					path = paths[j]
 					f_path = os.path.join(path,name)
@@ -737,25 +790,29 @@ class Test(unittest.TestCase):
 			app.setCurrentHost(repo.host)
 			repo.sync()
 
-		# check
+		# compute power set of {0,1,2}
 		for i in range(1,n+1):
 			for t in itertools.combinations(range(n), i):
+				# compute file name
 				name = "file_%s" % "".join(str(x+1) for x in t)
 				found = []
 				for j,path in enumerate(paths):
+					# check where the files exists
 					f_path = os.path.join(path,name)
 					if os.path.isfile(f_path):
+						# if it exists checks that it has the correct content
 						with open(f_path,"rt") as fd:
 							self.assertEqual(fd.read(),name)
 						found.append(j)
 				
 				#print("%s found in: %s" % (name,", ".join(str(x+1) for x in found)))
 				
+				# only t = {3} should exist in share and bob, the others
+				# should exist in alice and bob
 				if set(t) == {3-1}:
 					self.assertEqual(set(found),{1-1,3-1})
 				else:
 					self.assertEqual(set(found),{2-1,3-1})
-		
-		
+
 if __name__ == '__main__':
 	unittest.main()
