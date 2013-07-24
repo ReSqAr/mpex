@@ -95,7 +95,7 @@ class Repository:
 			TODO
 	"""
 	
-	OPERATORS = ("(",")","+","-","~","&","|")
+	OPERATORS = ("(",")","+","-","&")
 	TRUST_LEVEL = ("semitrust","trust","untrust")
 	VALID_DESC_CHARS = set(string.ascii_letters + string.digits + "_")
 	
@@ -208,6 +208,36 @@ class Repository:
 		
 		return files.strip()
 		
+	def tokenisedFilesExpressionToCmd(self, tokens):
+		""" converts a list of tokens into a command """
+		debug = " ".join(tokens)
+		tokens,cmd = list(tokens),[]
+		
+		while tokens:
+			# get first token
+			token = tokens.pop(0)
+			
+			if not token in self.OPERATORS:
+				# example: Host1, effect: selects all files on this remote
+				cmd.extend(["--in=%s"%token])
+			elif token == "(":
+				cmd.extend(["-("])
+			elif token == ")":
+				cmd.extend(["-)"])
+			elif token == "-":
+				# example: - Host2, effect: selects the files which are not present on the remote
+				cmd.extend(["--not"])
+			elif token == "+":
+				# example: Host1 + Host2, effect: selects files which are present on at least one remotes
+				cmd.extend(["--or"])
+			elif token == "&":
+				# example: Host1 & Host2, effect: selects files which are present on both remotes
+				cmd.extend(["--and"])
+			else:
+				raise ValueError("Programming error: %s" % token)
+		
+		return cmd
+	
 	@property
 	def host(self):
 		return self._host
@@ -576,7 +606,8 @@ class Repository:
 		if annex_descs:
 			self.execute_command(["git-annex","sync"] + list(annex_descs))
 		else:
-			print("no other annex is online, ignored")
+			# if no other annex is available, still do basic maintanence
+			self.execute_command(["git-annex","merge"])
 		
 		self.repairMaster()
 	
@@ -602,50 +633,6 @@ class Repository:
 		
 		# checkout master branch
 		self.execute_command(["git","checkout","master"])
-	
-	
-	def tokenisedFilesExpressionToCmd(self, tokens):
-		""" converts a list of tokens into a command """
-		debug = " ".join(tokens)
-		tokens,cmd = list(tokens),[]
-		
-		while tokens:
-			# get first token
-			token = tokens.pop(0)
-			
-			if not token in self.OPERATORS:
-				# example: Host1, effect: selects all files on this remote
-				cmd.extend(["--in=%s"%token])
-			elif token == "(":
-				cmd.extend(["-("])
-			elif token == ")":
-				cmd.extend(["-)"])
-			elif token in ("+","-"):
-				# example: + Host1, effect: selects all files on this remote
-				# example: - Host1, effect: selects all files NOT on this remote
-				if not tokens:
-					raise ValueError("'%s' ended unexpectedly." % debug)
-				# get next token
-				host = tokens.pop(0)
-				if host in self.OPERATORS:
-					raise ValueError("'%s' malformed." % debug)
-				if token == "+":
-					cmd.extend(["--in=%s"%host])
-				else:
-					cmd.extend(["-(", "--not", "--in=%s"%host, "-)"])
-			elif token == "~":
-				# example: ~ Host2, effect: selects the files which are not present on the remote
-				cmd.extend(["--not"])
-			elif token == "&":
-				# example: Host1 & Host2, effect: selects files which are present on both remotes
-				cmd.extend(["--and"])
-			elif token == "|":
-				# example: Host1 | Host2, effect: selects files which are present on at least one remotes
-				cmd.extend(["--or"])
-			else:
-				raise ValueError("Programming error: %s" % token)
-		
-		return cmd
 	
 	def copy(self, annex_descs=None, files=None, strict=None):
 		"""
@@ -673,12 +660,6 @@ class Repository:
 		
 		print("\033[1;37;44m copying files %s \033[0m" % (self.annex.name,))
 		
-		
-		# if there are no targets, ignore
-		if not repos:
-			print("no other annex is online, ignored")
-			return
-		
 		#
 		# pull
 		#
@@ -689,18 +670,18 @@ class Repository:
 		# parse files expression
 		files = self.sanitiseFilesExpression(files)
 		files = self.tokeniseFileExpression(files)
-		files_cmd = self.tokenisedFilesExpressionToCmd(files)
+		cur_files_cmd = self.tokenisedFilesExpressionToCmd(files)
 		
 		# call 'git-annex copy --from=target <files expression as command>'
-		for repo in repos:
-			cmd = ["git-annex","copy","--from=%s"%repo.description] + files_cmd
+		for repo in sorted(repos.keys(),key=lambda k:str(k)):
+			cmd = ["git-annex","copy","--from=%s"%repo.description] + cur_files_cmd
 			self.execute_command(cmd)
 	
 		#
 		# push
 		#
 		
-		for repo in repos:
+		for repo in sorted(repos.keys(),key=lambda k:str(k)):
 			# parse remote files expression
 			files = self.sanitiseFilesExpression(repo.files)
 			files = self.tokeniseFileExpression(files)
@@ -710,6 +691,33 @@ class Repository:
 			cmd = ["git-annex","copy","--to=%s"%repo.description] + files_cmd
 			self.execute_command(cmd)
 		
+		#
+		# apply strict
+		#
+		
+		# use strict of the current repository, if none is given
+		if strict is None:
+			strict = self.strict
+		
+		if strict:
+			# call 'git-annex drop --not -( <files expression -)
+			cmd = ["git-annex","drop"] + ["--not", "-("] + cur_files_cmd + ["-)"]
+			self.execute_command(cmd)
+		
+		# apply strict for remote repositories
+		for repo in sorted(repos.keys(),key=lambda k:str(k)):
+			# parse remote files expression
+			files = self.sanitiseFilesExpression(repo.files)
+			files = self.tokeniseFileExpression(files)
+			files_cmd = self.tokenisedFilesExpressionToCmd(files)
+		
+			# call 'git-annex drop --from=target --not -( <files expression -)
+			cmd = ["git-annex","drop","--from=%s"%repo.description] + ["--not", "-("] + files_cmd + ["-)"]
+			self.execute_command(cmd)
+
+		# sync again
+		self.sync(annex_descs)
+
 		
 	#
 	# hashable type mehods, hashable is needed for dict keys and sets

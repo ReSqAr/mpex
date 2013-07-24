@@ -2,6 +2,7 @@ import unittest
 import tempfile
 import os.path
 import subprocess
+import itertools
 
 import application
 
@@ -478,68 +479,70 @@ class Test(unittest.TestCase):
 		host2 = h.create("Host2")
 		host3 = h.create("Host3")
 		annex = a.create("Annex")
-		conn12 = c.create(host1,host2,"/",alwayson="true")
-		conn13 = c.create(host1,host3,"/",alwayson="true")
+		conn12 = c.create(host2,host1,"/",alwayson="true")
+		conn13 = c.create(host3,host1,"/",alwayson="true")
 		
 		# create & init
 		path1 = os.path.join(self.path,"repo_host1")
-		repo1 = r.create(host1,annex,path1,description="test_repo_1")
+		repo1 = r.create(host1,annex,path1,description="share", files="(alice - bob) + (bob - alice)", strict="true")
 		path2 = os.path.join(self.path,"repo_host2")
-		repo2 = r.create(host2,annex,path2,description="test_repo_2")
+		repo2 = r.create(host2,annex,path2,description="alice")
 		path3 = os.path.join(self.path,"repo_host3")
-		repo3 = r.create(host3,annex,path3,description="test_repo_3",files="test_repo_1-test_repo_2")
+		repo3 = r.create(host3,annex,path3,description="bob")
 		
-		app.setCurrentHost(host3)
-		repo3.init()
-		app.setCurrentHost(host2)
-		repo2.init()
-		app.setCurrentHost(host1)
-		repo1.init()
+		paths = [path1,path2,path3]
+		repos = [repo1,repo2,repo3]
 		
-		# create file on host1
-		f_path1 = os.path.join(path1,"test")
-		with open(f_path1,"wt") as fd:
-			fd.write("test")
-		# sync changes on host1
-		repo1.copy()
+		# init repos
+		for repo in repos:
+			app.setCurrentHost(repo.host)
+			repo.init()
+		
+		# create all possible combinations on files
+		n = 3
+		for i in range(1,n+1):
+			for t in itertools.combinations(range(n), i):
+				name = "file_%s" % "".join(str(x+1) for x in t)
+				for j in t:
+					path = paths[j]
+					f_path = os.path.join(path,name)
+					print(f_path)
+					with open(f_path,"wt") as fd:
+						fd.write(name)
+		
+		# sync all repos
+		for repo in reversed(repos):
+			app.setCurrentHost(repo.host)
+			repo.sync()
+		
+		# copy repo2 and repo3
+		for repo in [repo2,repo3]:
+			app.setCurrentHost(repo.host)
+			repo.copy()
 
-		# create file on host1
-		f2_path1 = os.path.join(path1,"test_only_in2")
-		with open(f2_path1,"wt") as fd:
-			fd.write("test_only_in2")
-		# sync changes on host1 only to host2
-		repo1.copy(["test_repo_2"])
-		
-		# create file on host1
-		f3_path1 = os.path.join(path1,"test_only_in3")
-		with open(f3_path1,"wt") as fd:
-			fd.write("test_only_in3")
-		
-		repo1.copy()
+		# sync all repos
+		for repo in reversed(repos):
+			app.setCurrentHost(repo.host)
+			repo.sync()
 
-		# sync changes on host2
-		app.setCurrentHost(host2)
-		repo2.sync()
-
-		# sync changes on host3
-		app.setCurrentHost(host3)
-		repo3.sync()
-		
-		# there?
-		f_path2 = os.path.join(path2,"test")
-		with open(f_path2,"rt") as fd:
-			self.assertEqual(fd.read(),"test")
-		f2_path2 = os.path.join(path2,"test_only_in2")
-		with open(f2_path2,"rt") as fd:
-			self.assertEqual(fd.read(),"test_only_in2")
-		
-		# there?
-		f_path3 = os.path.join(path3,"test")
-		with open(f_path3,"rt") as fd:
-			self.assertEqual(fd.read(),"test")
-		f2_path3 = os.path.join(path3,"test_only_in2")
-		self.assertFalse(os.path.isfile(f2_path3))
-			
+		# check
+		for i in range(1,n+1):
+			for t in itertools.combinations(range(n), i):
+				name = "file_%s" % "".join(str(x+1) for x in t)
+				found = []
+				for j,path in enumerate(paths):
+					f_path = os.path.join(path,name)
+					if os.path.isfile(f_path):
+						with open(f_path,"rt") as fd:
+							self.assertEqual(fd.read(),name)
+						found.append(j)
+				
+				#print("%s found in: %s" % (name,", ".join(str(x+1) for x in found)))
+				
+				if set(t) == {3-1}:
+					self.assertEqual(set(found),{1-1,3-1})
+				else:
+					self.assertEqual(set(found),{2-1,3-1})
 		
 		
 if __name__ == '__main__':
