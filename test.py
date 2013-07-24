@@ -359,10 +359,13 @@ class Test(unittest.TestCase):
 				d = {repos[k][j]: {conns[i][k if k < i else k-1]} for k in range(n) if k != i}
 				self.assertEqual(repos[i][j].connectedRepositories(),d)
 
+
 	def test_save(self):
+		"""
+			test save and load procedures and that they are an identity operation
+		"""
+		# initialisation
 		app = application.Application(self.path)
-	
-		# short cuts
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 	
 		# create objects
@@ -412,37 +415,37 @@ class Test(unittest.TestCase):
 		self.assertTrue(conn12.alwaysOn)
 	
 	def test_getHostedRepositories(self):
+		""" test application's getHostedRepositories method """
+		# initialisation
 		app = application.Application(self.path)
-
-		# short cuts
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
-	
-		# create objects
-		host1 = h.create("Host1")
-		host2 = h.create("Host2")
-
-		annex1 = a.create("Annex1")
-		annex2 = a.create("Annex2")
+		host1,host2 = h.create("Host1"),h.create("Host2")
+		annex1,annex2 = a.create("Annex1"),a.create("Annex2")
 		
 		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"))
 		repo21 = r.create(host2,annex1,os.path.join(self.path,"repo21"))
 		repo12 = r.create(host1,annex2,os.path.join(self.path,"repo12"))
 		repo22 = r.create(host2,annex2,os.path.join(self.path,"repo22"))
 		
+		# test app.CurrentHost
 		self.assertRaisesRegex(RuntimeError, "Unable to find" , app.currentHost)
 		
 		app.setCurrentHost(host1)
 		
+		# test app.CurrentHost
 		self.assertEqual(app.currentHost(), host1)
+
 		# save all
 		app.save()
 		
 		# restart
 		app = application.Application(self.path)
-
+		
+		# test getHostedRepositories
 		self.assertEqual(app.getHostedRepositories(),{repo11,repo12})
 	
 	def test_gitAnnexCapabilities(self):
+		""" test app.gitAnnexCapabilities """
 		app = application.Application(self.path)
 		
 		capabilities = app.gitAnnexCapabilities
@@ -452,43 +455,77 @@ class Test(unittest.TestCase):
 		
 		# the second call is from a cache
 		capabilities2 = app.gitAnnexCapabilities
-		self.assertEqual(capabilities,capabilities2)
+		self.assertEqual(id(capabilities),id(capabilities2))
+
+
 
 	def test_repo_init(self):
+		""" test repository init and conduct some basic checks """
+		# initialisation
 		app = application.Application(self.path)
-		
-		# short cuts
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,annex1 = h.create("Host1"),a.create("Annex1")
 
-		# create objects
-		host1 = h.create("Host1")
+		# set host
 		app.setCurrentHost(host1)
-		host2 = h.create("Host2")
-		host3 = h.create("Host3")
+		
+		# create & init
+		repo = r.create(host1,annex1,os.path.join(self.path,"repo"))
+		repo.init()
+		
+		# check properties
+		self.assertTrue(bool(repo.getAnnexUUID()))
+		self.assertEqual(repo.onDiskDirectMode(),"indirect")
+		self.assertEqual(repo.onDiskTrustLevel(),"semitrust")
+		
+		# check disk format
+		self.assertTrue(os.path.isdir(os.path.join(repo.path,".git")))
+		self.assertTrue(os.path.isdir(os.path.join(repo.path,".git/annex")))
+		
+	def test_repo_setproperties(self):
+		""" test repository setProperties """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,annex1 = h.create("Host1"),a.create("Annex1")
+
+		# set host
+		app.setCurrentHost(host1)
+		
+		# create
+		repo = r.create(host1,annex1,os.path.join(self.path,"repo"),direct="true",trust="trust")
+		
+		# check
+		self.assertRaisesRegex(AssertionError,"is not a git annex", repo.setProperties)
+		
+		# init
+		repo.init()
+		
+		# check
+		self.assertEqual(repo.onDiskDirectMode(),"direct")
+		self.assertEqual(repo.onDiskTrustLevel(),"trust")
+
+		# change
+		repo.direct = False
+		repo.trust = "untrust"
+		repo.setProperties()
+		
+		# check
+		self.assertEqual(repo.onDiskDirectMode(),"indirect")
+		self.assertEqual(repo.onDiskTrustLevel(),"untrust")
+
+	def test_repo_init_remotes(self):
+		""" test repository init and remotes"""
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 		annex1 = a.create("Annex1")
 		conn12 = c.create(host1,host2,"/abc/",alwayson="true")
 		conn13 = c.create(host1,host3,"ssh://yeah/",alwayson="true")
-		
-		# create & init
-		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"),trust="untrust")
-		repo11.init()
-		# check properties
-		self.assertTrue(bool(repo11.getAnnexUUID()))
-		self.assertEqual(repo11.onDiskDirectMode(),"indirect")
-		self.assertEqual(repo11.onDiskTrustLevel(),"untrust")
-		
-		# check disk format
-		self.assertTrue(os.path.isdir(os.path.join(repo11.path,".git")))
-		self.assertTrue(os.path.isdir(os.path.join(repo11.path,".git/annex")))
-		
-		# create & init
-		repo12 = r.create(host1,annex1,os.path.join(self.path,"repo12"),direct="true",trust="trust")
-		self.assertRaisesRegex(AssertionError,"is not a git annex", repo12.setProperties)
-		repo12.init()
-		repo12.setProperties()
-		
-		self.assertEqual(repo12.onDiskDirectMode(),"direct")
-		self.assertEqual(repo12.onDiskTrustLevel(),"trust")
+
+		# set host
+		app.setCurrentHost(host1)
 
 		# create & init
 		repo13 = r.create(host1,annex1,os.path.join(self.path,"repo13"))
@@ -497,9 +534,6 @@ class Test(unittest.TestCase):
 		repo13.init()
 		repo13.setProperties()
 
-		self.assertEqual(repo13.onDiskDirectMode(),"indirect")
-		self.assertEqual(repo13.onDiskTrustLevel(),"semitrust")
-		
 		# check remotes
 		self.assertIn("Host2",subprocess.check_output(["git","remote","show"]).decode("UTF8"))
 		self.assertIn("Host3",subprocess.check_output(["git","remote","show"]).decode("UTF8"))
@@ -507,6 +541,16 @@ class Test(unittest.TestCase):
 			x = fd.read()
 			self.assertIn("/abc" + repo23.path, x)
 			self.assertIn("ssh://yeah" + repo33.path, x)
+		
+	def test_repo_init_non_empty(self):
+		""" test repository init in non-empty directory """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,annex1 = h.create("Host1"),a.create("Annex1")
+
+		# set host
+		app.setCurrentHost(host1)
 		
 		# init non-empty directory
 		path = os.path.join(self.path,"repo-nonempty")
@@ -520,20 +564,34 @@ class Test(unittest.TestCase):
 		repo_nonempty.init(ignorenonempty=True)
 		self.assertTrue(os.path.isdir(os.path.join(repo_nonempty.path,".git/annex")))
 		
+	def test_repo_init_remotes_change_location(self):
+		""" test repository set properties and changing of the remotes location """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
+		annex1 = a.create("Annex1")
+		conn12 = c.create(host1,host2,"/abc/",alwayson="true")
+
+		# set host
+		app.setCurrentHost(host1)
+		
+		repo = r.create(host2,annex1,os.path.join(self.path,"repo"))
+		repo = r.create(host1,annex1,os.path.join(self.path,"repo"))
+		repo.init()
+		
 		# doing bad stuff
 		conn12._path = "/abcd/"
-		self.assertRaisesRegex(RuntimeError,"does not match",repo13.setProperties)
+		self.assertRaisesRegex(RuntimeError,"does not match",repo.setProperties)
 	
 	def test_finalise(self):
+		""" test finalise """
+		# initialisation
 		app = application.Application(self.path)
-		
-		# short cuts
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host,annex = h.create("Host1"),a.create("Annex1")
 
-		# create objects
-		host = h.create("Host1")
 		app.setCurrentHost(host)
-		annex = a.create("Annex1")
 		
 		# create & init
 		path = os.path.join(self.path,"repo_indirect")
@@ -584,15 +642,11 @@ class Test(unittest.TestCase):
 		self.assertFalse(repo_direct.hasUncommitedChanges())
 	
 	def test_sync(self):
+		""" test sync """
+		# initialisation
 		app = application.Application(self.path)
-		
-		# short cuts
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
-
-		# create objects
-		host1 = h.create("Host1")
-		host2 = h.create("Host2")
-		annex = a.create("Annex")
+		host1,host2,annex = h.create("Host1"),h.create("Host2"),a.create("Annex")
 		conn12 = c.create(host1,host2,"/",alwayson="true")
 		
 		# create & init
@@ -631,15 +685,11 @@ class Test(unittest.TestCase):
 		repo1.sync()
 	
 	def test_copy(self):
+		""" test copy """
+		# initialisation
 		app = application.Application(self.path)
-		
-		# short cuts
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
-
-		# create objects
-		host1 = h.create("Host1")
-		host2 = h.create("Host2")
-		host3 = h.create("Host3")
+		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 		annex = a.create("Annex")
 		conn12 = c.create(host2,host1,"/",alwayson="true")
 		conn13 = c.create(host3,host1,"/",alwayson="true")
