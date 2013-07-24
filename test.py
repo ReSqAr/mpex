@@ -26,50 +26,70 @@ class Test(unittest.TestCase):
 		app = application.Application(self.path)
 		self.assertIsNotNone(app)
 	
-	def test_object_creation(self):
+	def test_hosts_creation(self):
+		""" test host creation and identity """
+		# initialisation
 		app = application.Application(self.path)
-	
-		# short cuts
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 	
-		#
-		# test hosts
-		#
-		host1 = h.create("Host1")
-		host2 = h.create("Host2")
-		host3 = h.create("Host3")
+		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 		host1p= h.create("Host1")
-		
+	
 		self.assertEqual(host1,host1p)
 		self.assertEqual(id(host1),id(host1p))
 
 		self.assertEqual(h.getAll(),{host1,host2,host3})
 
+	def test_hosts_creation_error_cases(self):
+		""" test common error cases """
+		
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+
 		self.assertRaisesRegex(AssertionError, "empty", h.create, "")
 		self.assertRaisesRegex(AssertionError, "invalid character", h.create, "ü")
 		self.assertRaisesRegex(AssertionError, "white space", h.create, " ")
-		
 
-		#
-		# test annexes
-		#
-		annex1 = a.create("Annex1")
-		annex2 = a.create("Annex2")
-		annex3 = a.create("Annex3")
+
+
+	def test_creation_annexes(self):
+		""" test annex creation and identity """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+	
+		# creation
+		annex1,annex2,annex3 = [a.create("Annex%d"%i) for i in range(1,4)]
 		annex1p= a.create("Annex1")
 		
+		# identity
 		self.assertEqual(annex1,annex1p)
 		self.assertEqual(id(annex1),id(annex1p))
 
 		self.assertEqual(a.getAll(),{annex1,annex2,annex3})
 
+	def test_creation_annexes_error_cases(self):
+		""" test common error cases """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+
 		self.assertRaisesRegex(AssertionError, "empty", a.create, "")
 		self.assertRaisesRegex(AssertionError, "invalid character", a.create, "ü")
 		self.assertRaisesRegex(AssertionError, "white space", a.create, " ")
-	
-		#
-		# test repositories
-		#
+
+
+
+	def test_creation_repositories(self):
+		""" test creation of repositories """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
+		annex1,annex2,annex3 = [a.create("Annex%d"%i) for i in range(1,4)]
+		
+		# creation
 		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"))
 		repo12 = r.create(host1,annex2,os.path.join(self.path,"repo12"))
 		repo13 = r.create(host1,annex3,os.path.join(self.path,"repo13"))
@@ -79,11 +99,21 @@ class Test(unittest.TestCase):
 		repo33 = r.create(host3,annex3,os.path.join(self.path,"repo33"))
 		repo11p= r.create(host1,annex2,os.path.join(self.path,"repo11"))
 		
-		# equal if host and path are equal
+		# identity (equal if host and path are equal)
 		self.assertEqual(repo11,repo11p)
 		self.assertEqual(id(repo11),id(repo11p))
 
 		self.assertEqual(r.getAll(),{repo11,repo12,repo13,repo22,repo33,repo23,repo21})
+	
+	def test_creation_repositories_error_cases(self):
+		""" """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host1up = h.create("Host1"),h.create("HOST1")
+		annex1 = a.create("Annex1")
+		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"))
+		repo11up = r.create(host1up,annex1,os.path.join(self.path,"repo11"))
 		
 		# test error conditions
 		# use repoxx, some paths are already taken, hence the identity map applies
@@ -100,67 +130,108 @@ class Test(unittest.TestCase):
 					host1,annex1,rxx,description="ü")
 		self.assertRaisesRegex(AssertionError, "trust has to be valid", r.create,
 					host1,annex1,rxx,trust="unknown")
+		
+		# files cannot be checked on initialisation, so check only <repo>.files = <expr>
 		self.assertRaisesRegex(ValueError, "non-closed", setattr,
-					repo13,"files","'")
+					repo11,"files","'")
 		self.assertRaisesRegex(ValueError, "no candidates", setattr,
-					repo13,"files","Host5")
-		host1pp = h.create("HOST1")
-		repo13pp = r.create(host1pp,annex3,os.path.join(self.path,"repo13"))
+					repo11,"files","Host5")
 		self.assertRaisesRegex(ValueError, "too many candidates", setattr,
-					repo13,"files","host1")
+					repo11,"files","host1")
 		self.assertRaisesRegex(ValueError, "too many '[)]'", setattr,
-					repo13,"files","(())())")
+					repo11,"files","(())())")
 		self.assertRaisesRegex(ValueError, "too many '[(]'", setattr,
-					repo13,"files","(())(")
+					repo11,"files","(())(")
 		
-		# test truthful representation of the input data
+	def test_creation_repositories_metadata_default(self):
+		""" check default values """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,annex1 = h.create("Host1"),a.create("Annex1")
+
 		# default value
-		repo110 = r.create(host1,annex1,os.path.join(self.path,"repo110"))
-		self.assertFalse(repo110.direct)
-		self.assertFalse(repo110.strict)
-		self.assertEqual(repo110.trust,"semitrust")
-		self.assertIsNone(repo110.files)
-		
+		repo = r.create(host1,annex1,os.path.join(self.path,"repo"))
+		self.assertFalse(repo.direct)
+		self.assertFalse(repo.strict)
+		self.assertEqual(repo.trust,"semitrust")
+		self.assertIsNone(repo.files)
+
+	def test_creation_repositories_metadata_direct(self):
+		""" check metadata direct member """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,annex1 = h.create("Host1"),a.create("Annex1")
+
 		# direct
-		repo111 = r.create(host1,annex1,os.path.join(self.path,"repo111"),direct="false")
-		self.assertFalse(repo111.direct)
-		repo111.direct = True
-		self.assertTrue(repo111.direct)
+		repo = r.create(host1,annex1,os.path.join(self.path,"repo"),direct="false")
+		self.assertFalse(repo.direct)
+		repo.direct = True
+		self.assertTrue(repo.direct)
 		
-		repo112 = r.create(host1,annex1,os.path.join(self.path,"repo112"),direct="true")
-		self.assertTrue(repo112.direct)
-		repo112.direct = False
-		self.assertFalse(repo112.direct)
+		repo = r.create(host1,annex1,os.path.join(self.path,"repo"),direct="true")
+		self.assertTrue(repo.direct)
+		repo.direct = False
+		self.assertFalse(repo.direct)
+
+	def test_creation_repositories_metadata_strict(self):
+		""" check metadata strict member """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,annex1 = h.create("Host1"),a.create("Annex1")
 		
 		# strict
-		repo113 = r.create(host1,annex1,os.path.join(self.path,"repo113"),strict="false")
-		self.assertFalse(repo113.strict)
-		repo113.strict = True
-		self.assertTrue(repo113.strict)
+		repo = r.create(host1,annex1,os.path.join(self.path,"repo"),strict="false")
+		self.assertFalse(repo.strict)
+		repo.strict = True
+		self.assertTrue(repo.strict)
 		
-		repo114 = r.create(host1,annex1,os.path.join(self.path,"repo114"),strict="true")
-		self.assertTrue(repo114.strict)
-		repo114.strict = False
-		self.assertFalse(repo114.strict)
+		repo = r.create(host1,annex1,os.path.join(self.path,"repo"),strict="true")
+		self.assertTrue(repo.strict)
+		repo.strict = False
+		self.assertFalse(repo.strict)
+		
+	def test_creation_repositories_metadata_trust(self):
+		""" check metadata trust member """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2,annex1 = h.create("Host1"),h.create("Host2"),a.create("Annex1")
 		
 		# trust
-		repo115 = r.create(host1,annex1,os.path.join(self.path,"repo115"),trust="untrust")
-		self.assertEqual(repo115.trust,"untrust")
-		repo115.trust = "semitrust"
-		self.assertEqual(repo115.trust,"semitrust")
+		repo = r.create(host2,annex1,os.path.join(self.path,"repo"),trust="untrust")
+		self.assertEqual(repo.trust,"untrust")
+		repo.trust = "semitrust"
+		self.assertEqual(repo.trust,"semitrust")
 		
-		repo116 = r.create(host1,annex1,os.path.join(self.path,"repo116"),trust="trust")
-		self.assertEqual(repo116.trust,"trust")
+		repo = r.create(host1,annex1,os.path.join(self.path,"repo"),trust="trust")
+		self.assertEqual(repo.trust,"trust")
+
+	def test_creation_repositories_metadata_files(self):
+		""" check metadata files member """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2,annex1 = h.create("Host1"),h.create("Host2"),a.create("Annex1")
 		
 		# files
-		repo117 = r.create(host1,annex1,os.path.join(self.path,"repo117"),files="  +Host1 ")
-		self.assertEqual(repo117.files,"+ Host1")
-		repo117.files = " (  host2 + )"
-		self.assertEqual(repo117.files,"(Host2 +)")
-		
-		#
-		# test connections
-		#
+		repo = r.create(host2,annex1,os.path.join(self.path,"repo"))
+		repo = r.create(host1,annex1,os.path.join(self.path,"repo"),files="  +Host1 ")
+		self.assertEqual(repo.files,"+ Host1")
+		repo.files = " (  host2 + )"
+		self.assertEqual(repo.files,"(Host2 +)")
+	
+	
+	def test_connection_creation(self):
+		""" test the creation of connections """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
+
+		# creation
 		conn12 = c.create(host1,host2,"/abc/")
 		conn13 = c.create(host1,host3,"/")
 		conn23 = c.create(host2,host3,"/")
@@ -168,46 +239,125 @@ class Test(unittest.TestCase):
 		conn32 = c.create(host3,host2,"ssh://server")
 		conn12p= c.create(host1,host2,"/abc/")
 		
+		# identity
 		self.assertEqual(conn12,conn12p)
 		self.assertEqual(id(conn12),id(conn12p))
 
 		self.assertEqual(c.getAll(),{conn12,conn13,conn23,conn21,conn32})
 
+	def test_connection_creation_error_cases(self):
+		""" test common error cases """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
+
 		self.assertRaisesRegex(AssertionError, "source", c.create, "", host2, "/")
 		self.assertRaisesRegex(AssertionError, "dest", c.create, host1, "", "/")
 		self.assertRaisesRegex(ValueError, "protocol", c.create, host1, host2, "xxx")
-		self.assertRaises(AssertionError,conn12.gitPath,repo11)
+	
+	def test_connection_metadata_gitPath(self):
+		""" test gitPath """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
+		annex1 = a.create("Annex1")
+		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo"))
+		repo21 = r.create(host2,annex1,os.path.join(self.path,"repo"))
 		
-		self.assertEqual(conn12.gitPath(repo22),"/abc" + self.path + "/repo22")
-		self.assertEqual(conn32.gitPath(repo22),"ssh://server" + os.path.join(self.path,"repo22"))
+		# create the connections
+		conn12 = c.create(host1,host2,"/abc/")
+		conn32 = c.create(host3,host2,"ssh://server")
+
+		# test
+		self.assertEqual(conn12.gitPath(repo21),"/abc" + self.path + "/repo")
+		self.assertEqual(conn32.gitPath(repo21),"ssh://server" + os.path.join(self.path,"repo"))
+		self.assertRaisesRegex(AssertionError,"Programming error",conn32.gitPath,repo11)
+
+	def test_connection_metadata_alwayson(self):
+		""" test alwaysOn """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
+
+		# alwayson
+		conn12 = c.create(host1,host2,"/",alwayson="false")
+		self.assertFalse(conn12.alwaysOn)
+		conn12.alwaysOn = True
+		self.assertTrue(conn12.alwaysOn)
 		
-		# always on
-		hostx = h.create("HostX")
-		conn1x = c.create(host1,hostx,"/",alwayson="false")
-		self.assertFalse(conn1x.alwaysOn)
-		conn1x.alwaysOn = True
-		self.assertTrue(conn1x.alwaysOn)
-		
-		hosty = h.create("HostY")
-		conn1y = c.create(host1,hosty,"/",alwayson="true")
-		self.assertTrue(conn1y.alwaysOn)
-		conn1y.alwaysOn = False
-		self.assertFalse(conn1y.alwaysOn)
+		conn13 = c.create(host1,host3,"/",alwayson="true")
+		self.assertTrue(conn13.alwaysOn)
+		conn13.alwaysOn = False
+		self.assertFalse(conn13.alwaysOn)
+
+	def test_connection_metadata_protocol(self):
+		""" test protocol and pathData """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 		
 		# protocol
-		hostlocal = h.create("HostLocal")
-		conn1local = c.create(host1,hostlocal,"/")
+		conn1local = c.create(host1,host2,"/")
 		self.assertEqual(conn1local.protocol(),"mount")
 
-		hostserver = h.create("HostServer")
-		conn1server = c.create(host1,hostserver,"ssh://server")
+		# protocol and pathData
+		conn1server = c.create(host1,host3,"ssh://myserver")
 		self.assertEqual(conn1server.protocol(),"ssh")
+		self.assertEqual(conn1server.pathData()["server"],"myserver")
+
+	def test_relations(self):
+		"""
+			test Host's repositories and connections methods as well as
+			Annex's repositories and Repository's connectedRepositories
+			methods
+		"""
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		n = 3
+		hosts = [h.create("Host%d"%i) for i in range(1,n+1)]
+		annexes = [a.create("Annex%d"%i) for i in range(1,n+1)]
 		
+		# no connections nor repositories for any host
+		for i in range(n):
+			self.assertEqual( hosts[i].repositories(), set() )
+			self.assertEqual( hosts[i].connections(), set() )
+		# no repositories for any annex
+		for i in range(n):
+			self.assertEqual( annexes[i].repositories(), set() )
+			
+		repos = [
+					[
+						r.create(host,
+									annex,
+									os.path.join(self.path,"repo-%s-%s"%(host.name,annex.name)))
+						for annex in annexes
+					]
+					for host in hosts
+				]
+		conns = [
+					[
+						c.create(source,dest,"/")
+						for dest in hosts
+						if source != dest
+					]
+					for source in hosts
+				]
+
 		# test relational methods
-		self.assertEqual(host2.repositories(), {repo21,repo22,repo23})
-		self.assertEqual(host2.connections(), {conn23,conn21})
-		self.assertEqual(annex3.repositories(), {repo13,repo23,repo33,repo13pp})
-		self.assertEqual(repo33.connectedRepositories(),{repo23:{conn32}})
+		for i in range(n):
+			self.assertEqual( hosts[i].repositories(), set(repos[i]) )
+			self.assertEqual( hosts[i].connections(), set(conns[i]) )
+		for i in range(n):
+			self.assertEqual( annexes[i].repositories(), {h_r[i] for h_r in repos} )
+		for i in range(n): #host
+			for j in range(n):
+				d = {repos[k][j]: {conns[i][k if k < i else k-1]} for k in range(n) if k != i}
+				self.assertEqual(repos[i][j].connectedRepositories(),d)
 
 	def test_save(self):
 		app = application.Application(self.path)

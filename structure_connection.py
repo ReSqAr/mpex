@@ -72,14 +72,24 @@ class Connection:
 	#
 	# derived methods
 	#
-	def protocol(self):
-		""" returns the used protocol """
+	def pathData(self):
+		""" returns a dictionary with all relevant data on the path """
+		data = {}
+		
 		if self._path.startswith("/"):
-			return "mount"
+			data["protocol"] = "mount"
 		elif self._path.startswith("ssh://"):
-			return "ssh"
+			data["protocol"] = "ssh"
+			data["server"] = self._path[len("ssh://"):]
 		else:
 			raise ValueError("Unknown protocol specified in %s." % self)
+
+		assert "protocol" in data, "Programming error"
+		return data
+		
+	def protocol(self):
+		""" returns the used protocol """
+		return self.pathData()["protocol"]
 	
 	def gitPath(self, repo):
 		""" computes the path used by git to access the repository over the connection """
@@ -101,11 +111,30 @@ class Connection:
 	
 	def isOnline(self):
 		""" checks if the connection is online """
+		# if always on is set, then the connection is online
 		if self.alwaysOn:
 			return True
 		
-		# TODO: implement
-		raise NotImplementedError
+		# get data
+		data = self.pathData()
+		
+		if data["protocol"] == "mount":
+			# consider a path mounted if the directory exists and is non-empty
+			if os.path.isdir(self.path) and os.listdir(self.path):
+				return True
+			else:
+				return False
+		elif data["protocol"] == "ssh":
+			try:
+				# run 'ssh <server> echo test'
+				subprocess.check_output(["ssh",data["server"],"echo","test"])
+				# if it succeds, say the connection is online
+				return True
+			except:
+				return False
+		else:
+			raise ValueError("Programming error.")
+			
 	
 	#
 	# hashable type mehods, hashable is needed for dict keys and sets
