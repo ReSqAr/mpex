@@ -238,6 +238,15 @@ class Repository:
 		
 		return cmd
 	
+	def checkFilesExpression(self, files):
+		"""
+			checks if a files expression looks correct, if it is incorrect,
+			an error is raised
+		"""
+		files = self.sanitiseFilesExpression(files)
+		files = self.tokeniseFileExpression(files)
+		self.tokenisedFilesExpressionToCmd(files)
+	
 	@property
 	def host(self):
 		return self._host
@@ -643,6 +652,19 @@ class Repository:
 			         all files are transfered
 			- strict: drop all files which do not match the local files expression
 		"""
+		
+		# use files expression of the current repository, if none is given
+		if files is None:
+			files = self.files
+		# parse files expression
+		files = self.sanitiseFilesExpression(files)
+		files = self.tokeniseFileExpression(files)
+		cur_files_cmd = self.tokenisedFilesExpressionToCmd(files)
+
+		# check files expression
+		self.checkFilesExpression(cur_files_cmd)
+		
+
 		# change into the right directory
 		path = self.changePath()
 
@@ -655,27 +677,25 @@ class Repository:
 				if repo.description not in annex_descs:
 					del repos[repo]
 		
+		# check remote files expression
+		for repo in sorted(repos.keys(),key=lambda k:str(k)):
+			self.checkFilesExpression(repo.files)
+		
 		# sync
 		self.sync(annex_descs)
 		
 		print("\033[1;37;44m copying files %s \033[0m" % (self.annex.name,))
 		
+		
 		#
 		# pull
 		#
-		
-		# use files expression of the current repository, if none is given
-		if files is None:
-			files = self.files
-		# parse files expression
-		files = self.sanitiseFilesExpression(files)
-		files = self.tokeniseFileExpression(files)
-		cur_files_cmd = self.tokenisedFilesExpressionToCmd(files)
 		
 		# call 'git-annex copy --from=target <files expression as command>'
 		for repo in sorted(repos.keys(),key=lambda k:str(k)):
 			cmd = ["git-annex","copy","--from=%s"%repo.description] + cur_files_cmd
 			self.execute_command(cmd)
+	
 	
 		#
 		# push
@@ -690,6 +710,7 @@ class Repository:
 			# call 'git-annex copy --to=target <files expression as command>'
 			cmd = ["git-annex","copy","--to=%s"%repo.description] + files_cmd
 			self.execute_command(cmd)
+		
 		
 		#
 		# apply strict
