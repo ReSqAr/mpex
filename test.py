@@ -329,7 +329,9 @@ class Test(unittest.TestCase):
 		# no repositories for any annex
 		for i in range(n):
 			self.assertEqual( annexes[i].repositories(), set() )
-			
+		
+		# create every possible host, annex combination
+		# first index hosts, second index annexes
 		repos = [
 					[
 						r.create(host,
@@ -339,6 +341,8 @@ class Test(unittest.TestCase):
 					]
 					for host in hosts
 				]
+		# create every possible connection
+		# first indexs source, second index destination
 		conns = [
 					[
 						c.create(source,dest,"/")
@@ -350,13 +354,34 @@ class Test(unittest.TestCase):
 
 		# test relational methods
 		for i in range(n):
+			# hosts[i].repositories() should be all repositories hosted
+			# by hosts[i], hence {repos[i][j] for all j}
 			self.assertEqual( hosts[i].repositories(), set(repos[i]) )
+			# hosts[i].connections() should be all connections which
+			# orignate from hosts[i], hence {conns[i][j] for all j}
 			self.assertEqual( hosts[i].connections(), set(conns[i]) )
+		
 		for i in range(n):
-			self.assertEqual( annexes[i].repositories(), {h_r[i] for h_r in repos} )
-		for i in range(n): #host
+			# annexes[i].repositories() should be all repositories which
+			# belong to this annex, hence {repos[j][i] for all j}
+			self.assertEqual( annexes[i].repositories(), {r_on_h[i] for r_on_h in repos} )
+		
+		for i in range(n):
 			for j in range(n):
-				d = {repos[k][j]: {conns[i][k if k < i else k-1]} for k in range(n) if k != i}
+				# current host: hosts[i]
+				# current annex: annexes[j]
+				
+				# create a dictionary of the following form:
+				# repository (belonging annexes[j]), hence repos[k][j] for all k
+				# -> connection from repos[k][j].host = host[k] to host[i], i.e.
+				# conns[i][k] for k < i or conns[i][k-1] for k > i (and ignore i = k)
+				d = { 
+						repos[k][j] :
+							{conns[i][k if k < i else k-1]}
+						for k in range(n) if k != i
+					}
+				
+				# they should be equal
 				self.assertEqual(repos[i][j].connectedRepositories(),d)
 
 
@@ -414,7 +439,7 @@ class Test(unittest.TestCase):
 		conn12 = c.get(host1,host2,"/")
 		self.assertTrue(conn12.alwaysOn)
 	
-	def test_getHostedRepositories(self):
+	def test_app_getHostedRepositories(self):
 		""" test application's getHostedRepositories method """
 		# initialisation
 		app = application.Application(self.path)
@@ -444,7 +469,7 @@ class Test(unittest.TestCase):
 		# test getHostedRepositories
 		self.assertEqual(app.getHostedRepositories(),{repo11,repo12})
 	
-	def test_gitAnnexCapabilities(self):
+	def test_app_gitAnnexCapabilities(self):
 		""" test app.gitAnnexCapabilities """
 		app = application.Application(self.path)
 		
