@@ -131,13 +131,10 @@ def func_copy(args):
 		repo.copy(files=args.files,strict=strict)
 	apply_function(args,repo_copy)
 
-#
-# show data
-#
-def init_show(parsers):
-	parser = parsers.add_parser('show', help='show data.')
-	parser.set_defaults(func=func_show)
 
+#
+# show and edit helper functions
+#
 def print_table(table,sep=2):
 	""" prints a table """
 	# empty table -> do nothing
@@ -167,6 +164,115 @@ def print_table(table,sep=2):
 		if i == 0:
 			print("-" * (sum(column_lengths) + (len(column_lengths)-1) * sep))
 
+def create_hosts_table(hosts):
+	""" builds a table """
+	# we build a table: a 2 dimensional array
+	table = []
+	# the first line is the header
+	table.append(["Host","Associated annexes"])
+	
+	for host in sorted(hosts,key=lambda h:str(h)):
+		# create a row
+		row = []
+		# first column is the host name
+		row.append(host.name)
+		# second column are all associated annexes
+		repos = host.repositories()
+		row.append(", ".join(sorted(repo.annex.name for repo in repos)))
+		# append row
+		table.append(row)
+	
+	return table
+
+def create_annexes_table(annexes):
+	""" builds a table """
+	# we build a table: a 2 dimensional array
+	table = []
+	# the first line is the header
+	table.append(["Annex","Associated hosts"])
+	
+	for annex in sorted(annexes,key=lambda a:str(a)):
+		# create a row
+		row = []
+		# first column is the annex name
+		row.append(annex.name)
+		# second column are all associated hosts
+		repos = annex.repositories()
+		row.append(", ".join(sorted(repo.host.name for repo in repos)))
+		# append row
+		table.append(row)
+	
+	return table
+		
+def create_repositories_table(repositories):
+	""" builds a table """
+	# we build a table: a 2 dimensional array
+	table = []
+	# the first line is the header
+	table.append(["Host","Annex","Path","Options"])
+	
+	for repo in sorted(repositories,key=lambda r:str((r.host,r.annex,r.path))):
+		# create a row
+		row = []
+		# first column is the host name
+		row.append(repo.host.name)
+		# second column is the annex name
+		row.append(repo.annex.name)
+		# third column is the path
+		row.append(repo.path)
+		# fourth column are the options
+		options = []
+		if repo.direct:
+			options.append("direct")
+		if repo.strict:
+			options.append("strict")
+		if repo.files:
+			options.append("files='%s'" % repo.files)
+		if repo.trust != "semitrust":
+			options.append("trust: %s" % repo.trust)
+		if repo.hasNonTrivialDescription():
+			options.append("description: %s" % repo.description)
+		row.append(", ".join(options))
+		# append row
+		table.append(row)
+
+	return table
+
+def create_connections_table(connections):
+	""" builds a table """
+	# we build a table: a 2 dimensional array
+	table = []
+	# the first line is the header
+	table.append(["Source","Destination","Path","Options"])
+	
+	for conn in sorted(connections,key=lambda c:str((c.source,c.dest,c.path))):
+		# create a row
+		row = []
+		# first column is the source host name
+		row.append(conn.source.name)
+		# second column is the destination host name
+		row.append(conn.dest.name)
+		# third column is the path
+		row.append(conn.path)
+		# fourth column are the options
+		options = []
+		if conn.alwaysOn:
+			options.append("always on")
+		row.append(", ".join(options))
+		# append row
+		table.append(row)
+	return table
+
+
+
+
+#
+# show data
+#
+def init_show(parsers):
+	parser = parsers.add_parser('show', help='show data.')
+	parser.set_defaults(func=func_show)
+
 def func_show(args):
 	# create application
 	app = application.Application(CONFIG_PATH)
@@ -177,27 +283,9 @@ def func_show(args):
 		print("There are no registered hosts.")
 	else:
 		print("There are %d registered hosts:" % len(hosts))
-
-		# we build a table: a 2 dimensional array
-		table = []
-		# the first line is the header
-		table.append(["Host","Associated annexes"])
-		
-		for host in sorted(hosts,key=lambda h:str(h)):
-			# create a row
-			row = []
-			# first column is the host name
-			row.append(host.name)
-			# second column are all associated annexes
-			repos = host.repositories()
-			row.append(", ".join(sorted(repo.annex.name for repo in repos)))
-			# append row
-			table.append(row)
-		
-		# print table
+		# create and print table
+		table = create_hosts_table(hosts)
 		print_table(table)
-		
-	
 	print()
 	
 	# print known annexes
@@ -206,26 +294,9 @@ def func_show(args):
 		print("There are no registered annexes.")
 	else:
 		print("There are %d registered annexes:" % len(annexes))
-
-		# we build a table: a 2 dimensional array
-		table = []
-		# the first line is the header
-		table.append(["Annex","Associated hosts"])
-		
-		for annex in sorted(annexes,key=lambda a:str(a)):
-			# create a row
-			row = []
-			# first column is the annex name
-			row.append(annex.name)
-			# second column are all associated hosts
-			repos = annex.repositories()
-			row.append(", ".join(sorted(repo.host.name for repo in repos)))
-			# append row
-			table.append(row)
-		
-		# print table
+		# create and print table
+		table = create_annexes_table(annexes)
 		print_table(table)
-
 	print()
 	
 	# print known repositories
@@ -234,38 +305,8 @@ def func_show(args):
 		print("There are no registered repositories.")
 	else:
 		print("There are %d registered repositories:" % len(repositories))
-
-		# we build a table: a 2 dimensional array
-		table = []
-		# the first line is the header
-		table.append(["Host","Annex","Path","Options"])
-		
-		for repo in sorted(repositories,key=lambda r:str((r.host,r.annex,r.path))):
-			# create a row
-			row = []
-			# first column is the host name
-			row.append(repo.host.name)
-			# second column is the annex name
-			row.append(repo.annex.name)
-			# third column is the path
-			row.append(repo.path)
-			# fourth column are the options
-			options = []
-			if repo.direct:
-				options.append("direct")
-			if repo.strict:
-				options.append("strict")
-			if repo.files:
-				options.append("files='%s'" % repo.files)
-			if repo.trust != "semitrust":
-				options.append("trust: %s" % repo.trust)
-			if repo.hasNonTrivialDescription():
-				options.append("description: %s" % repo.description)
-			row.append(", ".join(options))
-			# append row
-			table.append(row)
-		
-		# print table
+		# create and print table
+		table = create_repositories_table(repositories)
 		print_table(table)
 	print()
 	
@@ -275,30 +316,8 @@ def func_show(args):
 		print("There are no registered connections.")
 	else:
 		print("There are %d registered connections:" % len(connections))
-
-		# we build a table: a 2 dimensional array
-		table = []
-		# the first line is the header
-		table.append(["Source","Destination","Path","Options"])
-		
-		for conn in sorted(connections,key=lambda c:str((c.source,c.dest,c.path))):
-			# create a row
-			row = []
-			# first column is the source host name
-			row.append(conn.source.name)
-			# second column is the destination host name
-			row.append(conn.dest.name)
-			# third column is the path
-			row.append(conn.path)
-			# fourth column are the options
-			options = []
-			if conn.alwaysOn:
-				options.append("always on")
-			row.append(", ".join(options))
-			# append row
-			table.append(row)
-		
-		# print table
+		# create and print table
+		table = create_connections_table(connections)
 		print_table(table)
 
 
