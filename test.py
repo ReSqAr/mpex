@@ -300,14 +300,43 @@ class Test(unittest.TestCase):
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 		
-		# protocol
+		# protocol 'mount'
 		conn1local = c.create(host1,host2,"/")
 		self.assertEqual(conn1local.protocol(),"mount")
 
-		# protocol and pathData
+		# protocol 'ssh' and pathData
 		conn1server = c.create(host1,host3,"ssh://myserver")
 		self.assertEqual(conn1server.protocol(),"ssh")
 		self.assertEqual(conn1server.pathData()["server"],"myserver")
+
+	def test_connection_isonline_mount(self):
+		""" test the isOnline method for connections with protocol 'mount' """
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
+		
+		# connection with a path which does not exists
+		conn = c.create(host1,host2,os.path.join(self.path,"repo"))
+		self.assertFalse(conn.isOnline())
+		
+		# create the path, empty paths should also be not mounted
+		os.makedirs(conn.path)
+		self.assertFalse(conn.isOnline())
+		
+		# create a file, then the directory is mounted
+		with open(os.path.join(conn.path,"test"),"wt") as fd:
+			fd.write("test")
+		self.assertTrue(conn.isOnline())
+
+	def test_connection_isonline_ssh(self):
+		""" test the isOnline method for connections with protocol 'ssh' """
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
+		
+		# connection with a server which does not exit
+		conn = c.create(host1,host2,"ssh://127.0.0.1:53122")
+		self.assertFalse(conn.isOnline())
 
 	def test_relations(self):
 		"""

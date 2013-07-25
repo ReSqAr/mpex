@@ -1,5 +1,6 @@
 import string
 import os.path
+import subprocess
 
 import structure_base
 import structure_host
@@ -127,11 +128,13 @@ class Connection:
 		elif data["protocol"] == "ssh":
 			try:
 				# run 'ssh <server> echo test'
-				subprocess.check_output(["ssh",data["server"],"echo","test"])
-				# if it succeds, say the connection is online
+				subprocess.check_output(["ssh",data["server"],"echo","test"],stderr=subprocess.DEVNULL)
+				# if it succeeds, say the connection is online
 				return True
-			except:
+			except subprocess.CalledProcessError:
+				# otherwise, it is not only
 				return False
+				
 		else:
 			raise ValueError("Programming error.")
 			
