@@ -271,6 +271,10 @@ class Repository:
 			raise ValueError("The current host is not the host of the repository. (%s != %s)" % (self.app.currentHost(),self.host))
 		return self.path
 	
+	def hasNonTrivialDescription(self):
+		""" is the description more than the modified host name? """
+		return "description" in self._data
+	
 	@property
 	def description(self):
 		""" the git annex description of the repository, default: host name """
