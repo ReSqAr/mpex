@@ -5,7 +5,7 @@ import argparse
 import sys
 
 import application
-
+import show_edit
 
 CONFIG_PATH = "~/.config/mpex/"
 CONFIG_PATH = os.path.expanduser(CONFIG_PATH)
@@ -133,140 +133,6 @@ def func_copy(args):
 
 
 #
-# show and edit helper functions
-#
-def print_table(table,sep=2):
-	""" prints a table """
-	# empty table -> do nothing
-	if not table:
-		return
-	# number of columns, determined by the first row
-	# (has to be constant)
-	columns = len(table[0])
-	# array which holds the length of the individual columns
-	column_lengths = columns * [0]
-	# iterate over rows
-	for row in table:
-		# check that it has the correct number of columns
-		assert len(row) == columns, "Programming error."
-		# update lengths array
-		column_lengths = [max(len(row[i]),column_lengths[i]) for i in range(columns)]
-	
-	# output
-	for i,row in enumerate(table):
-		for column_length,item in zip(column_lengths,row):
-			# print the item left justified
-			print(item.ljust(column_length+sep),end='')
-		# print a new line
-		print()
-
-		# the first line is the header
-		if i == 0:
-			print("-" * (sum(column_lengths) + (len(column_lengths)-1) * sep))
-
-def create_hosts_table(hosts):
-	""" builds a table """
-	# we build a table: a 2 dimensional array
-	table = []
-	# the first line is the header
-	table.append(["Host","Associated annexes"])
-	
-	for host in sorted(hosts,key=lambda h:str(h)):
-		# create a row
-		row = []
-		# first column is the host name
-		row.append(host.name)
-		# second column are all associated annexes
-		repos = host.repositories()
-		row.append(", ".join(sorted(repo.annex.name for repo in repos)))
-		# append row
-		table.append(row)
-	
-	return table
-
-def create_annexes_table(annexes):
-	""" builds a table """
-	# we build a table: a 2 dimensional array
-	table = []
-	# the first line is the header
-	table.append(["Annex","Associated hosts"])
-	
-	for annex in sorted(annexes,key=lambda a:str(a)):
-		# create a row
-		row = []
-		# first column is the annex name
-		row.append(annex.name)
-		# second column are all associated hosts
-		repos = annex.repositories()
-		row.append(", ".join(sorted(repo.host.name for repo in repos)))
-		# append row
-		table.append(row)
-	
-	return table
-		
-def create_repositories_table(repositories):
-	""" builds a table """
-	# we build a table: a 2 dimensional array
-	table = []
-	# the first line is the header
-	table.append(["Host","Annex","Path","Options"])
-	
-	for repo in sorted(repositories,key=lambda r:str((r.host,r.annex,r.path))):
-		# create a row
-		row = []
-		# first column is the host name
-		row.append(repo.host.name)
-		# second column is the annex name
-		row.append(repo.annex.name)
-		# third column is the path
-		row.append(repo.path)
-		# fourth column are the options
-		options = []
-		if repo.direct:
-			options.append("direct")
-		if repo.strict:
-			options.append("strict")
-		if repo.files:
-			options.append("files='%s'" % repo.files)
-		if repo.trust != "semitrust":
-			options.append("trust: %s" % repo.trust)
-		if repo.hasNonTrivialDescription():
-			options.append("description: %s" % repo.description)
-		row.append(", ".join(options))
-		# append row
-		table.append(row)
-
-	return table
-
-def create_connections_table(connections):
-	""" builds a table """
-	# we build a table: a 2 dimensional array
-	table = []
-	# the first line is the header
-	table.append(["Source","Destination","Path","Options"])
-	
-	for conn in sorted(connections,key=lambda c:str((c.source,c.dest,c.path))):
-		# create a row
-		row = []
-		# first column is the source host name
-		row.append(conn.source.name)
-		# second column is the destination host name
-		row.append(conn.dest.name)
-		# third column is the path
-		row.append(conn.path)
-		# fourth column are the options
-		options = []
-		if conn.alwaysOn:
-			options.append("always on")
-		row.append(", ".join(options))
-		# append row
-		table.append(row)
-	return table
-
-
-
-
-#
 # show data
 #
 def init_show(parsers):
@@ -277,49 +143,9 @@ def func_show(args):
 	# create application
 	app = application.Application(CONFIG_PATH)
 	
-	# print known hosts
-	hosts = app.hosts.getAll()
-	if not hosts:
-		print("There are no registered hosts.")
-	else:
-		print("There are %d registered hosts:" % len(hosts))
-		# create and print table
-		table = create_hosts_table(hosts)
-		print_table(table)
-	print()
+	# show app data
+	show_edit.show(app)
 	
-	# print known annexes
-	annexes = app.annexes.getAll()
-	if not annexes:
-		print("There are no registered annexes.")
-	else:
-		print("There are %d registered annexes:" % len(annexes))
-		# create and print table
-		table = create_annexes_table(annexes)
-		print_table(table)
-	print()
-	
-	# print known repositories
-	repositories = app.repositories.getAll()
-	if not repositories:
-		print("There are no registered repositories.")
-	else:
-		print("There are %d registered repositories:" % len(repositories))
-		# create and print table
-		table = create_repositories_table(repositories)
-		print_table(table)
-	print()
-	
-	# print known connections
-	connections = app.connections.getAll()
-	if not connections:
-		print("There are no registered connections.")
-	else:
-		print("There are %d registered connections:" % len(connections))
-		# create and print table
-		table = create_connections_table(connections)
-		print_table(table)
-
 
 #
 # edit data
@@ -329,9 +155,11 @@ def init_edit(parsers):
 	parser.set_defaults(func=func_edit)
 
 def func_edit(args):
-	raise NotImplementedError
-	
+	# create application
+	app = application.Application(CONFIG_PATH)
 
+	# edit app data
+	show_edit.edit(app)
 
 
 def runParser():
