@@ -1,7 +1,11 @@
 import collections
 
+import lib.fuzzy_match
+
 import structure_host
 import structure_annex
+import structure_repository
+
 
 #
 # table helper functions
@@ -243,6 +247,7 @@ def show(app):
 
 def edit(app):
 	while True:
+		print()
 		print("Available options:")
 		print("  edit [h]osts list")
 		print("  edit [a]nnexes list")
@@ -253,8 +258,8 @@ def edit(app):
 		
 		# ask the user what to do (until we have a valid answer)
 		while True:
-			key = input("Select [h,a,r,c,e]: ")
-			if key not in ['h','a','r','c','e']:
+			key = input("Select [h,a,r,c,s,e]: ")
+			if key not in ['h','a','r','c','s','e']:
 				print("Invalid user input '%s'" % key)
 				continue
 			else:
@@ -264,9 +269,10 @@ def edit(app):
 		if key == 'e':
 			# exit
 			break
-		if key == 's':
+		elif key == 's':
 			# save
 			app.save()
+			print("\033[1;37;44m", "saved changes", "\033[0m")
 		else:
 			# edit command arguments
 			edit_command_arguments = {'h':"hosts",
@@ -335,6 +341,7 @@ def meta_edit_command(app,obj_name):
 		elif key == "s":
 			# option 'save'
 			app.save()
+			print("\033[1;37;44m", "saved changes", "\033[0m")
 		else:
 			# compute row to work on, or if the row should be created, None
 			row = objs[key] if key != "c" else None
@@ -361,14 +368,15 @@ def edit_hosts(app,host):
 	
 	# check if asking the questions was cancelled
 	if answers is None:
-		print("Host creation cancelled.")
+		print("host creation cancelled.")
 		return
 	
 	# create the object
 	try:
 		app.hosts.create(answers["name"])
 	except Exception as e:
-		print("An error occured: %s" % e.args[0])
+		print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
+		return
 	
 	
 def edit_annexes(app,annex):
@@ -386,14 +394,15 @@ def edit_annexes(app,annex):
 	
 	# check if asking the questions was cancelled
 	if answers is None:
-		print("Host creation cancelled.")
+		print("annex creation cancelled.")
 		return
 
 	# create the object
 	try:
 		app.annexes.create(answers["name"])
 	except Exception as e:
-		print("An error occured: %s" % e.args[0])
+		print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
+		return
 
 
 def edit_repositories(app,obj):
@@ -477,6 +486,11 @@ def edit_repositories(app,obj):
 		# actual ask the questions
 		answers = ask_edit_questions(questions)
 
+		# check if asking the questions was cancelled
+		if answers is None:
+			print("repository creation cancelled.")
+			return
+
 		# create the object
 		try:
 			# pre process raw data
@@ -486,10 +500,74 @@ def edit_repositories(app,obj):
 			# create object
 			obj = app.repositories.create(host,annex,path)
 		except Exception as e:
-			print("An error occured: %s" % e.args[0])
+			print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
+			return
+		# new line
+		print()
 	
-	# TODO: ask non core questions
+	# ask non core questions: direct, trust, files, strict
+	# gather questions
+	questions = []
 	
+	def valid_values_pp(valid_values):
+		# build identity mapping
+		valid_values = {x:x for x in valid_values}
+		# define post processor via lib.fuzzy_match
+		def postprocessor(s):
+			""" checks that s is a valid value """
+			return lib.fuzzy_match.fuzzyMatch(s, valid_values)
+		# return post processor
+		return postprocessor
+
+	# 1. question: direct mode
+	questions.append({"name":"direct",
+						"description":"direct mode, valid values: true,false",
+						"default":str(obj.direct).lower(),
+						"postprocessor": valid_values_pp(("true","false"))})
+
+	# 2. question: direct mode
+	trust_level = structure_repository.Repository.TRUST_LEVEL
+	questions.append({"name":"trust",
+						"description":"trust level, valid values: %s" % ",".join(trust_level),
+						"default":obj.trust,
+						"postprocessor": valid_values_pp(trust_level)})
+
+	# 3. question: files expression
+	questions.append({"name":"files",
+						"description":"files expression which specifies the desired content of this repository",
+						"default":obj.files if obj.files else "",
+						"postprocessor": None})
+
+	# 4. question: strict?
+	questions.append({"name":"strict",
+						"description":"strict mode: only files which the files expression should be kept, valid values: true,false",
+						"default":str(obj.strict).lower(),
+						"postprocessor": valid_values_pp(("true","false"))})
+
+	# actual ask the questions
+	answers = ask_edit_questions(questions)
+
+	# check if asking the questions was cancelled
+	if answers is None:
+		print("repository property edit cancelled.")
+		return
+	
+	# set values
+	try:
+		# parse values
+		direct = (answers["direct"] == 'true')
+		trust  = answers["trust"]
+		files  = answers["files"]
+		strict = (answers["strict"] == 'true')
+		# set values
+		obj.direct = direct
+		obj.trust = trust
+		obj.strict = strict
+		obj.files = files # files should be last, as it more likely to fail
+	except Exception as e:
+		print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
+		return
+
 
 def edit_connections(app,row):
 	""" edit connections """

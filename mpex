@@ -145,7 +145,6 @@ def func_show(args):
 	
 	# show app data
 	show_edit.show(app)
-	
 
 #
 # edit data
@@ -158,8 +157,13 @@ def func_edit(args):
 	# create application
 	app = application.Application(CONFIG_PATH)
 
-	# edit app data
-	show_edit.edit(app)
+	try:
+		# edit app data
+		show_edit.edit(app)
+	except KeyboardInterrupt:
+		print()
+		print("received ^C, going down WITHOUT saving")
+		return
 
 
 def runParser():

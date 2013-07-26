@@ -4,6 +4,8 @@ import subprocess
 import datetime
 import string
 
+import lib.fuzzy_match
+
 import structure_base
 import structure_host
 import structure_annex
@@ -35,41 +37,22 @@ class Repositories(structure_base.Collection):
 		# build dictionary
 		return raw
 
-	def load(self):
-		""" overloaded load which checks the files expressions """
-		super(Repositories,self).load()
-		# check files expressions
+	def check(self):
+		""" checks the files expressions """
 		for repo in self.getAll():
 			repo.files = repo.files
 
 	def fuzzyMatch(self, annex, annex_desc):
 		""" matches the annex description in a fuzzy way against the known repositories """
 		
-		annex_desc = annex_desc.strip()
-		fuzzy_match = []
+		# create key -> value mapping
+		valid = {repo.description : repo for repo in self.getAll() if repo.annex == annex}
 		
-		# try to match annex_desc to a known repository
-		for known_repo in self.getAll():
-			# only look for repositories which belong to the same annex
-			if not known_repo.annex == annex:
-				continue
-			
-			# in case of an exact match, add the token and end the loop
-			if known_repo.description == annex_desc:
-				return known_repo
-			# in case of a fuzzy match, add the host to the fuzzy match list
-			fuzzy = lambda s: s.lower().replace(' ','')
-			if fuzzy(known_repo.description) == fuzzy(annex_desc):
-				fuzzy_match.append(known_repo)
-		else:
-			# if there was no exact match, see if we have at least fuzzy matches
-			if len(fuzzy_match) == 0:
-				raise ValueError("Could not parse the annex description '%s': no candidates." % annex_desc)
-			elif len(fuzzy_match) >= 2:
-				raise ValueError("Could not parse the annex description '%s': too many candidates: %s" % (annex_desc,fuzzy_match))
-			else:
-				# if there is only one fuzzy match, use it
-				return fuzzy_match[0]
+		try:
+			# try to find a 
+			return lib.fuzzy_match.fuzzyMatch(annex_desc, valid)
+		except ValueError as e:
+			raise ValueError("could not parse the annex description '%s': %s" % (annex_desc,e.args[0]))
 
 class Repository:
 	"""
@@ -123,7 +106,7 @@ class Repository:
 		assert set(self.description).issubset(self.VALID_DESC_CHARS), "%s: invalid character detected." % self
 		
 		# we are unable to check files here, as for that all repositories have to exist,
-		# so we check it after a load is complete
+		# so we check it after everything is loaded
 		
 	def tokeniseFileExpression(self, s):
 		""" tokenises the file expression, returns a list of tokens """
@@ -339,6 +322,8 @@ class Repository:
 	@strict.setter
 	def strict(self,v):
 		self._data["strict"] = str(bool(v)).lower()
+	
+	
 	
 	def connectedRepositories(self):
 		""" find all connected repositories, returns a dictionary: repository -> set of connections """

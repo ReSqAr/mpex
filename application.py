@@ -30,6 +30,9 @@ class Application:
 		self.repositories = structure_repository.Repositories(self)
 		# initialise connections
 		self.connections = structure_connection.Connections(self)
+		
+		# post load checks
+		self.repositories.check()
 	
 	def save(self):
 		""" saves all data """
