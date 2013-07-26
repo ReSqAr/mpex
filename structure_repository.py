@@ -406,11 +406,18 @@ class Repository:
 		# change into the right directory
 		path = self.changePath()
 
-		# TODO: problems in direct mode
-
-		return bool(subprocess.check_output(["git","status","-s"]).decode("UTF8").strip())
-	
-	
+		# call 'git status -s'
+		output = subprocess.check_output(["git","status","-s"]).decode("UTF8").strip()
+		
+		for line in output.splitlines():
+			# we have to ignore lines which start with T
+			if line.startswith("T"):
+				continue
+			# we have found a valid line
+			return True
+		else:
+			# nothing to do
+			return False
 	
 	def getGitAnnexStatus(self):
 		""" calls 'git-annex status --fast' and parses the output """
