@@ -130,7 +130,29 @@ def func_copy(args):
 		repo.copy(files=args.files,strict=strict)
 	apply_function(args,repo_copy)
 
+#
+# run the given command against the repositories
+#
+def init_command(parsers):
+	parser = parsers.add_parser('command', help='run the given command against the repositories.')
+	#parser.add_argument('annex', nargs='*', help="Annex names")
+	parser.add_argument('command', nargs='+', help="Command, useful to seperate with --")
+	parser.set_defaults(func=func_command)
 
+def func_command(args):
+	# select all annexes
+	args.annex = None
+	
+	def repo_command(repo):
+		print("\033[1;37;44m running the command for %s in %s \033[0m" % (repo.annex.name,repo.path))
+		# run the command in the directory
+		repo.changePath()
+		repo.executeCommand(args.command)
+		print()
+	apply_function(args,repo_command)
+
+
+#
 #
 # show data
 #
@@ -195,6 +217,7 @@ def runParser():
 	init_finalise(subparsers)
 	init_sync(subparsers)
 	init_copy(subparsers)
+	init_command(subparsers)
 	init_show(subparsers)
 	init_edit(subparsers)
 	init_sethost(subparsers)

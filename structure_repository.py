@@ -343,7 +343,7 @@ class Repository:
 	#
 	# file system interaction
 	#
-	def execute_command(self, cmd, ignoreexception=False):
+	def executeCommand(self, cmd, ignoreexception=False):
 		""" print and execute the command """
 		print("command:"," ".join(cmd))
 		try:
@@ -527,13 +527,13 @@ class Repository:
 			if os.listdir(path) and not ignorenonempty:
 				raise RuntimeError("Trying to run 'git init' in a non-empty directory, set ignorenonempty=True.")
 			else:
-				self.execute_command(["git","init"])
+				self.executeCommand(["git","init"])
 		else:
 			print("It is already a git repository.")
 		
 		# init git annex
 		if not os.path.isdir(os.path.join(path,".git/annex")):
-			self.execute_command(["git-annex","init",self.description])
+			self.executeCommand(["git-annex","init",self.description])
 		else:
 			print("It is already a git annex repository.")
 		
@@ -553,14 +553,14 @@ class Repository:
 			# change only if needed
 			d = "direct" if self.direct else "indirect"
 			if self.onDiskDirectMode() != d:
-				self.execute_command(["git-annex",d])
+				self.executeCommand(["git-annex",d])
 		else:
 			if self.direct:
 				print("direct mode is requested, however it is not supported by your git-annex version.")
 		
 		# set trust level if necessary
 		if self.onDiskTrustLevel() != self.trust:
-			self.execute_command(["git-annex",self.trust,"here"])
+			self.executeCommand(["git-annex",self.trust,"here"])
 		
 		# set git remotes
 		for repo, connections in self.connectedRepositories().items():
@@ -582,7 +582,7 @@ class Repository:
 			
 			if not url:
 				# if no url was yet set, set it
-				self.execute_command(["git","remote","add",gitID,gitPath])
+				self.executeCommand(["git","remote","add",gitID,gitPath])
 			else:
 				# otherwise, check that the correct one has been set
 				if url != gitPath:
@@ -604,13 +604,14 @@ class Repository:
 			return
 
 		# call 'git-annex add'
-		self.execute_command(["git-annex","add"])
+		self.executeCommand(["git-annex","add"])
 		
 		# commit it
 		utc = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M:%S")
 		msg = "Host: %s UTC: %s" % (self.host.name,utc)
 		try:
-			self.execute_command(["git","commit","-m",msg])
+			# TODO: surpress output?
+			self.executeCommand(["git","commit","-m",msg])
 		except subprocess.CalledProcessError:
 			pass
 
@@ -634,10 +635,10 @@ class Repository:
 		
 		# call 'git-annex sync'
 		if annex_descs:
-			self.execute_command(["git-annex","sync"] + list(annex_descs))
+			self.executeCommand(["git-annex","sync"] + list(annex_descs))
 		else:
 			# if no other annex is available, still do basic maintanence
-			self.execute_command(["git-annex","merge"])
+			self.executeCommand(["git-annex","merge"])
 		
 	
 	def repairMaster(self):
@@ -656,16 +657,16 @@ class Repository:
 			print("\033[1;37;44m repairing master branch in %s at %s \033[0m" % (self.annex.name,path))
 			
 			# checkout synced/master
-			self.execute_command(["git","checkout","synced/master"])
+			self.executeCommand(["git","checkout","synced/master"])
 			
 			# create the master branch and check it put
-			self.execute_command(["git","branch","master"])
-			self.execute_command(["git","checkout","master"])
+			self.executeCommand(["git","branch","master"])
+			self.executeCommand(["git","checkout","master"])
 		else:
 			# no we have a problem, we have to create a master branch but do not have
 			# many opportunities, use this:
 			# 'git commit --allow-empty -m "empty commit"'
-			self.execute_command(["git","commit","--allow-empty","-m","empty commit"])
+			self.executeCommand(["git","commit","--allow-empty","-m","empty commit"])
 	
 	def copy(self, annex_descs=None, files=None, strict=None):
 		"""
@@ -718,7 +719,7 @@ class Repository:
 		# call 'git-annex copy --from=target <files expression as command>'
 		for repo in sorted(repos.keys(),key=lambda k:str(k)):
 			cmd = ["git-annex","copy","--from=%s"%repo.description] + cur_files_cmd
-			self.execute_command(cmd)
+			self.executeCommand(cmd)
 	
 	
 		#
@@ -733,7 +734,7 @@ class Repository:
 
 			# call 'git-annex copy --to=target <files expression as command>'
 			cmd = ["git-annex","copy","--to=%s"%repo.description] + files_cmd
-			self.execute_command(cmd)
+			self.executeCommand(cmd)
 		
 		
 		#
@@ -747,7 +748,7 @@ class Repository:
 		if strict:
 			# call 'git-annex drop --not -( <files expression -)
 			cmd = ["git-annex","drop"] + ["--not", "-("] + cur_files_cmd + ["-)"]
-			self.execute_command(cmd, ignoreexception=True)
+			self.executeCommand(cmd, ignoreexception=True)
 		
 		# apply strict for remote repositories
 		for repo in sorted(repos.keys(),key=lambda k:str(k)):
@@ -761,7 +762,7 @@ class Repository:
 
 			# call 'git-annex drop --from=target --not -( <files expression> -)
 			cmd = ["git-annex","drop","--from=%s"%repo.description] + ["--not", "-("] + files_cmd + ["-)"]
-			self.execute_command(cmd, ignoreexception=True)
+			self.executeCommand(cmd, ignoreexception=True)
 
 		# sync again
 		self.sync(annex_descs)
