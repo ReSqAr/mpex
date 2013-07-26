@@ -750,6 +750,24 @@ class Test(unittest.TestCase):
 		self.assertFalse(repo_direct.hasUncommitedChanges())
 
 
+	def test_repairMaster_in_empty(self):
+		""" call repair master in empty repository """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2,annex = h.create("Host1"),h.create("Host2"),a.create("Annex")
+		
+		# create & init
+		path1 = os.path.join(self.path,"repo_host1")
+		repo1 = r.create(host1,annex,path1,description="test_repo_1")
+		
+		app.setCurrentHost(host1)
+		repo1.init()
+		
+		# should not raise an exception
+		repo1.repairMaster()
+
+
 
 	def test_sync(self):
 		"""

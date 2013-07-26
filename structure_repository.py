@@ -649,6 +649,9 @@ class Repository:
 		# unneeded, if the master branch already exists
 		if "master" in branches:
 			return
+		# impossible, if there is no master branch
+		if "synced/master" not in branches:
+			return
 		
 		print("\033[1;37;44m repairing master branch in %s at %s \033[0m" % (self.annex.name,path))
 		
