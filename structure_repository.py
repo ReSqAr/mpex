@@ -608,7 +608,7 @@ class Repository:
 		
 		# commit it
 		utc = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M:%S")
-		msg = "Host: '%s' UTC: %s" % (self.host.name,utc)
+		msg = "Host: %s UTC: %s" % (self.host.name,utc)
 		self.execute_command(["git","commit","-a","-m",msg])
 
 	def sync(self, annex_descs=None):
