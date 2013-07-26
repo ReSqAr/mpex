@@ -180,7 +180,7 @@ def ask_edit_questions(questions):
 			print("%s: description: %s" % (name,question["description"]))
 			# ask
 			while True:
-				inp = input("%s: new value [%s]: " % (name,answers[name]))
+				inp = input("%s: value [%s]: " % (name,answers[name]))
 				
 				# if the input is empty, use the default value
 				if not inp:
@@ -222,7 +222,8 @@ def ask_edit_questions(questions):
 		else:
 			# default: we are done
 			break
-		
+	print()
+	
 	# return the answers
 	return answers
 
@@ -272,7 +273,7 @@ def edit(app):
 		elif key == 's':
 			# save
 			app.save()
-			print("\033[1;37;44m", "saved changes", "\033[0m")
+			print("\033[1;37;44m", "saved", "\033[0m")
 		else:
 			# edit command arguments
 			edit_command_arguments = {'h':"hosts",
@@ -341,7 +342,7 @@ def meta_edit_command(app,obj_name):
 		elif key == "s":
 			# option 'save'
 			app.save()
-			print("\033[1;37;44m", "saved changes", "\033[0m")
+			print("\033[1;37;44m", "saved", "\033[0m")
 		else:
 			# compute row to work on, or if the row should be created, None
 			row = objs[key] if key != "c" else None
@@ -569,6 +570,124 @@ def edit_repositories(app,obj):
 		return
 
 
-def edit_connections(app,row):
+def edit_connections(app,obj):
 	""" edit connections """
-	raise NotImplementedError
+
+	if not obj:
+		# we have to create a new object
+		
+		# at least two hosts have to exist
+		if len(app.hosts.getAll()) < 2:
+			print("error: you have to have at least two hosts to be able to create a connection")
+			return
+		
+		sorted_objs = {}
+		# show hosts and annexes
+		for obj_name in ("hosts",):
+			# print known objs
+			objs = getattr(app,obj_name).getAll()
+			print("There are %d registered %s:" % (len(objs),obj_name))
+			# create, enumerate and print table
+			sorted_objs[obj_name],table = eval("create_%s_table"%obj_name)(objs,additional_data=False)
+			table = enumerate_table(table)
+			print_table(table)
+			print()
+		
+		def hosts_postprocessor(s):
+			# two modes: fuzzy match and number
+			# first try if this is a number
+			if s.isnumeric():
+				# convert number
+				n = int(s)-1
+				# is it in the correct range?
+				if 0 <= n < len(sorted_objs["hosts"]):
+					# we found something, return the name
+					return sorted_objs["hosts"][n].name
+				else:
+					print("%d is not a valid number as it is not in the right range" % (n+1))
+			
+			# otherwise, try to fuzzily match against a host name
+			# this may raise an exception, this exception is used by ask_edit_questions
+			return app.hosts.fuzzyMatch(s).name
+
+		# ask core data
+		questions = []
+		# 1. which source
+		questions.append({"name":"source",
+							"description":"the source of the connection, use the first letters of the host name or a number from above",
+							"postprocessor": hosts_postprocessor})
+		# 2. which destination
+		questions.append({"name":"destination",
+							"description":"the destination of the connection, use the first letters of the host name or a number from above",
+							"postprocessor": hosts_postprocessor})
+		
+		# 3. which path
+		def postprocessor(s):
+			# test if this path is absolute
+			if not s.startswith("/") and not s.startswith("ssh://"):
+				raise ValueError("invalid form")
+			return s
+		
+		questions.append({"name": "path",
+							"description": "form: mount: absolute path, ssh: ssh://<server>",
+							"postprocessor": postprocessor})
+		
+		# actual ask the questions
+		answers = ask_edit_questions(questions)
+
+		# check if asking the questions was cancelled
+		if answers is None:
+			print("connection creation cancelled.")
+			return
+
+		# create the object
+		try:
+			# pre process raw data
+			source = app.hosts.fuzzyMatch(answers["source"])
+			destination = app.hosts.fuzzyMatch(answers["destination"])
+			path = answers["path"]
+			# create object
+			obj = app.connections.create(source,destination,path)
+		except Exception as e:
+			print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
+			return
+		# new line
+		print()
+	
+	# ask non core questions: direct, trust, files, strict
+	# gather questions
+	questions = []
+	
+	def valid_values_pp(valid_values):
+		# build identity mapping
+		valid_values = {x:x for x in valid_values}
+		# define post processor via lib.fuzzy_match
+		def postprocessor(s):
+			""" checks that s is a valid value """
+			return lib.fuzzy_match.fuzzyMatch(s, valid_values)
+		# return post processor
+		return postprocessor
+
+	# 1. question: alwaysOn
+	questions.append({"name":"alwayson",
+						"description":"is the connection always available, valid values: true,false",
+						"default":str(obj.alwaysOn).lower(),
+						"postprocessor": valid_values_pp(("true","false"))})
+
+	# actual ask the questions
+	answers = ask_edit_questions(questions)
+
+	# check if asking the questions was cancelled
+	if answers is None:
+		print("connections property edit cancelled.")
+		return
+	
+	# set values
+	try:
+		# parse values
+		alwayson = (answers["alwayson"] == 'true')
+		# set values
+		obj.alwaysOn = alwayson
+	except Exception as e:
+		print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
+		return
