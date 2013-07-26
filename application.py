@@ -97,7 +97,7 @@ class Application:
 				capabilities["version"] = line[len(s):].strip()
 		
 		# parse the version string
-		_,date,_ = capabilities["version"].split('.')
+		date = capabilities["version"].split('.')[1]
 		assert len(date) == 8, "Version string is unexcepted format: %s" % capabilities["version"]
 		year,month,day = date[:4],date[4:6],date[6:]
 		year,month,day = int(year),int(month),int(day)
