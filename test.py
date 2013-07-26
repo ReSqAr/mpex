@@ -337,6 +337,8 @@ class Test(unittest.TestCase):
 		# connection with a server which does not exit
 		conn = c.create(host1,host2,"ssh://127.0.0.1:53122")
 		self.assertFalse(conn.isOnline())
+		# second time comes from cache
+		self.assertFalse(conn.isOnline())
 		
 		# TODO: test connections with online ssh resources,
 		#       handle password protected clients?

@@ -117,28 +117,40 @@ class Connection:
 		if self.alwaysOn:
 			return True
 		
+		# if there is a cache, use it
+		if hasattr(self,"_isonline_cache"):
+			return self._isonline_cache
+
+		
 		# get data
 		data = self.pathData()
 		
 		if data["protocol"] == "mount":
 			# consider a path mounted if the directory exists and is non-empty
 			if os.path.isdir(self.path) and os.listdir(self.path):
-				return True
+				isonline = True
 			else:
-				return False
+				isonline = False
 		elif data["protocol"] == "ssh":
 			try:
 				# run 'ssh <server> echo test'
+				print("checking ssh connection to server '%s'... "%data["server"],end="")
 				subprocess.check_output(["ssh",data["server"],"echo","test"],stderr=subprocess.DEVNULL)
 				# if it succeeds, say the connection is online
-				return True
+				isonline = True
+				print("online")
 			except subprocess.CalledProcessError:
 				# otherwise, it is not only
-				return False
-				
+				isonline = False
+				print("offline")
 		else:
 			raise ValueError("Programming error.")
-			
+		
+		# cache it
+		self._isonline_cache = isonline
+		# return status
+		return isonline
+
 	
 	#
 	# hashable type mehods, hashable is needed for dict keys and sets
