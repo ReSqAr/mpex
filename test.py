@@ -584,7 +584,8 @@ class Test(unittest.TestCase):
 		repo.init()
 		
 		# check
-		self.assertEqual(repo.onDiskDirectMode(),"direct")
+		if app.gitAnnexCapabilities["direct"]:
+			self.assertEqual(repo.onDiskDirectMode(),"direct")
 		self.assertEqual(repo.onDiskTrustLevel(),"trust")
 
 		# change
