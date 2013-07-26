@@ -380,7 +380,6 @@ class Repository:
 	
 	def readGitKey(self, key):
 		""" read a git key """
-		
 		# change path
 		self.changePath()
 		
@@ -393,6 +392,9 @@ class Repository:
 	
 	def gitBranches(self):
 		""" returns all known branches """
+		# change path
+		self.changePath()
+
 		# call 'git branch'
 		output = subprocess.check_output(["git","branch"]).decode("UTF8")
 		# the first two characters are noise
@@ -410,7 +412,9 @@ class Repository:
 	
 	def getGitAnnexStatus(self):
 		""" calls 'git-annex status --fast' and parses the output """
-		
+		# change path
+		self.changePath()
+
 		# call the command
 		cmd = ["git-annex","status","--fast"]
 		output = subprocess.check_output(cmd,stderr=subprocess.DEVNULL).decode("UTF-8")
