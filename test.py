@@ -864,7 +864,7 @@ class Test(unittest.TestCase):
 		
 		# sync changes on host2
 		app.setCurrentHost(host2)
-		repo1.sync()	
+		repo2.sync()	
 
 	def test_copy(self):
 		"""

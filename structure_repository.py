@@ -624,6 +624,8 @@ class Repository:
 
 		self.finalise()
 		
+		self.repairMaster()
+		
 		print("\033[1;37;44m syncing %s \033[0m" % (self.annex.name,))
 		
 		# if a list of hosts is not given
@@ -637,7 +639,6 @@ class Repository:
 			# if no other annex is available, still do basic maintanence
 			self.execute_command(["git-annex","merge"])
 		
-		self.repairMaster()
 	
 	def repairMaster(self):
 		""" creates the master branch if necessary """
@@ -649,21 +650,22 @@ class Repository:
 		# unneeded, if the master branch already exists
 		if "master" in branches:
 			return
-		# impossible, if there is no master branch
-		if "synced/master" not in branches:
-			return
-		
-		print("\033[1;37;44m repairing master branch in %s at %s \033[0m" % (self.annex.name,path))
 		
 		if "synced/master" in branches:
-			# checkout synced/master if possible
+			# use the 'synced/master' branch if possible
+			print("\033[1;37;44m repairing master branch in %s at %s \033[0m" % (self.annex.name,path))
+			
+			# checkout synced/master
 			self.execute_command(["git","checkout","synced/master"])
-		
-		# create the master branch
-		self.execute_command(["git","branch","master"])
-		
-		# checkout master branch
-		self.execute_command(["git","checkout","master"])
+			
+			# create the master branch and check it put
+			self.execute_command(["git","branch","master"])
+			self.execute_command(["git","checkout","master"])
+		else:
+			# no we have a problem, we have to create a master branch but do not have
+			# many opportunities, use this:
+			# 'git commit --allow-empty -m "empty commit"'
+			self.execute_command(["git","commit","--allow-empty","-m","empty commit"])
 	
 	def copy(self, annex_descs=None, files=None, strict=None):
 		"""
