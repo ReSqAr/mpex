@@ -33,8 +33,8 @@ class Hosts(structure_base.Collection):
 				#print(host,"->",known_host)
 				return known_host
 			# in case of a fuzzy match, add the host to the fuzzy match list
-			fuzzy = lambda s: s.lower().replace(' ','')
-			if fuzzy(known_host.name) == fuzzy(hostname):
+			fuzzy = lambda s: s.casefold().replace(' ','')
+			if fuzzy(known_host.name).startswith( fuzzy(hostname) ):
 				#print(host,"~>",known_host)
 				fuzzy_match.append(known_host)
 		else:
@@ -42,7 +42,8 @@ class Hosts(structure_base.Collection):
 			if len(fuzzy_match) == 0:
 				raise ValueError("Could not parse the host name '%s': no candidates." % hostname)
 			elif len(fuzzy_match) >= 2:
-				raise ValueError("Could not parse the host name '%s': too many candidates: %s" % (hostname,fuzzy_match))
+				candidates = ", ".join(sorted(host.name for host in fuzzy_match))
+				raise ValueError("Could not parse the host name '%s': too many candidates: %s" % (hostname,candidates))
 			else:
 				# if there is only one fuzzy match, use it
 				return fuzzy_match[0]

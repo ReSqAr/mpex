@@ -19,6 +19,33 @@ class Annexes(structure_base.Collection):
 		""" brings obj into a form which can be consumed by cls """
 		return {"name": raw["name"]}
 
+	def fuzzyMatch(self, annexname):
+		""" matches the annex name in a fuzzy way against the known annexes """
+		
+		annexname = annexname.strip()
+		fuzzy_match = []
+		
+		# try to match annex to a known annex
+		for known_annex in self.getAll():
+			# in case of an exact match, add the token and end the loop
+			if known_annex.name == annexname:
+				#print(annex,"->",known_annex)
+				return known_annex
+			# in case of a fuzzy match, add the annex to the fuzzy match list
+			fuzzy = lambda s: s.casefold().replace(' ','')
+			if fuzzy(known_annex.name).startswith( fuzzy(annexname) ):
+				#print(annex,"~>",known_annex)
+				fuzzy_match.append(known_annex)
+		else:
+			# if there was no exact match, see if we have at least fuzzy matches
+			if len(fuzzy_match) == 0:
+				raise ValueError("Could not parse the annex name '%s': no candidates." % annexname)
+			elif len(fuzzy_match) >= 2:
+				candidates = ", ".join(sorted(annex.name for annex in fuzzy_match))
+				raise ValueError("Could not parse the annex name '%s': too many candidates: %s" % (annexname,candidates))
+			else:
+				# if there is only one fuzzy match, use it
+				return fuzzy_match[0]
 	
 class Annex:
 	""" encodes information of one annex """

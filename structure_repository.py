@@ -35,6 +35,13 @@ class Repositories(structure_base.Collection):
 		# build dictionary
 		return raw
 
+	def load(self):
+		""" overloaded load which checks the files expressions """
+		super(Repositories,self).load()
+		# check files expressions
+		for repo in self.getAll():
+			repo.files = repo.files
+
 	def fuzzyMatch(self, annex, annex_desc):
 		""" matches the annex description in a fuzzy way against the known repositories """
 		
@@ -115,8 +122,9 @@ class Repository:
 		assert self.description, "%s: the git annex description has to be non-empty"
 		assert set(self.description).issubset(self.VALID_DESC_CHARS), "%s: invalid character detected." % self
 		
-		# unable to check files
-
+		# we are unable to check files here, as for that all repositories have to exist,
+		# so we check it after a load is complete
+		
 	def tokeniseFileExpression(self, s):
 		""" tokenises the file expression, returns a list of tokens """
 		if s is None:
