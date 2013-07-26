@@ -747,7 +747,7 @@ class Repository:
 			files = self.tokeniseFileExpression(files)
 			files_cmd = self.tokenisedFilesExpressionToCmd(files)
 		
-			# call 'git-annex drop --from=target --not -( <files expression -)
+			# call 'git-annex drop --from=target --not -( <files expression> -)
 			cmd = ["git-annex","drop","--from=%s"%repo.description] + ["--not", "-("] + files_cmd + ["-)"]
 			self.execute_command(cmd, ignoreexception=True)
 
