@@ -363,9 +363,6 @@ class Test(unittest.TestCase):
 		# second time comes from cache
 		self.assertFalse(conn.isOnline())
 		
-		# TODO: test connections with online ssh resources,
-		#       handle password protected clients?
-
 	def test_relations(self):
 		"""
 			test Host's repositories and connections methods as well as
@@ -819,7 +816,56 @@ class Test(unittest.TestCase):
 		# sync changes on host1
 		app.setCurrentHost(host1)
 		repo1.sync()
-	
+
+
+	def test_sync_from_remote(self):
+		"""
+			test sync
+			procedure:
+			1. create two repositories
+			2. create file in the second first repository
+			3. call sync
+			4. then a link to the file should exist in the other directory
+			5. call sync again
+		"""
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2,annex = h.create("Host1"),h.create("Host2"),a.create("Annex")
+		conn12 = c.create(host1,host2,"/",alwayson="true")
+		
+		# create & init
+		path1 = os.path.join(self.path,"repo_host1")
+		repo1 = r.create(host1,annex,path1,description="test_repo_1")
+		path2 = os.path.join(self.path,"repo_host2")
+		repo2 = r.create(host2,annex,path2,description="test_repo_2")
+		
+		app.setCurrentHost(host1)
+		repo1.init()
+		
+		app.setCurrentHost(host2)
+		repo2.init()
+		
+		# create file on host1
+		f_path2 = os.path.join(path2,"test")
+		with open(f_path2,"wt") as fd:
+			fd.write("test")
+		
+		# sync changes on host2 (local only)
+		repo2.sync()
+		
+		# sync changes on host1
+		app.setCurrentHost(host1)
+		repo1.sync()
+		
+		# there?
+		f_path1 = os.path.join(path1,"test")
+		self.assertTrue(os.path.isfile(f_path1) or os.path.islink(f_path2))
+		
+		# sync changes on host2
+		app.setCurrentHost(host2)
+		repo1.sync()	
+
 	def test_copy(self):
 		"""
 			test copy
