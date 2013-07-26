@@ -1,5 +1,5 @@
 import string
-import os.path
+import os
 import subprocess
 
 import structure_base
@@ -135,7 +135,8 @@ class Connection:
 			try:
 				# run 'ssh <server> echo test'
 				print("checking ssh connection to server '%s'... "%data["server"],end="")
-				subprocess.check_output(["ssh",data["server"],"echo","test"],stderr=subprocess.DEVNULL)
+				with open(os.devnull, "w") as devnull:
+					subprocess.check_output(["ssh",data["server"],"echo","test"],stderr=devnull)
 				# if it succeeds, say the connection is online
 				isonline = True
 				print("online")

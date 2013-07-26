@@ -15,7 +15,7 @@ def fuzzyMatch(s, valid):
 		if s == key:
 			return value
 		# in case of a fuzzy match, add key,value to the fuzzy match list
-		fuzzy = lambda s: s.casefold().replace(' ','')
+		fuzzy = lambda s: s.lower().replace(' ','')
 		if fuzzy(key).startswith( fuzzy(s) ):
 			fuzzy_matches.append((key,value))
 	else:
