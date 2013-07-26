@@ -417,7 +417,8 @@ class Repository:
 
 		# call the command
 		cmd = ["git-annex","status","--fast"]
-		output = subprocess.check_output(cmd,stderr=subprocess.DEVNULL).decode("UTF-8")
+		with open(os.devnull, "w") as devnull:
+			output = subprocess.check_output(cmd,stderr=devnull).decode("UTF-8")
 		
 		# parse it
 		status,lastkey = {},None
