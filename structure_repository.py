@@ -406,6 +406,8 @@ class Repository:
 		# change into the right directory
 		path = self.changePath()
 
+		# TODO: problems in direct mode
+
 		return bool(subprocess.check_output(["git","status","-s"]).decode("UTF8").strip())
 	
 	
@@ -610,7 +612,6 @@ class Repository:
 		utc = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M:%S")
 		msg = "Host: %s UTC: %s" % (self.host.name,utc)
 		try:
-			# TODO: surpress output?
 			self.executeCommand(["git","commit","-m",msg])
 		except subprocess.CalledProcessError:
 			pass
@@ -633,8 +634,8 @@ class Repository:
 		if annex_descs is None:
 			annex_descs = {repo.description for repo in self.activeRepositories().keys()}
 		
-		# call 'git-annex sync'
 		if annex_descs:
+			# call 'git-annex sync'
 			self.executeCommand(["git-annex","sync"] + list(annex_descs))
 		else:
 			# if no other annex is available, still do basic maintanence

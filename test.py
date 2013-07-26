@@ -766,6 +766,33 @@ class Test(unittest.TestCase):
 
 
 
+	def test_uncommited_changes_in_directmode(self):
+		""" uncommited changes in direct mode should be detected accurately """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host,annex = h.create("Host"),a.create("Annex")
+		
+		# create & init
+		path = os.path.join(self.path,"repo_host")
+		repo = r.create(host,annex,path,description="test_repo_",direct="true")
+		
+		# init
+		app.setCurrentHost(host)
+		repo.init()
+		
+		# create file
+		f_path = os.path.join(path,"test")
+		with open(f_path,"wt") as fd:
+			fd.write("test")
+		
+		# sync
+		repo.finalise()
+
+		# now, there should be no uncommited changes
+		self.assertFalse(repo.hasUncommitedChanges())
+
+
 	def test_sync(self):
 		"""
 			test sync
