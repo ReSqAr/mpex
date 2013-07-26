@@ -741,7 +741,7 @@ class Repository:
 		# use strict of the current repository, if none is given
 		if strict is None:
 			strict = self.strict
-		
+
 		if strict:
 			# call 'git-annex drop --not -( <files expression -)
 			cmd = ["git-annex","drop"] + ["--not", "-("] + cur_files_cmd + ["-)"]
@@ -749,11 +749,14 @@ class Repository:
 		
 		# apply strict for remote repositories
 		for repo in sorted(repos.keys(),key=lambda k:str(k)):
+			# only apply if wanted
+			if not repo.strict:
+				continue
 			# parse remote files expression
 			files = self.sanitiseFilesExpression(repo.files)
 			files = self.tokeniseFileExpression(files)
 			files_cmd = self.tokenisedFilesExpressionToCmd(files)
-		
+
 			# call 'git-annex drop --from=target --not -( <files expression> -)
 			cmd = ["git-annex","drop","--from=%s"%repo.description] + ["--not", "-("] + files_cmd + ["-)"]
 			self.execute_command(cmd, ignoreexception=True)
