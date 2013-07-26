@@ -503,8 +503,6 @@ def edit_repositories(app,obj):
 		except Exception as e:
 			print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
 			return
-		# new line
-		print()
 	
 	# ask non core questions: direct, trust, files, strict
 	# gather questions
@@ -651,8 +649,6 @@ def edit_connections(app,obj):
 		except Exception as e:
 			print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
 			return
-		# new line
-		print()
 	
 	# ask non core questions: direct, trust, files, strict
 	# gather questions

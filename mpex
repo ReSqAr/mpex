@@ -4,6 +4,8 @@ import os
 import argparse
 import sys
 
+import lib.fuzzy_match
+
 import application
 import show_edit
 
@@ -11,45 +13,42 @@ CONFIG_PATH = "~/.config/mpex/"
 CONFIG_PATH = os.path.expanduser(CONFIG_PATH)
 
 
-def parse_annex(app,args):
+def parse_annex_names(app,args):
 	""" parse annexes supplied by the user """
-	# if nothing is given, return None
+	# if nothing is given, return all
 	if not args.annex:
-		return None
+		return app.annexes.getAll()
 	
 	# save
 	annex_names = args.annex 
 	
 	# find all known names
 	known_annexes = {repo.annex for repo in app.getHostedRepositories()}
-	known_annexes = {annex.name for annex in known_annexes}
-	known_annexes_lower = {annex_name.lower() for annex_name in known_annexes}
-	
-	# make sure that all given annexes indeed exist
+	known_annexes = {annex.name: annex for annex in known_annexes}
+
+	selected_annexes = set()
+
 	for annex_name in annex_names:
-		if annex_name.lower() not in known_annexes_lower:
-			print("Annex description '%s' is not known." % annex_name)
-			print("Known annexes: %s" % ", ".join(sorted(known_annexes)))
+		try: 
+			# find and add annex
+			annex = lib.fuzzy_match.fuzzyMatch(annex_name,known_annexes)
+			selected_annexes.add(annex)
+		except ValueError as e:
+			print("could not parse the annex'%s': %s" % (annex_name,e.args[0]))
 			sys.exit()
 	
-	return annex_names
+	return selected_annexes
 
 def apply_function(args,f):
 	""" apply f to all given annex_names """
 	# create application
 	app = application.Application(CONFIG_PATH)
 	# parse annex names
-	annex_names = parse_annex(app,args)
-	# create lower case version
-	if annex_names is not None:
-		annex_names_lower = {annex_name.lower() for annex_name in annex_names}
+	selected_annexes = parse_annex_names(app,args)
 	
 	for repo in app.getHostedRepositories():
-		# if either
-		# a) all repositories should be iterated over, or
-		# b) the name matches
-		# execute f
-		if annex_names is None or repo.annex.name.lower() in annex_names_lower:
+		# check if the repo belongs to a selected annex, if yes, then execute f
+		if repo.annex in selected_annexes:
 			f(repo)
 	
 
@@ -165,6 +164,25 @@ def func_edit(args):
 		print("received ^C, going down WITHOUT saving")
 		return
 
+#
+# set host
+#
+def init_sethost(parsers):
+	parser = parsers.add_parser('sethost', help='set the current host.')
+	parser.add_argument('host', help="host name")
+	parser.set_defaults(func=func_sethost)
+
+def func_sethost(args):
+	# create application
+	app = application.Application(CONFIG_PATH)
+
+	try:
+		host = app.hosts.fuzzyMatch(args.host)
+		print("Setting host to %s." % host.name)
+		app.setCurrentHost(host)
+	except Exception as e:
+		print("an error has occured: %s" % e.args[0])
+	
 
 def runParser():
 	# create the top-level parser
@@ -179,6 +197,7 @@ def runParser():
 	init_copy(subparsers)
 	init_show(subparsers)
 	init_edit(subparsers)
+	init_sethost(subparsers)
 
 	# parse arguments and call function
 	args = parser.parse_args()

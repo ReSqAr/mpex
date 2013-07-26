@@ -46,7 +46,8 @@ class Connection:
 		# path maybe: ssh://<host> or <absolute path>
 		assert isinstance(self._source,structure_host.Host), "%s: source has to be an instance of Host" % self
 		assert isinstance(self._dest,structure_host.Host), "%s: dest has to be an instance of Host" % self
-		
+		assert self.source != self.dest, "%s: source and destination may not agree" % self
+
 		# see if we can find a valid protocol
 		self.protocol()
 
