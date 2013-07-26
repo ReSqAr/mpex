@@ -367,7 +367,7 @@ class Repository:
 				os.makedirs(path)
 		else:
 			# if we are not allowed to create it, it has to be git annex archive
-			assert os.path.isdir(os.path.join(path,".git/annex")), "This is not a git annex repository."
+			assert os.path.isdir(os.path.join(path,".git/annex")), "%s is not a git annex repository, please run 'init' first." % path
 			
 		# change to it
 		os.chdir(path)

@@ -46,7 +46,7 @@ def apply_function(args,f):
 	# parse annex names
 	selected_annexes = parse_annex_names(app,args)
 	
-	for repo in app.getHostedRepositories():
+	for repo in sorted(app.getHostedRepositories(),key=lambda r: str((r.annex,r.path))):
 		# check if the repo belongs to a selected annex, if yes, then execute f
 		if repo.annex in selected_annexes:
 			f(repo)
