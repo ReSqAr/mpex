@@ -10,7 +10,7 @@ import structure_repository
 #
 # table helper functions
 #
-def print_table(table,sep=2):
+def print_table(table,sep=2,header_sep="="):
 	""" prints a table """
 	# empty table -> do nothing
 	if not table:
@@ -37,7 +37,7 @@ def print_table(table,sep=2):
 
 		# the first line is the header
 		if i == 0:
-			print("-" * (sum(column_lengths) + (len(column_lengths)-1) * sep))
+			print(header_sep * (sum(column_lengths) + (len(column_lengths)-1) * sep))
 
 def enumerate_table(table):
 	""" adds the row number to the first line """
@@ -91,10 +91,27 @@ def create_annexes_table(annexes,additional_data=True):
 		
 def create_repositories_table(repositories):
 	""" builds a table """
+	# determine if additional columns have to be shown
+	withdirect = any(repo.direct for repo in repositories)
+	withtrust  = any(repo.trust != "semitrust" for repo in repositories)
+	withfiles  = any(repo.files for repo in repositories)
+	withstrict = any(repo.strict for repo in repositories)
+	withdesc   = any(repo.hasNonTrivialDescription() for repo in repositories)
+	
 	# we build a table: a 2 dimensional array
 	table = []
+	
+	# build table header
+	header = ["Host","Annex","Path"]
+	# additional columns:
+	if withdirect: header.append("Direct")
+	if withtrust:  header.append("Trust")
+	if withfiles:  header.append("Files Expr")
+	if withstrict: header.append("Strict")
+	if withdesc:   header.append("Description")
 	# the first line is the header
-	table.append(["Host","Annex","Path","Options"])
+	table.append(header)
+	
 	# convert repositories to a list and sort the list
 	repositories = list(repositories)
 	repositories.sort(key=lambda r:str((r.host,r.annex,r.path)))
@@ -107,19 +124,17 @@ def create_repositories_table(repositories):
 		row.append(repo.annex.name)
 		# third column is the path
 		row.append(repo.path)
-		# fourth column are the options
-		options = []
-		if repo.direct:
-			options.append("direct")
-		if repo.strict:
-			options.append("strict")
-		if repo.files:
-			options.append("files='%s'" % repo.files)
-		if repo.trust != "semitrust":
-			options.append("trust: %s" % repo.trust)
-		if repo.hasNonTrivialDescription():
-			options.append("description: %s" % repo.description)
-		row.append(", ".join(options))
+		# further columns
+		if withdirect:
+			row.append("yes" if repo.direct else "")
+		if withtrust:
+			row.append(repo.trust if repo.trust != "semitrust" else "")
+		if withstrict:
+			row.append("yes" if repo.strict else "")
+		if withfiles:
+			row.append(repo.files if repo.files else "")
+		if withdesc:
+			row.append(repo.description if repo.hasNonTrivialDescription() else "")
 		# append row
 		table.append(row)
 
@@ -127,10 +142,20 @@ def create_repositories_table(repositories):
 
 def create_connections_table(connections):
 	""" builds a table """
+	
+	# determine if additional columns have to be shown
+	withalwayson = any(conn.alwaysOn for conn in connections)
+	
 	# we build a table: a 2 dimensional array
 	table = []
+
+	# build table header
+	header = ["Source","Destination","Path",]
+	# additional columns:
+	if withalwayson: header.append("Always on")
 	# the first line is the header
-	table.append(["Source","Destination","Path","Options"])
+	table.append(header)
+
 	# convert connections to a list and sort the list
 	connections = list(connections)
 	connections.sort(key=lambda c:str((c.source,c.dest,c.path)))
@@ -143,11 +168,9 @@ def create_connections_table(connections):
 		row.append(conn.dest.name)
 		# third column is the path
 		row.append(conn.path)
-		# fourth column are the options
-		options = []
-		if conn.alwaysOn:
-			options.append("always on")
-		row.append(", ".join(options))
+		# further columns
+		if withalwayson:
+			row.append("yes" if conn.alwaysOn else "")
 		# append row
 		table.append(row)
 	return connections,table

@@ -41,7 +41,7 @@ class FuzzyMatch:
 			# if there was no exact match, see if we have at least fuzzy matches
 			if len(self.fuzzyMatches) == 1:
 				# if there is only one fuzzy match, return the corresponding value
-				return self.fuzzyMatches.values().pop()
+				return list(self.fuzzyMatches.values()).pop()
 			elif len(self.fuzzyMatches) == 0:
 				# otherwise raise the corresponding error
 				candidates = ", ".join(sorted(key for key in self.valid.keys()))
