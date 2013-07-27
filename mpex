@@ -225,6 +225,38 @@ def func_sethost(args):
 
 
 #
+# migrate
+#
+def init_migrate(parsers):
+	epilog  = "This command is potentially dangerous as it deletes all remotes from .git/config"\
+	          " via running 'git remote remove $remote' for all remotes. This command"\
+	          " also implicitly removes all remote-tracking branches. Afterwards, mpex"\
+	          " adds all remotes known to it. It is not dangerous for your data"\
+	          " however git may or may not be able to reestablish the logical" \
+	          " dependances of the commits, that is your history. So please make sure"\
+	          " that you synchronised all your repositories before running this command."
+	parser = parsers.add_parser('migrate',
+									help='migrate repositories.',
+									epilog=epilog)
+	parser.add_argument('annex', nargs='*', help="annex names")
+	parser.set_defaults(func=func_migrate)
+
+def func_migrate(args):
+	
+	print("This command is potentially DANGEROUS. Have you read the help and understood the consequences?")
+	x = input("If yes, type YES: ")
+	
+	if x.strip() != "YES":
+		print("leaving")
+		return
+	
+	def repo_migrate(repo):
+		repo.deleteAllRemotes()
+		repo.setProperties()
+	apply_function(args,repo_migrate)
+
+
+#
 # create and run parser
 #
 def runParser():
@@ -242,6 +274,7 @@ def runParser():
 	init_show(subparsers)
 	init_edit(subparsers)
 	init_sethost(subparsers)
+	init_migrate(subparsers)
 
 	# parse arguments and call function
 	args = parser.parse_args()
