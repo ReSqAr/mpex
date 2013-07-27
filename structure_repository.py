@@ -82,7 +82,13 @@ class Repository:
 			activeAnnexDescriptions() -> dictionary online repositories -> connection
 		
 		syntax of a 'files expression':
-			TODO
+			operators:
+				(,)   brackets
+				+     or operator
+				-     not operator
+				&     and operator (standard)
+			other tokens: descriptions of repositories (usually host names)
+			
 	"""
 	
 	OPERATORS = ("(",")","+","-","&")
