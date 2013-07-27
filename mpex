@@ -222,8 +222,11 @@ def func_sethost(args):
 		app.setCurrentHost(host)
 	except Exception as e:
 		print("an error has occured: %s" % e.args[0])
-	
 
+
+#
+# create and run parser
+#
 def runParser():
 	# create the top-level parser
 	parser = argparse.ArgumentParser(prog='mpex')

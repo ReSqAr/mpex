@@ -6,7 +6,12 @@ import itertools
 
 import application
 
-class Test(unittest.TestCase):
+
+
+class TestStructure(unittest.TestCase):
+	"""
+		tests structural properties of the application
+	"""
 	def setUp(self):
 		# create temporary directory
 		self.path = tempfile.mkdtemp()
@@ -538,6 +543,80 @@ class Test(unittest.TestCase):
 
 
 
+
+
+
+
+
+
+
+
+
+
+class TestCommands(unittest.TestCase):
+	"""
+		test command aspects of the application
+	"""
+	def setUp(self):
+		# create temporary directory
+		self.path = tempfile.mkdtemp()
+	def tearDown(self):
+		# erease variable
+		self.path = None
+
+
+
+	def init_repos(self, repos):
+		""" init the given repos """
+		for repo in repos:
+			repo.app.setCurrentHost(repo.host)
+			repo.init()
+
+	def create_file(self, repo, filename):
+		""" create file in the given repository """
+		f_path = os.path.join(repo.path,filename)
+		with open(f_path,"wt") as fd:
+			fd.write(filename)
+
+	def has_file(self, repo, filename):
+		""" checks if the repository has the given file (with content) """
+		f_path = os.path.join(repo.path,filename)
+		with open(f_path,"rt") as fd:
+			self.assertEqual(fd.read(),filename)
+
+	def has_link(self, repo, filename):
+		""" checks if the repository has the given file as a link """
+		f_path = os.path.join(repo.path,filename)
+		self.assertFalse(os.path.isfile(f_path))
+		self.assertTrue(os.path.islink(f_path))
+
+	def sync(self, repos):
+		""" syncs the repos """
+		for repo in repos:
+			repo.app.setCurrentHost(repo.host)
+			repo.sync()
+
+	def copy(self, repos):
+		""" copies the repos """
+		for repo in repos:
+			repo.app.setCurrentHost(repo.host)
+			repo.copy()
+
+	def sync_and_copy(self, sync_repos, copy_repos):
+		""" sync sync_repos, copy copy_repos and sync sync_repos """
+		
+		# sync repos
+		self.sync(sync_repos)
+		
+		# copy repos
+		self.copy(copy_repos)
+		
+		# sync repos
+		self.sync(sync_repos)
+
+
+
+
 	def test_repo_init(self):
 		""" test repository init and conduct some basic checks """
 		# initialisation
@@ -684,27 +763,24 @@ class Test(unittest.TestCase):
 		app.setCurrentHost(host)
 		
 		# create & init
-		path = os.path.join(self.path,"repo_indirect")
-		repo_indirect = r.create(host,annex,path)
-		repo_indirect.init()
+		path = os.path.join(self.path,"repo")
+		repo = r.create(host,annex,path)
+		repo.init()
 		
 		# create file
-		f_path = os.path.join(path,"test")
-		with open(f_path,"wt") as fd:
-			fd.write("test")
+		self.create_file(repo,"test")
 		
 		# test not commited?
-		self.assertTrue(repo_indirect.hasUncommitedChanges())
+		self.assertTrue(repo.hasUncommitedChanges())
 
 		# finalise
-		repo_indirect.finalise()
+		repo.finalise()
 		
 		# still there?
-		with open(f_path,"rt") as fd:
-			self.assertEqual(fd.read(),"test")
+		self.has_file(repo,"test")
 			
 		# everything commited?
-		self.assertFalse(repo_indirect.hasUncommitedChanges())
+		self.assertFalse(repo.hasUncommitedChanges())
 		
 	def test_finalise_direct(self):
 		"""
@@ -724,27 +800,24 @@ class Test(unittest.TestCase):
 		app.setCurrentHost(host)
 
 		# create & init
-		path = os.path.join(self.path,"repo_direct")
-		repo_direct = r.create(host,annex,path)
-		repo_direct.init()
+		path = os.path.join(self.path,"repo")
+		repo = r.create(host,annex,path)
+		repo.init()
 		
 		# create file
-		f_path = os.path.join(path,"test")
-		with open(f_path,"wt") as fd:
-			fd.write("test")
+		self.create_file(repo,"test")
 		
 		# test not commited?
-		self.assertTrue(repo_direct.hasUncommitedChanges())
+		self.assertTrue(repo.hasUncommitedChanges())
 
 		# finalise
-		repo_direct.finalise()
+		repo.finalise()
 		
 		# still there?
-		with open(f_path,"rt") as fd:
-			self.assertEqual(fd.read(),"test")
+		self.has_file(repo,"test")
 			
 		# everything commited?
-		self.assertFalse(repo_direct.hasUncommitedChanges())
+		self.assertFalse(repo.hasUncommitedChanges())
 
 
 	def test_repairMaster_in_empty(self):
@@ -782,10 +855,11 @@ class Test(unittest.TestCase):
 		repo.init()
 		
 		# create file
-		f_path = os.path.join(path,"test")
-		with open(f_path,"wt") as fd:
-			fd.write("test")
-		
+		self.create_file(repo,"test")
+
+		# now, there should be uncommited changes
+		self.assertTrue(repo.hasUncommitedChanges())
+
 		# sync
 		repo.finalise()
 
@@ -814,35 +888,28 @@ class Test(unittest.TestCase):
 		repo1 = r.create(host1,annex,path1,description="test_repo_1")
 		path2 = os.path.join(self.path,"repo_host2")
 		repo2 = r.create(host2,annex,path2,description="test_repo_2")
+		repos = [repo1,repo2]
 		
-		app.setCurrentHost(host2)
-		repo2.init()
-		
-		app.setCurrentHost(host1)
-		repo1.init()
+		# init
+		self.init_repos(repos)
 		
 		# create file on host1
-		f_path1 = os.path.join(path1,"test")
-		with open(f_path1,"wt") as fd:
-			fd.write("test")
+		self.create_file(repo1,"test")
 		
 		# sync changes on host1
-		repo1.sync()
+		self.sync([repo1])
 		
 		# sync with unknown repo
 		self.assertRaises(subprocess.CalledProcessError,repo1.sync,["yeah"])
 		
 		# sync changes on host2
-		app.setCurrentHost(host2)
-		repo2.sync()
+		self.sync([repo2])
 		
 		# there?
-		f_path2 = os.path.join(path2,"test")
-		self.assertTrue(os.path.isfile(f_path2) or os.path.islink(f_path2))
+		self.has_link(repo2,"test")
 		
 		# sync changes on host1
-		app.setCurrentHost(host1)
-		repo1.sync()
+		self.sync([repo1])
 
 
 	def test_sync_from_remote(self):
@@ -866,32 +933,24 @@ class Test(unittest.TestCase):
 		repo1 = r.create(host1,annex,path1,description="test_repo_1")
 		path2 = os.path.join(self.path,"repo_host2")
 		repo2 = r.create(host2,annex,path2,description="test_repo_2")
+		repos = [repo1,repo2]
 		
-		app.setCurrentHost(host1)
-		repo1.init()
+		# init
+		self.init_repos(repos)
 		
-		app.setCurrentHost(host2)
-		repo2.init()
+		# create file on host2
+		self.create_file(repo2,"test")
 		
-		# create file on host1
-		f_path2 = os.path.join(path2,"test")
-		with open(f_path2,"wt") as fd:
-			fd.write("test")
-		
-		# sync changes on host2 (local only)
-		repo2.sync()
-		
-		# sync changes on host1
-		app.setCurrentHost(host1)
-		repo1.sync()
+		# sync changes (reverse repo order such that repo2 gets synced first,
+		# otherwise the file is not yet commited and does not get transfered)
+		self.sync(reversed(repos))
 		
 		# there?
-		f_path1 = os.path.join(path1,"test")
-		self.assertTrue(os.path.isfile(f_path1) or os.path.islink(f_path2))
+		self.has_link(repo1,"test")
 		
-		# sync changes on host2
-		app.setCurrentHost(host2)
-		repo2.sync()	
+		# sync changes again
+		self.sync(repos)
+
 
 	def test_copy(self):
 		"""
@@ -930,9 +989,7 @@ class Test(unittest.TestCase):
 		repos = [repo1,repo2,repo3]
 		
 		# init repos
-		for repo in repos:
-			app.setCurrentHost(repo.host)
-			repo.init()
+		self.init_repos(repos)
 		
 		n = 3
 		# create all possible combinations of files
@@ -949,21 +1006,11 @@ class Test(unittest.TestCase):
 					with open(f_path,"wt") as fd:
 						fd.write(name)
 		
-		# sync all repos
-		for repo in reversed(repos):
-			app.setCurrentHost(repo.host)
-			repo.sync()
+
+		# sync all repos and copy repo2 as well as repo3
+		self.sync_and_copy(repos,[repo2,repo3])
+
 		
-		# copy repo2 and repo3
-		for repo in [repo2,repo3]:
-			app.setCurrentHost(repo.host)
-			repo.copy()
-
-		# sync all repos
-		for repo in reversed(repos):
-			app.setCurrentHost(repo.host)
-			repo.sync()
-
 		# compute power set of {0,1,2}
 		for i in range(1,n+1):
 			for t in itertools.combinations(range(n), i):
@@ -1001,7 +1048,7 @@ class Test(unittest.TestCase):
 			2. create file in repository alice (repo1)
 			3. sync all
 			4. call copy in repository alice (repo1)
-			6. now the distribution of the files looks like that:
+			5. now the distribution of the files looks like that:
 			   alice: no
 			   bob: test
 		"""
@@ -1017,41 +1064,20 @@ class Test(unittest.TestCase):
 		repo1 = r.create(host1,annex,path1,description="alice", files="-", strict="true")
 		path2 = os.path.join(self.path,"repo_host2")
 		repo2 = r.create(host2,annex,path2,description="bob")
-		
 		repos = [repo1,repo2]
 		
 		# init repos
-		for repo in repos:
-			app.setCurrentHost(repo.host)
-			repo.init()
-		
-		# file name
-		f_path1 = os.path.join(path1,"test")
-		with open(f_path1,"wt") as fd:
-			fd.write("test")
-		
-		# sync all repos
-		for repo in reversed(repos):
-			app.setCurrentHost(repo.host)
-			repo.sync()
-		
-		# copy repo1
-		app.setCurrentHost(repo1.host)
-		repo1.copy()
+		self.init_repos(repos)
 
-		# sync all repos
-		for repo in reversed(repos):
-			app.setCurrentHost(repo.host)
-			repo.sync()
+		# create file 'test' in repo1
+		self.create_file(repo1,"test")
 		
-		# only the link should be left in repo1
-		self.assertFalse(os.path.isfile(f_path1))
-		self.assertTrue(os.path.islink(f_path1))
+		# sync and copy files (call copy only for repo1)
+		self.sync_and_copy(repos,[repo1])
 		
-		# shoud be in repo2
-		f_path2 = os.path.join(path2,"test")
-		with open(f_path2,"rt") as fd:
-			self.assertEqual(fd.read(),"test")
+		# only the link is left in repo1, where as the complete file is in repo2
+		self.has_link(repo1,"test")
+		self.has_file(repo2,"test")
 
 
 
@@ -1066,7 +1092,7 @@ class Test(unittest.TestCase):
 			2. create file in repository bob (repo2)
 			3. sync all
 			4. call copy in repository alice (repo1)
-			6. now the distribution of the files looks like that:
+			5. now the distribution of the files looks like that:
 			   alice: test
 			   bob: no
 		"""
@@ -1082,41 +1108,61 @@ class Test(unittest.TestCase):
 		repo1 = r.create(host1,annex,path1,description="alice")
 		path2 = os.path.join(self.path,"repo_host2")
 		repo2 = r.create(host2,annex,path2,description="bob", files="-", strict="true")
-		
 		repos = [repo1,repo2]
 		
 		# init repos
-		for repo in repos:
-			app.setCurrentHost(repo.host)
-			repo.init()
-		
-		# file name
-		f_path2 = os.path.join(path2,"test")
-		with open(f_path2,"wt") as fd:
-			fd.write("test")
-		
-		# sync all repos
-		for repo in reversed(repos):
-			app.setCurrentHost(repo.host)
-			repo.sync()
-		
-		# copy repo1
-		app.setCurrentHost(repo1.host)
-		repo1.copy()
+		self.init_repos(repos)
 
-		# sync all repos
-		for repo in reversed(repos):
-			app.setCurrentHost(repo.host)
-			repo.sync()
+		# create file 'test' in repo2
+		self.create_file(repo2,"test")
 		
-		# only the link should be left in repo2
-		self.assertFalse(os.path.isfile(f_path2))
-		self.assertTrue(os.path.islink(f_path2))
+		# sync and copy files (call copy only for repo1)
+		self.sync_and_copy(repos,[repo1])
 		
-		# shoud be in repo1
-		f_path1 = os.path.join(path1,"test")
-		with open(f_path1,"rt") as fd:
-			self.assertEqual(fd.read(),"test")
+		# only the link is left in repo2, where as the complete file is in repo1
+		self.has_link(repo2,"test")
+		self.has_file(repo1,"test")
+
+
+
+	def test_migration(self):
+		"""
+			test migration strategy
+			procedure:
+			1. create two repositories with this connection:
+			   alice (repo1) -> bob (repo2)
+			2. create file in repository bob (repo2)
+			3. sync all
+			4. call copy in repository alice (repo1)
+			5. sync all
+			6. now the distribution of the files looks like that: both have the file
+		"""
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2 = [h.create("Host%d"%i) for i in range(1,2+1)]
+		annex = a.create("Annex")
+		conn12 = c.create(host1,host2,"/",alwayson="true")
+		
+		# create & init
+		path1 = os.path.join(self.path,"repo_host1")
+		repo1 = r.create(host1,annex,path1,description="alice")
+		path2 = os.path.join(self.path,"repo_host2")
+		repo2 = r.create(host2,annex,path2,description="bob")
+		repos = [repo1,repo2]
+		
+		# init repos
+		self.init_repos(repos)
+
+		# create file 'test' in repo1
+		self.create_file(repo1,"test")
+		
+		# sync and copy files (call copy only for repo1)
+		self.sync_and_copy(repos,[repo1])
+		
+		# the file should be in both repositories
+		self.has_file(repo1,"test")
+		self.has_file(repo2,"test")
 
 
 if __name__ == '__main__':
