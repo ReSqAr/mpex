@@ -1148,7 +1148,11 @@ class TestCommands(unittest.TestCase):
 			7. strange things happen: the host names and repository descriptions change
 			   we need to restart the app, as some gurantees have been violated
 			-----
-			8. reinit
+			8. delete all remotes
+			9. reinit
+			10. create some files
+			11. sync and copy
+			12. now the files should be in both directories, if everything is still fine
 		"""
 		# initialisation
 		app = application.Application(self.path)
@@ -1182,8 +1186,8 @@ class TestCommands(unittest.TestCase):
 		host2._name = "NotHost2"
 		
 		# change descriptions
-		repo1._data["description"] = "notalice"
-		repo2._data["description"] = "notbob"
+		repo1._data["description"] = "eve"
+		repo2._data["description"] = "abel"
 		
 		# restart app
 		for x in [h,a,r,c]:
@@ -1200,8 +1204,39 @@ class TestCommands(unittest.TestCase):
 		# refresh repos
 		repos = r.getAll()
 		
+		# delete all remotes
+		self.apply_to_repos(repos,lambda r:r.deleteAllRemotes())
+		
 		# re init repositories
 		self.reinit_repos(repos)
+		
+		# create some files
+		self.create_file(repo1,"test1")
+		self.create_file(repo2,"test2")
+		
+		# sync
+		self.sync(repos)
+		
+		# copy
+		self.copy(repos)
+		
+		# the files should be in both repositories
+		for repo in repos:
+			self.has_file(repo,"test1")
+			self.has_file(repo,"test2")
+		
+		# there should be no strange remote branches left
+		def remote_branch_checker(repo):
+			repo.changePath()
+			cmd = ["git","branch","--all"]
+			output = subprocess.check_output(cmd).decode("UTF-8")
+			self.assertNotIn("alice",output)
+			self.assertNotIn("bob",output)
+		self.apply_to_repos(repos,remote_branch_checker)
+		
+
+		
+		
 
 
 if __name__ == '__main__':

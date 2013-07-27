@@ -778,6 +778,28 @@ class Repository:
 		# sync again
 		self.sync(annex_descs)
 
+
+	def deleteAllRemotes(self):
+		"""
+			deletes all remotes found in .git/confing, this implicitly deletes
+			also all remote tracking-branches
+		"""
+		
+		# change path to current directory
+		path = self.changePath()
+		print("\033[1;37;44m delete all remotes of %s in %s\033[0m" % (self.annex.name,path))
+
+		# find all remotes
+		cmd = ["git","remote","show"]
+		output = subprocess.check_output(cmd).decode("UTF-8")
+		remotes = [remote.strip() for remote in output.splitlines()]
+		print("remotes found: %s" % ', '.join(remotes))
+		
+		# delete all remotes
+		for remote in remotes:
+			cmd = ["git","remote","remove",remote]
+			self.executeCommand(cmd)
+		
 		
 	#
 	# hashable type mehods, hashable is needed for dict keys and sets
