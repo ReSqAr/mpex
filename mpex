@@ -4,6 +4,7 @@ import os
 import argparse
 import sys
 import textwrap
+import time
 
 import lib.fuzzy_match
 
@@ -30,13 +31,13 @@ def parse_annex_names(app,args):
 	selected_annexes = set()
 
 	for annex_name in annex_names:
-		try: 
-			# find and add annex
-			annex = lib.fuzzy_match.fuzzyMatch(annex_name,known_annexes)
-			selected_annexes.add(annex)
-		except ValueError as e:
-			print("could not parse the annex'%s': %s" % (annex_name,e.args[0]))
+		# find annexes
+		annexes = set(lib.fuzzy_match.fuzzyMultiMatch(annex_name,known_annexes))
+		if not annexes:
+			print("could not parse the annex '%s'")
 			sys.exit()
+		# add found annexes
+		selected_annexes |= annexes
 	
 	return selected_annexes
 
@@ -46,6 +47,13 @@ def apply_function(args,f):
 	app = application.Application(CONFIG_PATH)
 	# parse annex names
 	selected_annexes = parse_annex_names(app,args)
+	
+	# give the user the chance to understand what the program is doing
+	names = ", ".join(sorted(annex.name for annex in selected_annexes))
+	print()
+	print("selected annexes: %s" % names)
+	print()
+	time.sleep(0.5)
 	
 	for repo in sorted(app.getHostedRepositories(),key=lambda r: str((r.annex,r.path))):
 		# check if the repo belongs to a selected annex, if yes, then execute f
