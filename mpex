@@ -3,6 +3,7 @@
 import os
 import argparse
 import sys
+import textwrap
 
 import lib.fuzzy_match
 
@@ -134,9 +135,18 @@ def func_copy(args):
 # run the given command against the repositories
 #
 def init_command(parsers):
-	parser = parsers.add_parser('command', help='run the given command against the repositories.')
+	epilog  = textwrap.dedent("""\
+				Examples:
+				   %(prog)s git status
+				   %(prog)s -- git annex status --fast
+				   %(prog)s cat .git/config
+				""")
+	parser = parsers.add_parser('command',
+									help='run the given command against the repositories.',
+									epilog=epilog,
+									formatter_class=argparse.RawDescriptionHelpFormatter)
 	#parser.add_argument('annex', nargs='*', help="Annex names")
-	parser.add_argument('command', nargs='+', help="Command, useful to seperate with --")
+	parser.add_argument('command', nargs='+', help="command to run")
 	parser.set_defaults(func=func_command)
 
 def func_command(args):
@@ -200,7 +210,7 @@ def func_sethost(args):
 
 	try:
 		host = app.hosts.fuzzyMatch(args.host)
-		print("Setting host to %s." % host.name)
+		print("setting host to %s." % host.name)
 		app.setCurrentHost(host)
 	except Exception as e:
 		print("an error has occured: %s" % e.args[0])
@@ -211,7 +221,7 @@ def runParser():
 	parser = argparse.ArgumentParser(prog='mpex')
 
 	# create sub parsers
-	subparsers = parser.add_subparsers(help='There are some subcommands.')
+	subparsers = parser.add_subparsers()
 	init_init(subparsers)
 	init_reinit(subparsers)
 	init_finalise(subparsers)

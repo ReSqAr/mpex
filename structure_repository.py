@@ -626,7 +626,7 @@ class Repository:
 	def sync(self, annex_descs=None):
 		"""
 			calls finalise and git-annex sync, when annex_descs (list of annex
-			# descriptions) is given, use this list instead of hosts with an active annex
+			descriptions) is given, use this list instead of hosts with an active annex
 		"""
 		# change into the right directory
 		path = self.changePath()
