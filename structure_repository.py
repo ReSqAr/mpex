@@ -587,7 +587,7 @@ class Repository:
 			connection = connections.pop()
 			gitID   = repo.description
 			gitPath = connection.gitPath(repo)
-			
+
 			try:
 				# determine which url was already set
 				url = self.readGitKey("remote.%s.url" % gitID)

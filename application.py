@@ -47,16 +47,16 @@ class Application:
 		path = os.path.join(self.path,"current_hostname")
 		# if the path does not exist
 		if not os.path.isfile(path):
-			raise RuntimeError("Unable to find the current host.")
+			raise RuntimeError("Unable to find the current host. (File does not exist)")
 		with io.open(path, mode="rt", encoding="UTF8") as fd:
 			# read
-			host = fd.read()
-			host = host.strip()
+			hostname = fd.read()
+			hostname = hostname.strip()
 			# associate host to a Host object
-			host = self.hosts.get(host)
+			host = self.hosts.get(hostname)
 			# if we failed, raise an error
 			if host is None:
-				raise RuntimeError("Unable to find the current host.")
+				raise RuntimeError("Unable to find the current host. (File: %s)" % hostname)
 			# otherwise, return the found host
 			return host
 	

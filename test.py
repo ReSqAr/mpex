@@ -568,10 +568,18 @@ class TestCommands(unittest.TestCase):
 
 	def init_repos(self, repos):
 		""" init the given repos """
+		self.apply_to_repos(repos,lambda r:r.init())
+
+	def reinit_repos(self, repos):
+		""" init the given repos """
+		self.apply_to_repos(repos,lambda r:r.setProperties())
+
+	def apply_to_repos(self, repos, f):
+		""" applys f to every repository on its host """
 		for repo in repos:
 			repo.app.setCurrentHost(repo.host)
-			repo.init()
-
+			f(repo)
+		
 	def create_file(self, repo, filename):
 		""" create file in the given repository """
 		f_path = os.path.join(repo.path,filename)
@@ -1136,6 +1144,11 @@ class TestCommands(unittest.TestCase):
 			4. call copy in repository alice (repo1)
 			5. sync all
 			6. now the distribution of the files looks like that: both have the file
+			-----
+			7. strange things happen: the host names and repository descriptions change
+			   we need to restart the app, as some gurantees have been violated
+			-----
+			8. reinit
 		"""
 		# initialisation
 		app = application.Application(self.path)
@@ -1163,6 +1176,32 @@ class TestCommands(unittest.TestCase):
 		# the file should be in both repositories
 		self.has_file(repo1,"test")
 		self.has_file(repo2,"test")
+
+		# change host names
+		host1._name = "NotHost1"
+		host2._name = "NotHost2"
+		
+		# change descriptions
+		repo1._data["description"] = "notalice"
+		repo2._data["description"] = "notbob"
+		
+		# restart app
+		for x in [h,a,r,c]:
+			x.save()
+		for x in [h,a,r,c]:
+			x.load()
+		
+		# check some properties
+		self.assertEqual(len(h.getAll()),2)
+		self.assertEqual(len(a.getAll()),1)
+		self.assertEqual(len(r.getAll()),2)
+		self.assertEqual(len(c.getAll()),1)
+		
+		# refresh repos
+		repos = r.getAll()
+		
+		# re init repositories
+		self.reinit_repos(repos)
 
 
 if __name__ == '__main__':
