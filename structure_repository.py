@@ -689,14 +689,11 @@ class Repository:
 		# use files expression of the current repository, if none is given
 		if files is None:
 			files = self.files
+
 		# parse files expression
 		files = self.sanitiseFilesExpression(files)
 		files = self.tokeniseFileExpression(files)
 		cur_files_cmd = self.tokenisedFilesExpressionToCmd(files)
-
-		# check files expression
-		self.checkFilesExpression(cur_files_cmd)
-		
 
 		# change into the right directory
 		path = self.changePath()

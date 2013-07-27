@@ -989,5 +989,135 @@ class Test(unittest.TestCase):
 					self.assertEqual(set(found),{2-1,3-1})
 
 
+
+	def test_copy_strict(self):
+		"""
+			test copy strict
+			procedure:
+			1. create two repositories with this connection:
+			   alice (repo1) -> bob (repo2)
+			   with the following flags set:
+			   alice: files expresion = '-' and strict
+			2. create file in repository alice (repo1)
+			3. sync all
+			4. call copy in repository alice (repo1)
+			6. now the distribution of the files looks like that:
+			   alice: no
+			   bob: test
+		"""
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2 = [h.create("Host%d"%i) for i in range(1,2+1)]
+		annex = a.create("Annex")
+		conn12 = c.create(host1,host2,"/",alwayson="true")
+		
+		# create & init
+		path1 = os.path.join(self.path,"repo_host1")
+		repo1 = r.create(host1,annex,path1,description="alice", files="-", strict="true")
+		path2 = os.path.join(self.path,"repo_host2")
+		repo2 = r.create(host2,annex,path2,description="bob")
+		
+		repos = [repo1,repo2]
+		
+		# init repos
+		for repo in repos:
+			app.setCurrentHost(repo.host)
+			repo.init()
+		
+		# file name
+		f_path1 = os.path.join(path1,"test")
+		with open(f_path1,"wt") as fd:
+			fd.write("test")
+		
+		# sync all repos
+		for repo in reversed(repos):
+			app.setCurrentHost(repo.host)
+			repo.sync()
+		
+		# copy repo1
+		app.setCurrentHost(repo1.host)
+		repo1.copy()
+
+		# sync all repos
+		for repo in reversed(repos):
+			app.setCurrentHost(repo.host)
+			repo.sync()
+		
+		# only the link should be left in repo1
+		self.assertFalse(os.path.isfile(f_path1))
+		self.assertTrue(os.path.islink(f_path1))
+		
+		# shoud be in repo2
+		f_path2 = os.path.join(path2,"test")
+		with open(f_path2,"rt") as fd:
+			self.assertEqual(fd.read(),"test")
+
+
+
+	def test_copy_strict_remote(self):
+		"""
+			test copy strict on remote
+			procedure:
+			1. create two repositories with this connection:
+			   alice (repo1) -> bob (repo2)
+			   with the following flags set:
+			   bob: files expresion = '-' and strict
+			2. create file in repository bob (repo2)
+			3. sync all
+			4. call copy in repository alice (repo1)
+			6. now the distribution of the files looks like that:
+			   alice: test
+			   bob: no
+		"""
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2 = [h.create("Host%d"%i) for i in range(1,2+1)]
+		annex = a.create("Annex")
+		conn12 = c.create(host1,host2,"/",alwayson="true")
+		
+		# create & init
+		path1 = os.path.join(self.path,"repo_host1")
+		repo1 = r.create(host1,annex,path1,description="alice")
+		path2 = os.path.join(self.path,"repo_host2")
+		repo2 = r.create(host2,annex,path2,description="bob", files="-", strict="true")
+		
+		repos = [repo1,repo2]
+		
+		# init repos
+		for repo in repos:
+			app.setCurrentHost(repo.host)
+			repo.init()
+		
+		# file name
+		f_path2 = os.path.join(path2,"test")
+		with open(f_path2,"wt") as fd:
+			fd.write("test")
+		
+		# sync all repos
+		for repo in reversed(repos):
+			app.setCurrentHost(repo.host)
+			repo.sync()
+		
+		# copy repo1
+		app.setCurrentHost(repo1.host)
+		repo1.copy()
+
+		# sync all repos
+		for repo in reversed(repos):
+			app.setCurrentHost(repo.host)
+			repo.sync()
+		
+		# only the link should be left in repo2
+		self.assertFalse(os.path.isfile(f_path2))
+		self.assertTrue(os.path.islink(f_path2))
+		
+		# shoud be in repo1
+		f_path1 = os.path.join(path1,"test")
+		with open(f_path1,"rt") as fd:
+			self.assertEqual(fd.read(),"test")
+
+
 if __name__ == '__main__':
 	unittest.main()
