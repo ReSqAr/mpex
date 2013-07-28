@@ -554,24 +554,42 @@ class TestCommands(unittest.TestCase):
 			repo.app.setCurrentHost(repo.host)
 			ret.append(f(repo))
 		return ret
-		
-	def create_file(self, repo, filename):
-		""" create file in the given repository """
-		f_path = os.path.join(repo.localpath,filename)
+	
+	def _create_file(self, path, filename):
+		""" create file in the given path """
+		f_path = os.path.join(path,filename)
 		with open(f_path,"wt") as fd:
 			fd.write(filename)
+	def create_file(self, repo, filename):
+		""" create file in the given repository """
+		self._create_file(repo.path,filename)
+	def create_file_local(self, repo, filename):
+		""" create file in the given repository """
+		self._create_file(repo.localpath,filename)
 
-	def has_file(self, repo, filename):
-		""" checks if the repository has the given file (with content) """
-		f_path = os.path.join(repo.localpath,filename)
+	def _has_file(self, path, filename):
+		""" checks if the path has the given file (with content) """
+		f_path = os.path.join(path,filename)
 		with open(f_path,"rt") as fd:
 			self.assertEqual(fd.read(),filename)
+	def has_file(self, repo, filename):
+		""" checks if the repository has the given file (with content) """
+		return self._has_file(repo.path,filename)
+	def has_file_local(self, repo, filename):
+		""" checks if the repository has the given file (with content) """
+		return self._has_file(repo.localpath,filename)
 
-	def has_link(self, repo, filename):
-		""" checks if the repository has the given file as a link """
-		f_path = os.path.join(repo.localpath,filename)
+	def _has_link(self, path, filename):
+		""" checks if the path has the given file as a link """
+		f_path = os.path.join(path,filename)
 		self.assertFalse(os.path.isfile(f_path))
 		self.assertTrue(os.path.islink(f_path))
+	def has_link(self, repo, filename):
+		""" checks if the repository has the given file as a link """
+		return self._has_link(repo.path,filename)
+	def has_link_local(self, repo, filename):
+		""" checks if the repository has the given file as a link """
+		return self._has_link(repo.localpath,filename)
 
 	def sync(self, repos):
 		""" syncs the repos """
@@ -1203,7 +1221,7 @@ class TestCommands(unittest.TestCase):
 		repo2.init()
 
 		# create file 'test' in repo1
-		self.create_file(repo1,"test")
+		self.create_file_local(repo1,"test")
 		
 		# sync
 		repo1.sync()
@@ -1217,8 +1235,8 @@ class TestCommands(unittest.TestCase):
 		repo2.sync()
 		
 		# only the link is left in repo1, where as the complete file is in repo2
-		self.has_link(repo1,"test")
-		self.has_file(repo2,"test")
+		self.has_link_local(repo1,"test")
+		self.has_file_local(repo2,"test")
 
 
 	def test_migration(self):
