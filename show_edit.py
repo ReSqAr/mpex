@@ -1,4 +1,5 @@
 import collections
+import readline
 
 import lib.fuzzy_match
 
@@ -555,10 +556,13 @@ def edit_repositories(app,obj):
 						"postprocessor": valid_values_pp(trust_level)})
 
 	# 3. question: files expression
+	def files_pp(s):
+		""" files post processor """
+		return obj.sanitiseFilesExpression(s)
 	questions.append({"name":"files",
 						"description":"files expression which specifies the desired content of this repository",
 						"default":obj.files if obj.files else "",
-						"postprocessor": None})
+						"postprocessor": files_pp})
 
 	# 4. question: strict?
 	questions.append({"name":"strict",
