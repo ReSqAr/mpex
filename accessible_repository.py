@@ -38,6 +38,8 @@ class AccessibleRepository:
 		self.app = self.repo.app
 		# call super
 		super(AccessibleRepository,self).__init__()
+		# check that localpath works
+		self.localpath
 	
 	def __getattribute__(self, name):
 		""" forward request to self.repo """
@@ -134,7 +136,7 @@ class AccessibleRepository:
 		""" has the current repository uncommited changes? """
 
 		# change into the right directory
-		path = self.changePath()
+		self.changePath()
 
 		# call 'git status -s'
 		output = subprocess.check_output(["git","status","-s"]).decode("UTF8").strip()
@@ -256,14 +258,14 @@ class AccessibleRepository:
 	def init(self, ignorenonempty=False):
 		""" inits the repository """
 		
+		print("\033[1;37;44m initialise %s at %s \033[0m" % (self.annex.name,self.localpath))
+
 		# change into the right directory, create it if necessary
-		path = self.changePath(create=True, )
-
-		print("\033[1;37;44m initialise %s at %s \033[0m" % (self.annex.name,path))
-
+		self.changePath(create=True)
+		
 		# init git
-		if not os.path.isdir(os.path.join(path,".git")):
-			if os.listdir(path) and not ignorenonempty:
+		if not os.path.isdir(os.path.join(self.localpath,".git")):
+			if os.listdir(self.localpath) and not ignorenonempty:
 				raise RuntimeError("Trying to run 'git init' in a non-empty directory, set ignorenonempty=True.")
 			else:
 				self.executeCommand(["git","init"])
@@ -271,7 +273,7 @@ class AccessibleRepository:
 			print("It is already a git repository.")
 		
 		# init git annex
-		if not os.path.isdir(os.path.join(path,".git/annex")):
+		if not os.path.isdir(os.path.join(self.localpath,".git/annex")):
 			self.executeCommand(["git-annex","init",self.description])
 		else:
 			print("It is already a git annex repository.")
@@ -282,11 +284,11 @@ class AccessibleRepository:
 	def setProperties(self):
 		""" sets the properties of the current repository """
 		
-		# change into the right directory
-		path = self.changePath()
-
-		print("\033[1;37;44m setting properties of %s at %s \033[0m" % (self.annex.name,path))
+		print("\033[1;37;44m setting properties of %s at %s \033[0m" % (self.annex.name,self.localpath))
 		
+		# change into the right directory
+		self.changePath()
+
 		# set the requested direct mode, if doable
 		if self.app.gitAnnexCapabilities["direct"]:
 			# change only if needed
@@ -332,11 +334,11 @@ class AccessibleRepository:
 	def finalise(self):
 		""" calls git-annex add and commits all changes """
 		
-		# change into the right directory
-		path = self.changePath()
-
-		print("\033[1;37;44m commiting changes in %s at %s \033[0m" % (self.annex.name,path))
+		print("\033[1;37;44m commiting changes in %s at %s \033[0m" % (self.annex.name,self.localpath))
 		
+		# change into the right directory
+		self.changePath()
+
 		# early exit in case of no uncommited changes
 		if not self.hasUncommitedChanges():
 			print("no changes")
@@ -358,15 +360,15 @@ class AccessibleRepository:
 			calls finalise and git-annex sync, when annex_descs (list of annex
 			descriptions) is given, use this list instead of hosts with an active annex
 		"""
-		# change into the right directory
-		path = self.changePath()
-
 		self.finalise()
 		
 		self.repairMaster()
 		
-		print("\033[1;37;44m syncing %s  in %s \033[0m" % (self.annex.name,path))
+		print("\033[1;37;44m syncing %s in %s \033[0m" % (self.annex.name,self.localpath))
 		
+		# change into the right directory
+		self.changePath()
+
 		# if a list of hosts is not given
 		if annex_descs is None:
 			annex_descs = {repo.description for repo in self.activeRepositories().keys()}
@@ -383,7 +385,7 @@ class AccessibleRepository:
 		""" creates the master branch if necessary """
 		
 		# change into the right directory
-		path = self.changePath()
+		self.changePath()
 
 		branches = self.gitBranches()
 		# unneeded, if the master branch already exists
@@ -392,7 +394,7 @@ class AccessibleRepository:
 		
 		if "synced/master" in branches:
 			# use the 'synced/master' branch if possible
-			print("\033[1;37;44m repairing master branch in %s at %s \033[0m" % (self.annex.name,path))
+			print("\033[1;37;44m repairing master branch in %s at %s \033[0m" % (self.annex.name,self.localpath))
 			
 			# checkout synced/master
 			self.executeCommand(["git","checkout","synced/master"])
@@ -425,9 +427,6 @@ class AccessibleRepository:
 		files = self.tokeniseFileExpression(files)
 		cur_files_cmd = self.tokenisedFilesExpressionToCmd(files)
 
-		# change into the right directory
-		path = self.changePath()
-
 		# get active repositories
 		repos = self.activeRepositories()
 		
@@ -444,9 +443,11 @@ class AccessibleRepository:
 		# sync
 		self.sync(annex_descs)
 		
-		print("\033[1;37;44m copying files %s \033[0m" % (self.annex.name,))
+		print("\033[1;37;44m copying files %s at %s \033[0m" % (self.annex.name,self.localpath))
 		
-		
+		# change into the right directory
+		self.changePath()
+
 		#
 		# pull
 		#
@@ -509,9 +510,10 @@ class AccessibleRepository:
 			also all remote tracking-branches
 		"""
 		
+		print("\033[1;37;44m delete all remotes of %s in %s\033[0m" % (self.annex.name,self.localpath))
+
 		# change path to current directory
-		path = self.changePath()
-		print("\033[1;37;44m delete all remotes of %s in %s\033[0m" % (self.annex.name,path))
+		self.changePath()
 
 		# find all remotes
 		cmd = ["git","remote","show"]
