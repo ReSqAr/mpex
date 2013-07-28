@@ -4,9 +4,9 @@ import subprocess
 import datetime
 
 
-class AccessibleRepository:
+class LocalRepository:
 	"""
-		AccessibleRepository represents a realisation of a repository
+		LocalRepository represents a realisation of a repository
 		which can be accessed from app.currentHost()
 		
 		main methods:
@@ -33,14 +33,28 @@ class AccessibleRepository:
 	"""
 	def __init__(self, repo, connection=None):
 		# call super
-		super(AccessibleRepository,self).__init__()
+		super(LocalRepository,self).__init__()
 
 		# save options
 		self.repo = repo
 		self.connection = connection
 
-		# check that localpath works
-		self.localpath
+		# check that the gurantees are valid, i.e. it is reachable via 
+		if self.connection:
+			# if it is a remote repository, check the integrity of the arguments
+			assert self.app.currentHost() == self.connection.source,\
+					"the connection does not originate from the current host. (%s != %s)" % (self.app.currentHost(),self.connection.source)
+			# the connection should end at the host of the current repository
+			assert repo.host == connection.dest,\
+					"the connection does not end at the host of the current repository. (%s != %s)" % (self.repo.host,self.connection.dest)
+			# the connection has to be local
+			assert self.connection.isLocal(),\
+					"the connection has to be to 'local'."
+		else:
+			# otherwise, the repository is hosted on the current host
+			assert self.app.currentHost() == self.repo.host,\
+					"the repository is not hosted on the current host. (%s != %s)" % (self.app.currentHost(),self.repo.host)
+			
 	
 	def __getattribute__(self, name):
 		""" forward request to self.repo """
@@ -49,7 +63,7 @@ class AccessibleRepository:
 			return getattr(self.repo,name)
 		except:
 			# otherwise, satisfy the request locally
-			return super(AccessibleRepository,self).__getattribute__(name)
+			return super(LocalRepository,self).__getattribute__(name)
 	
 	def __setattr__(self, name, v):
 		""" forward request to self.repo """
@@ -61,26 +75,16 @@ class AccessibleRepository:
 			# no attribute named repo
 			pass
 		# otherwise, set it here
-		return super(AccessibleRepository,self).__setattr__(name,v)
+		return super(LocalRepository,self).__setattr__(name,v)
 	
 	@property
 	def localpath(self):
 		""" returns the path on the local machine """
 		if self.connection is None:
 			# the repository is on the local machine
-			if self.app.currentHost() != self.host:
-				raise ValueError("The current host is not the host of the repository. (%s != %s)" % (self.app.currentHost(),self.host))
-			# give the path on the local machine
 			return self.path
 		else:
-			# we are working remotely:
-			# the connection should originate from the current host
-			if self.app.currentHost() != self.connection.source:
-				raise ValueError("The connection does not originate from the current host. (%s != %s)" % (self.app.currentHost(),self.connection.source))
-			# the connection should end at the host of the current repository
-			if self.host != self.connection.dest:
-				raise ValueError("The connection does not end at the host of the current repository. (%s != %s)" % (self.host,self.connection.dest))
-			# give the path on the local machine
+			# we are working remotely: give the path on the local machine
 			return self.connection.pathOnSource(self.path)
 	
 	#

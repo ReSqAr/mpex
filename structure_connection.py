@@ -152,12 +152,20 @@ class Connection:
 		# return status
 		return isonline
 
+	def isLocal(self):
+		"""
+			is the connection local, i.e. something which can be
+			reached via the file system
+		"""
+		# a connection is local if it is of type 'mount'
+		return self.protocol() in ("mount",)
+
 	def pathOnSource(self, path):
 		"""
 			assume that path is path on self.dest and that the connection is of
 			type mount, the return value is the path on self.source
 		"""
-		assert self.protocol() in ("mount",), "Incorrect usage."
+		assert self.isLocal(), "Incorrect usage."
 		
 		# kill the trailing /
 		prefix = self.path
