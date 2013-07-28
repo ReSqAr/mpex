@@ -32,23 +32,36 @@ class AccessibleRepository:
 			activeAnnexDescriptions() -> dictionary online repositories -> connection
 	"""
 	def __init__(self, repo, connection=None):
+		# call super
+		super(AccessibleRepository,self).__init__()
+
 		# save options
 		self.repo = repo
 		self.connection = connection
-		self.app = self.repo.app
-		# call super
-		super(AccessibleRepository,self).__init__()
+
 		# check that localpath works
 		self.localpath
 	
 	def __getattribute__(self, name):
 		""" forward request to self.repo """
 		try:
-			# try to satisfy the request locally
-			return super(AccessibleRepository,self).__getattribute__(name)
-		except:
-			# otherwise, ask self.repo
+			# try to satisfy the request via self.repo
 			return getattr(self.repo,name)
+		except:
+			# otherwise, satisfy the request locally
+			return super(AccessibleRepository,self).__getattribute__(name)
+	
+	def __setattr__(self, name, v):
+		""" forward request to self.repo """
+		try:
+			# if repo has a variable called name, then set it there
+			if hasattr(self.repo,name):
+				return setattr(self.repo,name,v)
+		except AttributeError:
+			# no attribute named repo
+			pass
+		# otherwise, set it here
+		return super(AccessibleRepository,self).__setattr__(name,v)
 	
 	@property
 	def localpath(self):
