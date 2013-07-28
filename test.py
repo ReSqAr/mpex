@@ -557,19 +557,19 @@ class TestCommands(unittest.TestCase):
 		
 	def create_file(self, repo, filename):
 		""" create file in the given repository """
-		f_path = os.path.join(repo.path,filename)
+		f_path = os.path.join(repo.localpath,filename)
 		with open(f_path,"wt") as fd:
 			fd.write(filename)
 
 	def has_file(self, repo, filename):
 		""" checks if the repository has the given file (with content) """
-		f_path = os.path.join(repo.path,filename)
+		f_path = os.path.join(repo.localpath,filename)
 		with open(f_path,"rt") as fd:
 			self.assertEqual(fd.read(),filename)
 
 	def has_link(self, repo, filename):
 		""" checks if the repository has the given file as a link """
-		f_path = os.path.join(repo.path,filename)
+		f_path = os.path.join(repo.localpath,filename)
 		self.assertFalse(os.path.isfile(f_path))
 		self.assertTrue(os.path.islink(f_path))
 
@@ -1161,6 +1161,64 @@ class TestCommands(unittest.TestCase):
 		self.has_link(repo2,"test")
 		self.has_file(repo1,"test")
 
+
+
+	def test_copy_strict_via_connection(self):
+		"""
+			test copy strict and working all the time on Host1
+			(which connects to Host0 and Host1)
+			procedure:
+			1. create two repositories with this connection:
+			   alice (repo1) -> bob (repo2)
+			   with the following flags set:
+			   alice: files expresion = '-' and strict
+			2. create file in repository alice (repo1)
+			3. sync all
+			4. call copy in repository alice (repo1)
+			5. now the distribution of the files looks like that:
+			   alice: no
+			   bob: test
+		"""
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2 = [h.create("Host%d"%i) for i in range(1,2+1)]
+		app.setCurrentHost(host1)
+		annex = a.create("Annex")
+		conn12 = c.create(host1,host2,self.path,alwayson="true")
+		conn0 = [None,conn12]
+		
+		# create & init
+		path1 = os.path.join(self.path,"repo_host1")
+		repo1 = r.create(host1,annex,path1,description="alice", files="-", strict="true")
+		path2 = "/repo_host2"
+		repo2 = r.create(host2,annex,path2,description="bob")
+		repos = [repo1,repo2]
+		
+		# assimilate
+		repo1,repo2 = repos = [app.assimilate(r,c) for r,c in zip(repos,conn0)]
+
+		# init repos
+		repo1.init()
+		repo2.init()
+
+		# create file 'test' in repo1
+		self.create_file(repo1,"test")
+		
+		# sync
+		repo1.sync()
+		repo2.sync()
+		
+		# copy
+		repo1.copy()
+		
+		# sync
+		repo1.sync()
+		repo2.sync()
+		
+		# only the link is left in repo1, where as the complete file is in repo2
+		self.has_link(repo1,"test")
+		self.has_file(repo2,"test")
 
 
 	def test_migration(self):

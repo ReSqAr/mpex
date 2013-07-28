@@ -48,6 +48,7 @@ class AccessibleRepository:
 			# otherwise, ask self.repo
 			return getattr(self.repo,name)
 	
+	@property
 	def localpath(self):
 		""" returns the path on the local machine """
 		if self.connection is None:
@@ -88,7 +89,7 @@ class AccessibleRepository:
 		"""
 
 		# get path
-		path = os.path.normpath(self.localpath())
+		path = os.path.normpath(self.localpath)
 		
 		if create:
 			# create the path if needed
@@ -364,7 +365,7 @@ class AccessibleRepository:
 		
 		self.repairMaster()
 		
-		print("\033[1;37;44m syncing %s \033[0m" % (self.annex.name,))
+		print("\033[1;37;44m syncing %s  in %s \033[0m" % (self.annex.name,path))
 		
 		# if a list of hosts is not given
 		if annex_descs is None:
