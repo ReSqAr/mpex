@@ -2,6 +2,7 @@ import os.path
 import io
 import subprocess
 
+import accessible_repository
 import structure_host
 import structure_annex
 import structure_repository
@@ -68,9 +69,22 @@ class Application:
 			# write
 			fd.write(host.name)
 	
+	def assimilate(self, repo, connection=None):
+		""" promotes a Repository to an AccessibleRepository """
+		if connection:
+			# if it is a remote repository, check the integrity of the arguments
+			if self.currentHost() != connection.source:
+				raise ValueError("The connection does not originate from the current host. (%s != %s)" % (self.currentHost(),connection.source))
+			# the connection should end at the host of the current repository
+			if repo.host != connection.dest:
+				raise ValueError("The connection does not end at the host of the current repository. (%s != %s)" % (host,connection.dest))
+		
+		# promote the object
+		return accessible_repository.AccessibleRepository(repo,connection)
+	
 	def getHostedRepositories(self):
 		""" get all repositories which are hosted on the current machine """
-		return self.currentHost().repositories()
+		return [self.assimilate(repo) for repo in self.currentHost().repositories()]
 	
 	
 	@property

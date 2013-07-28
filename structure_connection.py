@@ -152,7 +152,20 @@ class Connection:
 		# return status
 		return isonline
 
-	
+	def pathOnSource(self, path):
+		"""
+			assume that path is path on self.dest and that the connection is of
+			type mount, the return value is the path on self.source
+		"""
+		assert self.protocol() in ("mount",), "Incorrect usage."
+		
+		# kill the trailing /
+		prefix = self.path
+		if prefix.endswith("/"):
+			prefix = prefix[:-1]
+		# just join them together
+		return prefix + path
+
 	#
 	# hashable type mehods, hashable is needed for dict keys and sets
 	# (source: http://docs.python.org/2/library/stdtypes.html#mapping-types-dict)

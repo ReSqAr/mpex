@@ -498,36 +498,6 @@ class TestStructure(unittest.TestCase):
 		conn12 = c.get(host1,host2,"/")
 		self.assertTrue(conn12.alwaysOn)
 	
-	def test_app_getHostedRepositories(self):
-		""" test application's getHostedRepositories method """
-		# initialisation
-		app = application.Application(self.path)
-		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
-		host1,host2 = h.create("Host1"),h.create("Host2")
-		annex1,annex2 = a.create("Annex1"),a.create("Annex2")
-		
-		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"))
-		repo21 = r.create(host2,annex1,os.path.join(self.path,"repo21"))
-		repo12 = r.create(host1,annex2,os.path.join(self.path,"repo12"))
-		repo22 = r.create(host2,annex2,os.path.join(self.path,"repo22"))
-		
-		# test app.CurrentHost
-		self.assertRaisesRegex(RuntimeError, "Unable to find" , app.currentHost)
-		
-		app.setCurrentHost(host1)
-		
-		# test app.CurrentHost
-		self.assertEqual(app.currentHost(), host1)
-
-		# save all
-		app.save()
-		
-		# restart
-		app = application.Application(self.path)
-		
-		# test getHostedRepositories
-		self.assertEqual(app.getHostedRepositories(),{repo11,repo12})
-	
 	def test_app_gitAnnexCapabilities(self):
 		""" test app.gitAnnexCapabilities """
 		app = application.Application(self.path)
@@ -565,7 +535,10 @@ class TestCommands(unittest.TestCase):
 		self.path = None
 
 
-
+	def assimilate_repos(self, repos):
+		""" assimilate the given repos """
+		return self.apply_to_repos(repos,lambda r:r.app.assimilate(r))
+	
 	def init_repos(self, repos):
 		""" init the given repos """
 		self.apply_to_repos(repos,lambda r:r.init())
@@ -576,9 +549,11 @@ class TestCommands(unittest.TestCase):
 
 	def apply_to_repos(self, repos, f):
 		""" applys f to every repository on its host """
+		ret = []
 		for repo in repos:
 			repo.app.setCurrentHost(repo.host)
-			f(repo)
+			ret.append(f(repo))
+		return ret
 		
 	def create_file(self, repo, filename):
 		""" create file in the given repository """
@@ -623,7 +598,35 @@ class TestCommands(unittest.TestCase):
 		self.sync(sync_repos)
 
 
+	def test_app_getHostedRepositories(self):
+		""" test application's getHostedRepositories method """
+		# initialisation
+		app = application.Application(self.path)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2 = h.create("Host1"),h.create("Host2")
+		annex1,annex2 = a.create("Annex1"),a.create("Annex2")
+		
+		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"))
+		repo21 = r.create(host2,annex1,os.path.join(self.path,"repo21"))
+		repo12 = r.create(host1,annex2,os.path.join(self.path,"repo12"))
+		repo22 = r.create(host2,annex2,os.path.join(self.path,"repo22"))
+		
+		# test app.CurrentHost
+		self.assertRaisesRegex(RuntimeError, "Unable to find" , app.currentHost)
+		
+		app.setCurrentHost(host1)
+		
+		# test app.CurrentHost
+		self.assertEqual(app.currentHost(), host1)
 
+		# save all
+		app.save()
+		
+		# restart
+		app = application.Application(self.path)
+		
+		# test getHostedRepositories (which returns the assimilated version repo1i)
+		self.assertEqual({a.repo for a in app.getHostedRepositories()},{repo11,repo12})
 
 	def test_repo_init(self):
 		""" test repository init and conduct some basic checks """
@@ -637,6 +640,7 @@ class TestCommands(unittest.TestCase):
 		
 		# create & init
 		repo = r.create(host1,annex1,os.path.join(self.path,"repo"))
+		repo = app.assimilate(repo)
 		repo.init()
 		
 		# check properties
@@ -660,6 +664,7 @@ class TestCommands(unittest.TestCase):
 		
 		# create
 		repo = r.create(host1,annex1,os.path.join(self.path,"repo"),direct="true",trust="trust")
+		repo = app.assimilate(repo)
 		
 		# check
 		self.assertRaisesRegex(AssertionError,"is not a git annex", repo.setProperties)
@@ -698,6 +703,7 @@ class TestCommands(unittest.TestCase):
 		repo13 = r.create(host1,annex1,os.path.join(self.path,"repo13"))
 		repo23 = r.create(host2,annex1,os.path.join(self.path,"repo23"))
 		repo33 = r.create(host3,annex1,os.path.join(self.path,"repo33"))
+		repo13 = app.assimilate(repo13)
 		repo13.init()
 		repo13.setProperties()
 
@@ -725,11 +731,15 @@ class TestCommands(unittest.TestCase):
 		with open(os.path.join(path,"test"),"wt") as fd:
 			fd.write("test")
 		
-		repo_nonempty = r.create(host1,annex1,path)
-		self.assertRaisesRegex(RuntimeError,"non-empty directory",repo_nonempty.init)
+		# create
+		repo = r.create(host1,annex1,path)
+		repo = app.assimilate(repo)
+		
+		# try init
+		self.assertRaisesRegex(RuntimeError,"non-empty directory",repo.init)
 		# force creation and check disk format
-		repo_nonempty.init(ignorenonempty=True)
-		self.assertTrue(os.path.isdir(os.path.join(repo_nonempty.path,".git/annex")))
+		repo.init(ignorenonempty=True)
+		self.assertTrue(os.path.isdir(os.path.join(repo.path,".git/annex")))
 		
 	def test_repo_init_remotes_change_location(self):
 		""" test repository set properties and changing of the remotes location """
@@ -745,6 +755,7 @@ class TestCommands(unittest.TestCase):
 		
 		repo = r.create(host2,annex1,os.path.join(self.path,"repo"))
 		repo = r.create(host1,annex1,os.path.join(self.path,"repo"))
+		repo = app.assimilate(repo)
 		repo.init()
 		
 		# doing bad stuff
@@ -773,6 +784,7 @@ class TestCommands(unittest.TestCase):
 		# create & init
 		path = os.path.join(self.path,"repo")
 		repo = r.create(host,annex,path)
+		repo = app.assimilate(repo)
 		repo.init()
 		
 		# create file
@@ -810,6 +822,7 @@ class TestCommands(unittest.TestCase):
 		# create & init
 		path = os.path.join(self.path,"repo")
 		repo = r.create(host,annex,path)
+		repo = app.assimilate(repo)
 		repo.init()
 		
 		# create file
@@ -834,16 +847,17 @@ class TestCommands(unittest.TestCase):
 		app = application.Application(self.path)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,annex = h.create("Host1"),h.create("Host2"),a.create("Annex")
+		# set host
+		app.setCurrentHost(host1)
 		
 		# create & init
-		path1 = os.path.join(self.path,"repo_host1")
-		repo1 = r.create(host1,annex,path1,description="test_repo_1")
-		
-		app.setCurrentHost(host1)
-		repo1.init()
+		path = os.path.join(self.path,"repo_host1")
+		repo = r.create(host1,annex,path,description="test_repo")
+		repo = app.assimilate(repo)
+		repo.init()
 		
 		# should not raise an exception
-		repo1.repairMaster()
+		repo.repairMaster()
 
 
 
@@ -854,12 +868,13 @@ class TestCommands(unittest.TestCase):
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host,annex = h.create("Host"),a.create("Annex")
 		
+		# set host
+		app.setCurrentHost(host)
+		
 		# create & init
 		path = os.path.join(self.path,"repo_host")
 		repo = r.create(host,annex,path,description="test_repo_",direct="true")
-		
-		# init
-		app.setCurrentHost(host)
+		repo = app.assimilate(repo)
 		repo.init()
 		
 		# create file
@@ -897,6 +912,9 @@ class TestCommands(unittest.TestCase):
 		path2 = os.path.join(self.path,"repo_host2")
 		repo2 = r.create(host2,annex,path2,description="test_repo_2")
 		repos = [repo1,repo2]
+		
+		# assimilate
+		repo1,repo2 = repos = self.assimilate_repos(repos)
 		
 		# init
 		self.init_repos(repos)
@@ -943,6 +961,9 @@ class TestCommands(unittest.TestCase):
 		repo2 = r.create(host2,annex,path2,description="test_repo_2")
 		repos = [repo1,repo2]
 		
+		# assimilate
+		repo1,repo2 = repos = self.assimilate_repos(repos)
+
 		# init
 		self.init_repos(repos)
 		
@@ -995,6 +1016,9 @@ class TestCommands(unittest.TestCase):
 		
 		paths = [path1,path2,path3]
 		repos = [repo1,repo2,repo3]
+		
+		# assimilate
+		repo1,repo2,repo3 = repos = self.assimilate_repos(repos)
 		
 		# init repos
 		self.init_repos(repos)
@@ -1074,6 +1098,9 @@ class TestCommands(unittest.TestCase):
 		repo2 = r.create(host2,annex,path2,description="bob")
 		repos = [repo1,repo2]
 		
+		# assimilate
+		repo1,repo2 = repos = self.assimilate_repos(repos)
+
 		# init repos
 		self.init_repos(repos)
 
@@ -1118,6 +1145,9 @@ class TestCommands(unittest.TestCase):
 		repo2 = r.create(host2,annex,path2,description="bob", files="-", strict="true")
 		repos = [repo1,repo2]
 		
+		# assimilate
+		repo1,repo2 = repos = self.assimilate_repos(repos)
+
 		# init repos
 		self.init_repos(repos)
 
@@ -1168,6 +1198,9 @@ class TestCommands(unittest.TestCase):
 		repo2 = r.create(host2,annex,path2,description="bob")
 		repos = [repo1,repo2]
 		
+		# assimilate
+		repo1,repo2 = repos = self.assimilate_repos(repos)
+
 		# init repos
 		self.init_repos(repos)
 
@@ -1204,6 +1237,9 @@ class TestCommands(unittest.TestCase):
 		# refresh repos
 		repos = r.getAll()
 		
+		# assimilate
+		repos = self.assimilate_repos(repos)
+
 		# delete all remotes
 		self.apply_to_repos(repos,lambda r:r.deleteAllRemotes())
 		
