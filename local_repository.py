@@ -93,12 +93,12 @@ class LocalRepository:
 	#
 	def executeCommand(self, cmd, ignoreexception=False):
 		""" print and execute the command """
-		if self.app.verbose:
+		if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
 			print("command:"," ".join(cmd))
 		
 		try:
 			with open(os.devnull, "w") as devnull:
-				subprocess.check_call(cmd,stdout=None if self.app.verbose else devnull)
+				subprocess.check_call(cmd,stdout=None if self.app.verbose <= self.app.VERBOSE_NORMAL else devnull)
 		except subprocess.CalledProcessError as e:
 			if ignoreexception:
 				pass
@@ -279,7 +279,7 @@ class LocalRepository:
 	def init(self, ignorenonempty=False):
 		""" inits the repository """
 		
-		if self.app.verbose:
+		if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
 			print("\033[1;37;44m initialise %s at %s \033[0m" % (self.annex.name,self.localpath))
 
 		# change into the right directory, create it if necessary
@@ -292,14 +292,14 @@ class LocalRepository:
 			else:
 				self.executeCommand(["git","init"])
 		else:
-			if self.app.verbose:
+			if self.app.verbose <= self.app.VERBOSE_NORMAL:
 				print("It is already a git repository.")
 		
 		# init git annex
 		if not os.path.isdir(os.path.join(self.localpath,".git/annex")):
 			self.executeCommand(["git-annex","init",self.description])
 		else:
-			if self.app.verbose:
+			if self.app.verbose <= self.app.VERBOSE_NORMAL:
 				print("It is already a git annex repository.")
 		
 		# set the properties
@@ -308,7 +308,7 @@ class LocalRepository:
 	def setProperties(self):
 		""" sets the properties of the current repository """
 		
-		if self.app.verbose:
+		if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
 			print("\033[1;37;44m setting properties of %s at %s \033[0m" % (self.annex.name,self.localpath))
 		
 		# change into the right directory
@@ -322,7 +322,7 @@ class LocalRepository:
 				self.executeCommand(["git-annex",d])
 		else:
 			if self.direct:
-				if self.app.verbose:
+				if self.app.verbose <= self.app.VERBOSE_NORMAL:
 					print("direct mode is requested, however it is not supported by your git-annex version.")
 		
 		# set trust level if necessary
@@ -360,7 +360,7 @@ class LocalRepository:
 	def finalise(self):
 		""" calls git-annex add and commits all changes """
 		
-		if self.app.verbose:
+		if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
 			print("\033[1;37;44m commiting changes in %s at %s \033[0m" % (self.annex.name,self.localpath))
 		
 		# change into the right directory
@@ -368,7 +368,7 @@ class LocalRepository:
 
 		# early exit in case of no uncommited changes
 		if not self.hasUncommitedChanges():
-			if self.app.verbose:
+			if self.app.verbose <= self.app.VERBOSE_NORMAL:
 				print("no changes")
 			return
 
@@ -392,7 +392,7 @@ class LocalRepository:
 		
 		self.repairMaster()
 		
-		if self.app.verbose:
+		if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
 			print("\033[1;37;44m syncing %s in %s \033[0m" % (self.annex.name,self.localpath))
 		
 		# change into the right directory
@@ -423,7 +423,7 @@ class LocalRepository:
 		
 		if "synced/master" in branches:
 			# use the 'synced/master' branch if possible
-			if self.app.verbose:
+			if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
 				print("\033[1;37;44m repairing master branch in %s at %s \033[0m" % (self.annex.name,self.localpath))
 			
 			# checkout synced/master
@@ -473,7 +473,7 @@ class LocalRepository:
 		# sync
 		self.sync(annex_descs)
 		
-		if self.app.verbose:
+		if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
 			print("\033[1;37;44m copying files %s at %s \033[0m" % (self.annex.name,self.localpath))
 		
 		# change into the right directory
@@ -541,7 +541,7 @@ class LocalRepository:
 			also all remote tracking-branches
 		"""
 		
-		if self.app.verbose:
+		if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
 			print("\033[1;37;44m delete all remotes of %s in %s\033[0m" % (self.annex.name,self.localpath))
 
 		# change path to current directory
@@ -551,7 +551,7 @@ class LocalRepository:
 		cmd = ["git","remote","show"]
 		output = subprocess.check_output(cmd).decode("UTF-8")
 		remotes = [remote.strip() for remote in output.splitlines()]
-		if self.app.verbose:
+		if self.app.verbose <= self.app.VERBOSE_NORMAL:
 			print("remotes found: %s" % ', '.join(remotes))
 		
 		# delete all remotes

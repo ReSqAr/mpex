@@ -7,8 +7,8 @@ import itertools
 import application
 
 
-
-verbose = True
+# surpress some unnecessary output
+verbose = 3
 
 class TestStructure(unittest.TestCase):
 	"""

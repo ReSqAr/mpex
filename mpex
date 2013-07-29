@@ -44,20 +44,20 @@ def parse_annex_names(app,args):
 # parser used by the next function
 #
 apply_parser = argparse.ArgumentParser(add_help=False)
-apply_parser.add_argument('--silent', action="store_true")
+apply_parser.add_argument('--verbose', type=int, default=2, help="Verbosity level: 0 1 [2] 3 4")
 
 
 def apply_function(args,f):
 	""" apply f to all given annex_names """
 	# create application
-	app = application.Application(CONFIG_PATH, verbose=not args.silent)
+	app = application.Application(CONFIG_PATH, verbose=args.verbose)
 
 	# parse annex names
 	selected_annexes = parse_annex_names(app,args)
 	
 	# give the user the chance to understand what the program is doing
 	names = ", ".join(sorted(annex.name for annex in selected_annexes))
-	if not args.silent:
+	if args.verbose <= app.VERBOSE_IMPORTANT:
 		print()
 		print("selected annexes: %s" % names)
 		print()
@@ -171,12 +171,12 @@ def func_command(args):
 	args.annex = None
 	
 	def repo_command(repo):
-		if not args.silent:
+		if repo.app.verbose <= repo.app.VERBOSE_IMPORTANT:
 			print("\033[1;37;44m running the command for %s in %s \033[0m" % (repo.annex.name,repo.path))
 		# run the command in the directory
 		repo.changePath()
 		repo.executeCommand(args.command)
-		if not args.silent:
+		if repo.app.verbose <= repo.app.VERBOSE_IMPORTANT:
 			print()
 	apply_function(args,repo_command)
 
