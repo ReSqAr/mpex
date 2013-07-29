@@ -40,19 +40,28 @@ def parse_annex_names(app,args):
 	
 	return selected_annexes
 
+#
+# parser used by the next function
+#
+apply_parser = argparse.ArgumentParser(add_help=False)
+apply_parser.add_argument('--silent', action="store_true")
+
+
 def apply_function(args,f):
 	""" apply f to all given annex_names """
 	# create application
-	app = application.Application(CONFIG_PATH)
+	app = application.Application(CONFIG_PATH, verbose=not args.silent)
+
 	# parse annex names
 	selected_annexes = parse_annex_names(app,args)
 	
 	# give the user the chance to understand what the program is doing
 	names = ", ".join(sorted(annex.name for annex in selected_annexes))
-	print()
-	print("selected annexes: %s" % names)
-	print()
-	time.sleep(0.5)
+	if not args.silent:
+		print()
+		print("selected annexes: %s" % names)
+		print()
+		time.sleep(0.5)
 	
 	for repo in sorted(app.getHostedRepositories(),key=lambda r: str((r.annex,r.path))):
 		# check if the repo belongs to a selected annex, if yes, then execute f
@@ -64,7 +73,7 @@ def apply_function(args,f):
 # initialise repositories
 #
 def init_init(parsers):
-	parser = parsers.add_parser('init', help='create repositories.')
+	parser = parsers.add_parser('init', help='create repositories.',parents=[apply_parser])
 	parser.add_argument('annex', nargs='*', help="Annex names")
 	parser.add_argument('--ignorenonempty', action='store_true', default=False,
 							help="initialise directories even if they are non empty")
@@ -79,7 +88,7 @@ def func_init(args):
 # reinitialise repositories
 #
 def init_reinit(parsers):
-	parser = parsers.add_parser('reinit', help='reinitialise repositories.')
+	parser = parsers.add_parser('reinit', help='reinitialise repositories.',parents=[apply_parser])
 	parser.add_argument('annex', nargs='*', help="annex names")
 	parser.set_defaults(func=func_reinit)
 
@@ -92,7 +101,7 @@ def func_reinit(args):
 # finalise repositories
 #
 def init_finalise(parsers):
-	parser = parsers.add_parser('finalise', help='finalise repositories.')
+	parser = parsers.add_parser('finalise', help='finalise repositories.',parents=[apply_parser])
 	parser.add_argument('annex', nargs='*', help="annex names")
 	parser.set_defaults(func=func_finalise)
 
@@ -105,7 +114,7 @@ def func_finalise(args):
 # synchronise repositories
 #
 def init_sync(parsers):
-	parser = parsers.add_parser('sync', help='synchronise repositories.')
+	parser = parsers.add_parser('sync', help='synchronise repositories.',parents=[apply_parser])
 	parser.add_argument('annex', nargs='*', help="annex names")
 	parser.set_defaults(func=func_sync)
 
@@ -119,7 +128,7 @@ def func_sync(args):
 # copy repositories
 #
 def init_copy(parsers):
-	parser = parsers.add_parser('copy', help='copy repositories.')
+	parser = parsers.add_parser('copy', help='copy repositories.',parents=[apply_parser])
 	parser.add_argument('annex', nargs='*', help="annex names")
 	parser.add_argument('--files', default=None, help="files expression for the local host")
 	parser.add_argument('--strict', action="store_true", help="apply strict")
@@ -151,7 +160,8 @@ def init_command(parsers):
 	parser = parsers.add_parser('command',
 									help='run the given command against the repositories.',
 									epilog=epilog,
-									formatter_class=argparse.RawDescriptionHelpFormatter)
+									formatter_class=argparse.RawDescriptionHelpFormatter,
+									parents=[apply_parser])
 	#parser.add_argument('annex', nargs='*', help="Annex names")
 	parser.add_argument('command', nargs='+', help="command to run")
 	parser.set_defaults(func=func_command)
@@ -161,11 +171,13 @@ def func_command(args):
 	args.annex = None
 	
 	def repo_command(repo):
-		print("\033[1;37;44m running the command for %s in %s \033[0m" % (repo.annex.name,repo.path))
+		if not args.silent:
+			print("\033[1;37;44m running the command for %s in %s \033[0m" % (repo.annex.name,repo.path))
 		# run the command in the directory
 		repo.changePath()
 		repo.executeCommand(args.command)
-		print()
+		if not args.silent:
+			print()
 	apply_function(args,repo_command)
 
 
@@ -236,7 +248,8 @@ def init_migrate(parsers):
 	          " that you synchronised all your repositories before running this command."
 	parser = parsers.add_parser('migrate',
 									help='migrate repositories.',
-									epilog=epilog)
+									epilog=epilog,
+									parents=[apply_parser])
 	parser.add_argument('annex', nargs='*', help="annex names")
 	parser.set_defaults(func=func_migrate)
 
@@ -255,12 +268,15 @@ def func_migrate(args):
 	apply_function(args,repo_migrate)
 
 
+
 #
 # create and run parser
 #
 def runParser():
 	# create the top-level parser
 	parser = argparse.ArgumentParser(prog='mpex')
+
+
 
 	# create sub parsers
 	subparsers = parser.add_subparsers()

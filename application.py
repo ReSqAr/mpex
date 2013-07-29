@@ -19,7 +19,7 @@ if sys.version_info<(3,2,0):
 
 
 class Application:
-	def __init__(self, path, verbose=False):
+	def __init__(self, path, verbose=True):
 		# save option
 		self.path = path
 		self.verbose = verbose
