@@ -8,10 +8,14 @@ import application
 
 
 
+verbose = True
+
 class TestStructure(unittest.TestCase):
 	"""
 		tests structural properties of the application
 	"""
+	verbose = verbose
+	
 	def setUp(self):
 		# create temporary directory
 		self.path = tempfile.mkdtemp()
@@ -28,13 +32,13 @@ class TestStructure(unittest.TestCase):
 	# - assertIsNotNone
 	
 	def test_app_creation(self):
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		self.assertIsNotNone(app)
 	
 	def test_hosts_creation(self):
 		""" test host creation and identity """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 	
 		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
@@ -49,7 +53,7 @@ class TestStructure(unittest.TestCase):
 		""" test common error cases """
 		
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 
 		self.assertRaisesRegex(AssertionError, "empty", h.create, "")
@@ -61,7 +65,7 @@ class TestStructure(unittest.TestCase):
 	def test_creation_annexes(self):
 		""" test annex creation and identity """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 	
 		# creation
@@ -77,7 +81,7 @@ class TestStructure(unittest.TestCase):
 	def test_creation_annexes_error_cases(self):
 		""" test common error cases """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 
 		self.assertRaisesRegex(AssertionError, "empty", a.create, "")
@@ -89,7 +93,7 @@ class TestStructure(unittest.TestCase):
 	def test_creation_repositories(self):
 		""" test creation of repositories """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 		annex1,annex2,annex3 = [a.create("Annex%d"%i) for i in range(1,4)]
@@ -113,7 +117,7 @@ class TestStructure(unittest.TestCase):
 	def test_creation_repositories_error_cases(self):
 		""" """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host1up = h.create("Host1"),h.create("HOST1")
 		annex1 = a.create("Annex1")
@@ -151,7 +155,7 @@ class TestStructure(unittest.TestCase):
 	def test_creation_repositories_metadata_default(self):
 		""" check default values """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,annex1 = h.create("Host1"),a.create("Annex1")
 
@@ -165,7 +169,7 @@ class TestStructure(unittest.TestCase):
 	def test_creation_repositories_metadata_direct(self):
 		""" check metadata direct member """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,annex1 = h.create("Host1"),a.create("Annex1")
 
@@ -183,7 +187,7 @@ class TestStructure(unittest.TestCase):
 	def test_creation_repositories_metadata_strict(self):
 		""" check metadata strict member """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,annex1 = h.create("Host1"),a.create("Annex1")
 		
@@ -201,7 +205,7 @@ class TestStructure(unittest.TestCase):
 	def test_creation_repositories_metadata_trust(self):
 		""" check metadata trust member """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,annex1 = h.create("Host1"),h.create("Host2"),a.create("Annex1")
 		
@@ -217,7 +221,7 @@ class TestStructure(unittest.TestCase):
 	def test_creation_repositories_metadata_files(self):
 		""" check metadata files member """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,annex1 = h.create("Host1"),h.create("Host2"),a.create("Annex1")
 		
@@ -232,7 +236,7 @@ class TestStructure(unittest.TestCase):
 	def test_connection_creation(self):
 		""" test the creation of connections """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 
@@ -253,7 +257,7 @@ class TestStructure(unittest.TestCase):
 	def test_connection_creation_error_cases(self):
 		""" test common error cases """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 
@@ -264,7 +268,7 @@ class TestStructure(unittest.TestCase):
 	def test_connection_metadata_gitPath(self):
 		""" test gitPath """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 		annex1 = a.create("Annex1")
@@ -283,7 +287,7 @@ class TestStructure(unittest.TestCase):
 	def test_connection_metadata_alwayson(self):
 		""" test alwaysOn """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 
@@ -301,7 +305,7 @@ class TestStructure(unittest.TestCase):
 	def test_connection_metadata_protocol(self):
 		""" test protocol and pathData """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 		
@@ -316,7 +320,7 @@ class TestStructure(unittest.TestCase):
 
 	def test_connection_isonline_mount_nodir(self):
 		""" test the isOnline method for connections with protocol 'mount' """
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 		
@@ -326,7 +330,7 @@ class TestStructure(unittest.TestCase):
 
 	def test_connection_isonline_mount_emptydir(self):
 		""" test the isOnline method for connections with protocol 'mount' """
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 		
@@ -339,7 +343,7 @@ class TestStructure(unittest.TestCase):
 		
 	def test_connection_isonline_mount_dir(self):
 		""" test the isOnline method for connections with protocol 'mount' """
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 		
@@ -358,7 +362,7 @@ class TestStructure(unittest.TestCase):
 
 	def test_connection_isonline_ssh(self):
 		""" test the isOnline method for connections with protocol 'ssh' """
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 		
@@ -375,7 +379,7 @@ class TestStructure(unittest.TestCase):
 			methods
 		"""
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		n = 3
 		hosts = [h.create("Host%d"%i) for i in range(1,n+1)]
@@ -449,7 +453,7 @@ class TestStructure(unittest.TestCase):
 			test save and load procedures and that they are an identity operation
 		"""
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 	
 		# create objects
@@ -475,7 +479,7 @@ class TestStructure(unittest.TestCase):
 		
 		
 		# restart
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 	
 		# short cuts
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
@@ -500,7 +504,7 @@ class TestStructure(unittest.TestCase):
 	
 	def test_app_gitAnnexCapabilities(self):
 		""" test app.gitAnnexCapabilities """
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		
 		capabilities = app.gitAnnexCapabilities
 		self.assertIn("version",capabilities)
@@ -524,6 +528,7 @@ class TestStructure(unittest.TestCase):
 
 
 class TestCommands(unittest.TestCase):
+	verbose = verbose
 	"""
 		test command aspects of the application
 	"""
@@ -619,7 +624,7 @@ class TestCommands(unittest.TestCase):
 	def test_app_getHostedRepositories(self):
 		""" test application's getHostedRepositories method """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2 = h.create("Host1"),h.create("Host2")
 		annex1,annex2 = a.create("Annex1"),a.create("Annex2")
@@ -641,7 +646,7 @@ class TestCommands(unittest.TestCase):
 		app.save()
 		
 		# restart
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		
 		# test getHostedRepositories (which returns the assimilated version repo1i)
 		self.assertEqual({a.repo for a in app.getHostedRepositories()},{repo11,repo12})
@@ -649,7 +654,7 @@ class TestCommands(unittest.TestCase):
 	def test_repo_init(self):
 		""" test repository init and conduct some basic checks """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,annex1 = h.create("Host1"),a.create("Annex1")
 
@@ -673,7 +678,7 @@ class TestCommands(unittest.TestCase):
 	def test_repo_setproperties(self):
 		""" test repository setProperties """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,annex1 = h.create("Host1"),a.create("Annex1")
 
@@ -707,7 +712,7 @@ class TestCommands(unittest.TestCase):
 	def test_repo_init_remotes(self):
 		""" test repository init and remotes"""
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 		annex1 = a.create("Annex1")
@@ -736,7 +741,7 @@ class TestCommands(unittest.TestCase):
 	def test_repo_init_non_empty(self):
 		""" test repository init in non-empty directory """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,annex1 = h.create("Host1"),a.create("Annex1")
 
@@ -762,7 +767,7 @@ class TestCommands(unittest.TestCase):
 	def test_repo_init_remotes_change_location(self):
 		""" test repository set properties and changing of the remotes location """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 		annex1 = a.create("Annex1")
@@ -793,7 +798,7 @@ class TestCommands(unittest.TestCase):
 			5. everything should commited
 		"""
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host,annex = h.create("Host1"),a.create("Annex1")
 
@@ -831,7 +836,7 @@ class TestCommands(unittest.TestCase):
 			5. everything should commited
 		"""
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host,annex = h.create("Host1"),a.create("Annex1")
 
@@ -862,7 +867,7 @@ class TestCommands(unittest.TestCase):
 	def test_repairMaster_in_empty(self):
 		""" call repair master in empty repository """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,annex = h.create("Host1"),h.create("Host2"),a.create("Annex")
 		# set host
@@ -882,7 +887,7 @@ class TestCommands(unittest.TestCase):
 	def test_uncommited_changes_in_directmode(self):
 		""" uncommited changes in direct mode should be detected accurately """
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host,annex = h.create("Host"),a.create("Annex")
 		
@@ -919,7 +924,7 @@ class TestCommands(unittest.TestCase):
 			5. call sync again
 		"""
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,annex = h.create("Host1"),h.create("Host2"),a.create("Annex")
 		conn12 = c.create(host1,host2,"/",alwayson="true")
@@ -967,7 +972,7 @@ class TestCommands(unittest.TestCase):
 			5. call sync again
 		"""
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,annex = h.create("Host1"),h.create("Host2"),a.create("Annex")
 		conn12 = c.create(host1,host2,"/",alwayson="true")
@@ -1017,7 +1022,7 @@ class TestCommands(unittest.TestCase):
 			   bob:   all files
 		"""
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 		annex = a.create("Annex")
@@ -1052,7 +1057,8 @@ class TestCommands(unittest.TestCase):
 				for j in t:
 					path = paths[j]
 					f_path = os.path.join(path,name)
-					print(f_path)
+					if self.verbose:
+						print(f_path)
 					with open(f_path,"wt") as fd:
 						fd.write(name)
 		
@@ -1103,7 +1109,7 @@ class TestCommands(unittest.TestCase):
 			   bob: test
 		"""
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2 = [h.create("Host%d"%i) for i in range(1,2+1)]
 		annex = a.create("Annex")
@@ -1150,7 +1156,7 @@ class TestCommands(unittest.TestCase):
 			   bob: no
 		"""
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2 = [h.create("Host%d"%i) for i in range(1,2+1)]
 		annex = a.create("Annex")
@@ -1198,7 +1204,7 @@ class TestCommands(unittest.TestCase):
 			   bob: test
 		"""
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2 = [h.create("Host%d"%i) for i in range(1,2+1)]
 		app.setCurrentHost(host1)
@@ -1261,7 +1267,7 @@ class TestCommands(unittest.TestCase):
 			12. now the files should be in both directories, if everything is still fine
 		"""
 		# initialisation
-		app = application.Application(self.path)
+		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2 = [h.create("Host%d"%i) for i in range(1,2+1)]
 		annex = a.create("Annex")

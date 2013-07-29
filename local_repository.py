@@ -93,18 +93,17 @@ class LocalRepository:
 	#
 	def executeCommand(self, cmd, ignoreexception=False):
 		""" print and execute the command """
-		print("command:"," ".join(cmd))
+		if self.app.verbose:
+			print("command:"," ".join(cmd))
+		
 		try:
-			subprocess.check_call(cmd)
+			with open(os.devnull, "w") as devnull:
+				subprocess.check_call(cmd,stdout=None if self.app.verbose else devnull)
 		except subprocess.CalledProcessError as e:
 			if ignoreexception:
 				pass
 			else:
-				print("An error occured:", e)
-				sys.exit(1)
-		except FileNotFoundError as e:
-			print("An error occured:", e)
-			sys.exit(1)
+				raise
 
 
 	def changePath(self, create=False):
@@ -280,7 +279,8 @@ class LocalRepository:
 	def init(self, ignorenonempty=False):
 		""" inits the repository """
 		
-		print("\033[1;37;44m initialise %s at %s \033[0m" % (self.annex.name,self.localpath))
+		if self.app.verbose:
+			print("\033[1;37;44m initialise %s at %s \033[0m" % (self.annex.name,self.localpath))
 
 		# change into the right directory, create it if necessary
 		self.changePath(create=True)
@@ -292,13 +292,15 @@ class LocalRepository:
 			else:
 				self.executeCommand(["git","init"])
 		else:
-			print("It is already a git repository.")
+			if self.app.verbose:
+				print("It is already a git repository.")
 		
 		# init git annex
 		if not os.path.isdir(os.path.join(self.localpath,".git/annex")):
 			self.executeCommand(["git-annex","init",self.description])
 		else:
-			print("It is already a git annex repository.")
+			if self.app.verbose:
+				print("It is already a git annex repository.")
 		
 		# set the properties
 		self.setProperties()
@@ -306,7 +308,8 @@ class LocalRepository:
 	def setProperties(self):
 		""" sets the properties of the current repository """
 		
-		print("\033[1;37;44m setting properties of %s at %s \033[0m" % (self.annex.name,self.localpath))
+		if self.app.verbose:
+			print("\033[1;37;44m setting properties of %s at %s \033[0m" % (self.annex.name,self.localpath))
 		
 		# change into the right directory
 		self.changePath()
@@ -319,7 +322,8 @@ class LocalRepository:
 				self.executeCommand(["git-annex",d])
 		else:
 			if self.direct:
-				print("direct mode is requested, however it is not supported by your git-annex version.")
+				if self.app.verbose:
+					print("direct mode is requested, however it is not supported by your git-annex version.")
 		
 		# set trust level if necessary
 		if self.onDiskTrustLevel() != self.trust:
@@ -356,14 +360,16 @@ class LocalRepository:
 	def finalise(self):
 		""" calls git-annex add and commits all changes """
 		
-		print("\033[1;37;44m commiting changes in %s at %s \033[0m" % (self.annex.name,self.localpath))
+		if self.app.verbose:
+			print("\033[1;37;44m commiting changes in %s at %s \033[0m" % (self.annex.name,self.localpath))
 		
 		# change into the right directory
 		self.changePath()
 
 		# early exit in case of no uncommited changes
 		if not self.hasUncommitedChanges():
-			print("no changes")
+			if self.app.verbose:
+				print("no changes")
 			return
 
 		# call 'git-annex add'
@@ -386,7 +392,8 @@ class LocalRepository:
 		
 		self.repairMaster()
 		
-		print("\033[1;37;44m syncing %s in %s \033[0m" % (self.annex.name,self.localpath))
+		if self.app.verbose:
+			print("\033[1;37;44m syncing %s in %s \033[0m" % (self.annex.name,self.localpath))
 		
 		# change into the right directory
 		self.changePath()
@@ -416,7 +423,8 @@ class LocalRepository:
 		
 		if "synced/master" in branches:
 			# use the 'synced/master' branch if possible
-			print("\033[1;37;44m repairing master branch in %s at %s \033[0m" % (self.annex.name,self.localpath))
+			if self.app.verbose:
+				print("\033[1;37;44m repairing master branch in %s at %s \033[0m" % (self.annex.name,self.localpath))
 			
 			# checkout synced/master
 			self.executeCommand(["git","checkout","synced/master"])
@@ -465,7 +473,8 @@ class LocalRepository:
 		# sync
 		self.sync(annex_descs)
 		
-		print("\033[1;37;44m copying files %s at %s \033[0m" % (self.annex.name,self.localpath))
+		if self.app.verbose:
+			print("\033[1;37;44m copying files %s at %s \033[0m" % (self.annex.name,self.localpath))
 		
 		# change into the right directory
 		self.changePath()
@@ -532,7 +541,8 @@ class LocalRepository:
 			also all remote tracking-branches
 		"""
 		
-		print("\033[1;37;44m delete all remotes of %s in %s\033[0m" % (self.annex.name,self.localpath))
+		if self.app.verbose:
+			print("\033[1;37;44m delete all remotes of %s in %s\033[0m" % (self.annex.name,self.localpath))
 
 		# change path to current directory
 		self.changePath()
@@ -541,7 +551,8 @@ class LocalRepository:
 		cmd = ["git","remote","show"]
 		output = subprocess.check_output(cmd).decode("UTF-8")
 		remotes = [remote.strip() for remote in output.splitlines()]
-		print("remotes found: %s" % ', '.join(remotes))
+		if self.app.verbose:
+			print("remotes found: %s" % ', '.join(remotes))
 		
 		# delete all remotes
 		for remote in remotes:
