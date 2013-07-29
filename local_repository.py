@@ -1,5 +1,6 @@
 import collections
 import os
+import sys
 import subprocess
 import datetime
 
@@ -95,11 +96,15 @@ class LocalRepository:
 		print("command:"," ".join(cmd))
 		try:
 			subprocess.check_call(cmd)
-		except subprocess.CalledProcessError:
+		except subprocess.CalledProcessError as e:
 			if ignoreexception:
 				pass
 			else:
-				raise
+				print("An error occured:", e)
+				sys.exit(1)
+		except FileNotFoundError as e:
+			print("An error occured:", e)
+			sys.exit(1)
 
 
 	def changePath(self, create=False):

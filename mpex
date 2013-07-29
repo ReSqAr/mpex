@@ -200,7 +200,7 @@ def func_edit(args):
 		show_edit.edit(app)
 	except KeyboardInterrupt:
 		print()
-		print("received ^C, going down WITHOUT saving")
+		print("interrupted, going down WITHOUT saving")
 		return
 
 #
@@ -280,7 +280,13 @@ def runParser():
 	
 	if hasattr(args,"func"):
 		# if everything is OK, call the function
-		args.func(args)
+		try:
+			args.func(args)
+		except KeyboardInterrupt:
+			print()
+			print("interrupted")
+			return
+
 	else:
 		# print a warning
 		parser.print_usage()
