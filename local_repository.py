@@ -29,6 +29,7 @@ class LocalRepository:
 			getAnnexUUID() -> uuid
 			onDiskDirectMode() -> "direct"/"indirect"
 			onDiskTrustLevel() -> element of TRUST_LEVEL
+			onDiskDescription() -> description
 			
 			activeAnnexDescriptions() -> dictionary online repositories -> connection
 	"""
@@ -161,7 +162,8 @@ class LocalRepository:
 		else:
 			# nothing to do
 			return False
-	
+
+
 	def getGitAnnexStatus(self):
 		""" calls 'git-annex status --fast' and parses the output """
 		# change path
@@ -275,7 +277,7 @@ class LocalRepository:
 		else:
 			raise ValueError("Unable to determine the current description.")
 
-		
+
 
 	def activeRepositories(self):
 		""" determine repositories which are online """

@@ -25,10 +25,11 @@ class Application:
 	VERBOSE_NORMAL = 1
 	VERBOSE_IMPORTANT = 2
 	
-	def __init__(self, path, verbose=True):
+	def __init__(self, path, verbose=True, simulate=False):
 		# save option
 		self.path = path
 		self.verbose = verbose
+		self.simulate = simulate
 		
 		# initialise hosts
 		self.hosts = structure_host.Hosts(self)
@@ -138,6 +139,11 @@ class Application:
 		""" print and execute the command """
 		if self.verbose <= self.VERBOSE_IMPORTANT:
 			print("command:"," ".join(cmd))
+		
+		# if we only simulate, return
+		if self.simulate:
+			print("simulation: command not executed")
+			return
 		
 		try:
 			with open(os.devnull, "w") as devnull:

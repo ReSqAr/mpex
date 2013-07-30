@@ -48,6 +48,8 @@ apply_parser.add_argument('--remote', action="store_true",
 						help="execute the command also on all connected remotes")
 apply_parser.add_argument('--hops', type=int, default=2,
 						help="when remote is given, the maximal number of hops")
+apply_parser.add_argument('--simulate', action="store_true",
+						help="only simulate the commands")
 apply_parser.add_argument('--verbose', type=int,
 						default=application.Application.VERBOSE_NORMAL,
 						help="verbosity level: 0 [1] 2")
@@ -56,7 +58,7 @@ apply_parser.add_argument('--verbose', type=int,
 def apply_function(args,f):
 	""" apply f to all given annex_names """
 	# create application
-	app = application.Application(CONFIG_PATH, verbose=args.verbose)
+	app = application.Application(CONFIG_PATH, verbose=args.verbose, simulate=args.simulate)
 
 	# parse annex names
 	selected_annexes = parse_annex_names(app,args)
