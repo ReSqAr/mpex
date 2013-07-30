@@ -192,7 +192,7 @@ class LocalRepository:
 				# if we have a line which starts with a white space,
 				# then add it to '$lastkey - list'
 				assert lastkey is not None, "invalid output"
-				key = "%s - list" % lastkey
+				key = "%s | list" % lastkey
 				
 				# create the list if necessary
 				if key not in status:
@@ -205,7 +205,7 @@ class LocalRepository:
 		
 	def getAnnexUUID(self):
 		""" get the git annex uuid of the current repository """
-		return self.readGitKey("annex.uuid", )
+		return self.readGitKey("annex.uuid")
 	
 	def onDiskDirectMode(self):
 		""" finds the on disk direct mode """
@@ -232,7 +232,7 @@ class LocalRepository:
 		
 		for level in self.TRUST_LEVEL:
 			# create key
-			key = "%sed repositories - list" % level
+			key = "%sed repositories | list" % level
 			
 			# if there is repository on the current trust level, ignore it
 			if key not in status:
@@ -248,7 +248,34 @@ class LocalRepository:
 		else:
 			raise ValueError("Unable to determine the trust level.")
 
+	def onDiskDescription(self):
+		""" find the on disk description of the current repository """
+		""" determines the current trust level """
 
+		# get git annex status and git annex uuid
+		uuid = self.getAnnexUUID()
+		status = self.getGitAnnexStatus()
+		
+		for level in self.TRUST_LEVEL:
+			# create key
+			key = "%sed repositories | list" % level
+			
+			# if there is repository on the current trust level, ignore it
+			if key not in status:
+				continue
+			
+			# read the list of repositories, format: UUID -- name
+			repos = status[key]
+			
+			for repo in repos:
+				# find the repository with our current uuid
+				if repo.startswith(uuid):
+					# format: uuid -- here (<repo name>)
+					return repo.strip().split("here (",1)[1][:-1]
+		else:
+			raise ValueError("Unable to determine the current description.")
+
+		
 
 	def activeRepositories(self):
 		""" determine repositories which are online """
@@ -304,6 +331,11 @@ class LocalRepository:
 		
 		# change into the right directory
 		self.changePath()
+
+		# set the description, if needed
+		if self.onDiskDescription() != self.description:
+			cmd = ["git-annex","describe","here",self.description]
+			self.executeCommand(cmd)
 
 		# set the requested direct mode, if doable
 		if self.app.gitAnnexCapabilities["direct"]:

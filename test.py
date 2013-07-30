@@ -711,11 +711,15 @@ class TestCommands(unittest.TestCase):
 		# change
 		repo.direct = False
 		repo.trust = "untrust"
+		repo._data["description"] = "DESC"
+		
+		# apply changes
 		repo.setProperties()
 		
 		# check
 		self.assertEqual(repo.onDiskDirectMode(),"indirect")
 		self.assertEqual(repo.onDiskTrustLevel(),"untrust")
+		self.assertEqual(repo.onDiskDescription(),"DESC")
 
 	def test_repo_init_remotes(self):
 		""" test repository init and remotes"""
