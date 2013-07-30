@@ -34,9 +34,6 @@ class LocalRepository:
 			
 			activeAnnexDescriptions() -> dictionary online repositories -> connection
 	"""
-
-	VALID_GITID_CHARS = set(string.ascii_letters + string.digits + "_")
-
 	def __init__(self, repo, connection=None):
 		# call super
 		super(LocalRepository,self).__init__()
@@ -125,7 +122,7 @@ class LocalRepository:
 		assert os.path.normpath(os.getcwd()) == path, "We are in the wrong directory?!?"
 		
 		return path
-	
+
 	
 	def readGitKey(self, key):
 		""" read a git key """
@@ -368,12 +365,8 @@ class LocalRepository:
 			
 			# select connection and get details
 			connection = connections.pop()
-			gitID   = repo.description
+			gitID   = repo.gitID()
 			gitPath = connection.gitPath(repo)
-
-			# filter gitID
-			gitID = "".join(c for c in gitID if c in self.VALID_GITID_CHARS)
-			assert gitID, "Cannot build a vaild git ID."
 
 			try:
 				# determine which url was already set
@@ -436,7 +429,7 @@ class LocalRepository:
 
 		# if a list of hosts is not given
 		if annex_descs is None:
-			annex_descs = {repo.description for repo in self.activeRepositories().keys()}
+			annex_descs = {repo.gitID() for repo in self.activeRepositories().keys()}
 		
 		if annex_descs:
 			# call 'git-annex sync'
@@ -521,7 +514,7 @@ class LocalRepository:
 		
 		# call 'git-annex copy --from=target <files expression as command>'
 		for repo in sorted(repos.keys(),key=lambda k:str(k)):
-			cmd = ["git-annex","copy","--from=%s"%repo.description] + cur_files_cmd
+			cmd = ["git-annex","copy","--from=%s"%repo.gitID()] + cur_files_cmd
 			self.executeCommand(cmd)
 	
 	
@@ -536,7 +529,7 @@ class LocalRepository:
 			files_cmd = self.tokenisedFilesExpressionToCmd(files)
 
 			# call 'git-annex copy --to=target <files expression as command>'
-			cmd = ["git-annex","copy","--to=%s"%repo.description] + files_cmd
+			cmd = ["git-annex","copy","--to=%s"%repo.gitID()] + files_cmd
 			self.executeCommand(cmd)
 		
 		
@@ -564,7 +557,7 @@ class LocalRepository:
 			files_cmd = self.tokenisedFilesExpressionToCmd(files)
 
 			# call 'git-annex drop --from=target --not -( <files expression> -)
-			cmd = ["git-annex","drop","--from=%s"%repo.description] + ["--not", "-("] + files_cmd + ["-)"]
+			cmd = ["git-annex","drop","--from=%s"%repo.gitID()] + ["--not", "-("] + files_cmd + ["-)"]
 			self.executeCommand(cmd, ignoreexception=True)
 
 		# sync again

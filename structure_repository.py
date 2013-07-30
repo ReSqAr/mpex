@@ -68,7 +68,8 @@ class Repository:
 	OPERATORS = ("(",")","+","-","&")
 	TRUST_LEVEL = ("semitrust","trust","untrust")
 	VALID_DESC_CHARS = set(string.ascii_letters + string.digits + string.punctuation)
-	
+	VALID_GITID_CHARS = set(string.ascii_letters + string.digits + "_")
+
 	def __init__(self, app, host, annex, path, **data):
 		# save options
 		self.app = app
@@ -307,6 +308,20 @@ class Repository:
 		
 		# return the desired dictionary
 		return {r:connections[r.host] for r in repositories if r.host in connections}
+
+	def gitID(self):
+		""" compute the current git id, use the repo description as a starting point """
+		gitID = self.description
+		# filter
+		gitID = "".join(c for c in gitID if c in self.VALID_GITID_CHARS)
+		# something has to be left
+		assert gitID, "Cannot build a vaild git ID."
+		
+		return gitID
+
+
+
+
 
 	#
 	# hashable type mehods, hashable is needed for dict keys and sets

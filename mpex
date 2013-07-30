@@ -86,7 +86,6 @@ def apply_function(args,f):
 	else:
 		# default: only local
 		localExecution,remoteExecution = True,False
-	not args.remoteonly
 	
 	
 	# if remoted execution is wanted and we are still close enough to the origin
