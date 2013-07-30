@@ -218,6 +218,8 @@ def func_command(args):
 	args.annex = None
 	
 	def repo_command(repo):
+		# change path
+		self.changePath()
 		if repo.app.verbose <= repo.app.VERBOSE_IMPORTANT:
 			print("\033[1;37;44m running the command for %s in %s \033[0m" % (repo.annex.name,repo.path))
 		# run the command in the directory
