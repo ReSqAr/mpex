@@ -44,7 +44,9 @@ def parse_annex_names(app,args):
 # parser used by the next function
 #
 apply_parser = argparse.ArgumentParser(add_help=False)
-apply_parser.add_argument('--verbose', type=int, default=2, help="Verbosity level: 0 1 [2] 3 4")
+apply_parser.add_argument('--verbose', type=int,
+						  default=application.Application.VERBOSE_NORMAL,
+						  help="Verbosity level: 0 [1] 2")
 
 
 def apply_function(args,f):

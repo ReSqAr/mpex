@@ -8,7 +8,7 @@ import application
 
 
 # surpress some unnecessary output
-verbose = 3
+verbose = 2
 
 class TestStructure(unittest.TestCase):
 	"""

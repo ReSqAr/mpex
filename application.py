@@ -12,7 +12,7 @@ import structure_connection
 # check python version
 #
 import sys
-if sys.version_info<(3,2,0):
+if sys.version_info < (3,2,0):
         raise RuntimeError("Python version >= 3.2 is needed.")
 
 
@@ -20,13 +20,10 @@ if sys.version_info<(3,2,0):
 
 class Application:
 	
-	
 	# verbose constants
-	VERBOSE_SPAM = 0
-	VERBOSE_DEBUG = 1
-	VERBOSE_NORMAL = 2
-	VERBOSE_IMPORTANT = 3
-	VERBOSE_CRITICAL = 4
+	VERBOSE_DEBUG = 0
+	VERBOSE_NORMAL = 1
+	VERBOSE_IMPORTANT = 2
 	
 	def __init__(self, path, verbose=True):
 		# save option
