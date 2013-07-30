@@ -539,7 +539,17 @@ class TestCommands(unittest.TestCase):
 		# erease variable
 		self.path = None
 
-
+	#
+	# repo based helper
+	#
+	def apply_to_repos(self, repos, f):
+		""" applys f to every repository on its host """
+		ret = []
+		for repo in repos:
+			repo.app.setCurrentHost(repo.host)
+			ret.append(f(repo))
+		return ret
+	
 	def assimilate_repos(self, repos):
 		""" assimilate the given repos """
 		return self.apply_to_repos(repos,lambda r:r.app.assimilate(r))
@@ -552,14 +562,23 @@ class TestCommands(unittest.TestCase):
 		""" init the given repos """
 		self.apply_to_repos(repos,lambda r:r.setProperties())
 
-	def apply_to_repos(self, repos, f):
-		""" applys f to every repository on its host """
-		ret = []
-		for repo in repos:
-			repo.app.setCurrentHost(repo.host)
-			ret.append(f(repo))
-		return ret
-	
+	def sync(self, repos):
+		""" syncs the repos """
+		self.apply_to_repos(repos,lambda r:r.sync())
+
+	def copy(self, repos):
+		""" copies the repos """
+		self.apply_to_repos(repos,lambda r:r.copy())
+
+	def sync_and_copy(self, sync_repos, copy_repos):
+		""" sync sync_repos, copy copy_repos and sync sync_repos """
+		self.sync(sync_repos)
+		self.copy(copy_repos)
+		self.sync(sync_repos)
+
+	#
+	# file system interaction
+	#
 	def _create_file(self, path, filename):
 		""" create file in the given path """
 		f_path = os.path.join(path,filename)
@@ -571,6 +590,17 @@ class TestCommands(unittest.TestCase):
 	def create_file_local(self, repo, filename):
 		""" create file in the given repository """
 		self._create_file(repo.localpath,filename)
+
+	def _remove_file(self, path, filename):
+		""" removes the given file """
+		f_path = os.path.join(path,filename)
+		os.remove(f_path)
+	def remove_file(self, repo, filename):
+		""" removes the given file """
+		return self._remove_file(repo.path,filename)
+	def remove_file_local(self, repo, filename):
+		""" removes the given file """
+		return self._remove_file(repo.localpath,filename)
 
 	def _has_file(self, path, filename):
 		""" checks if the path has the given file (with content) """
@@ -596,31 +626,9 @@ class TestCommands(unittest.TestCase):
 		""" checks if the repository has the given file as a link """
 		return self._has_link(repo.localpath,filename)
 
-	def sync(self, repos):
-		""" syncs the repos """
-		for repo in repos:
-			repo.app.setCurrentHost(repo.host)
-			repo.sync()
-
-	def copy(self, repos):
-		""" copies the repos """
-		for repo in repos:
-			repo.app.setCurrentHost(repo.host)
-			repo.copy()
-
-	def sync_and_copy(self, sync_repos, copy_repos):
-		""" sync sync_repos, copy copy_repos and sync sync_repos """
-		
-		# sync repos
-		self.sync(sync_repos)
-		
-		# copy repos
-		self.copy(copy_repos)
-		
-		# sync repos
-		self.sync(sync_repos)
-
-
+	#
+	# actual tests
+	#
 	def test_app_getHostedRepositories(self):
 		""" test application's getHostedRepositories method """
 		# initialisation
@@ -787,81 +795,74 @@ class TestCommands(unittest.TestCase):
 
 
 
+		
+	def finalise_tester(self, direct):
+		"""
+			test finalise in given mode
+			procedure:
+			1. setup repository
+			2. create two files (with a certain content) (which is then uncommited)
+			3. call finalise
+			4. afterwards, the file should still be where
+			5. everything should commited
+			6. delete one file
+			7. there should be uncommited changes
+			8. call finalise
+			9. there shouldn't be any uncommited changes anymore
+		"""
+		# initialisation
+		app = application.Application(self.path,verbose=self.verbose)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host,annex = h.create("Host1"),a.create("Annex1")
+
+		app.setCurrentHost(host)
+		
+		# create, set direct mode & init
+		path = os.path.join(self.path,"repo")
+		repo = r.create(host,annex,path)
+		repo.direct = direct
+		repo = app.assimilate(repo)
+		repo.init()
+		
+		# check direct mode
+		self.assertEqual(repo.onDiskDirectMode(),"direct" if direct else "indirect")
+		
+		# create files
+		self.create_file(repo,"test")
+		self.create_file(repo,"test2")
+		self.create_file(repo,"test3")
+		
+		# test not commited?
+		self.assertTrue(repo.hasUncommitedChanges())
+
+		# finalise
+		repo.finalise()
+		
+		# still there?
+		self.has_file(repo,"test")
+		self.has_file(repo,"test2")
+		self.has_file(repo,"test3")
+			
+		# everything commited?
+		self.assertFalse(repo.hasUncommitedChanges())
+		
+		# remove file
+		self.remove_file(repo,"test2")
+		
+		# test not commited?
+		self.assertTrue(repo.hasUncommitedChanges())
+		
+		# finalise
+		repo.finalise()
+
+		# everything commited?
+		self.assertFalse(repo.hasUncommitedChanges())
+
 	def test_finalise_indirect(self):
-		"""
-			test finalise in indirect mode
-			procedure:
-			1. setup repository
-			2. create a file with content file (which is then uncommited)
-			3. call finalise
-			4. afterwards, the file should still be where
-			5. everything should commited
-		"""
-		# initialisation
-		app = application.Application(self.path,verbose=self.verbose)
-		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
-		host,annex = h.create("Host1"),a.create("Annex1")
-
-		app.setCurrentHost(host)
-		
-		# create & init
-		path = os.path.join(self.path,"repo")
-		repo = r.create(host,annex,path)
-		repo = app.assimilate(repo)
-		repo.init()
-		
-		# create file
-		self.create_file(repo,"test")
-		
-		# test not commited?
-		self.assertTrue(repo.hasUncommitedChanges())
-
-		# finalise
-		repo.finalise()
-		
-		# still there?
-		self.has_file(repo,"test")
-			
-		# everything commited?
-		self.assertFalse(repo.hasUncommitedChanges())
-		
+		self.finalise_tester(direct=False)
 	def test_finalise_direct(self):
-		"""
-			test finalise in indirect mode
-			procedure:
-			1. setup repository
-			2. create a file (which is then uncommited)
-			3. call finalise
-			4. afterwards, the file should still be where
-			5. everything should commited
-		"""
-		# initialisation
-		app = application.Application(self.path,verbose=self.verbose)
-		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
-		host,annex = h.create("Host1"),a.create("Annex1")
+		self.finalise_tester(direct=True)
 
-		app.setCurrentHost(host)
-
-		# create & init
-		path = os.path.join(self.path,"repo")
-		repo = r.create(host,annex,path)
-		repo = app.assimilate(repo)
-		repo.init()
-		
-		# create file
-		self.create_file(repo,"test")
-		
-		# test not commited?
-		self.assertTrue(repo.hasUncommitedChanges())
-
-		# finalise
-		repo.finalise()
-		
-		# still there?
-		self.has_file(repo,"test")
-			
-		# everything commited?
-		self.assertFalse(repo.hasUncommitedChanges())
 
 
 	def test_repairMaster_in_empty(self):
@@ -883,39 +884,9 @@ class TestCommands(unittest.TestCase):
 		repo.repairMaster()
 
 
-
-	def test_uncommited_changes_in_directmode(self):
-		""" uncommited changes in direct mode should be detected accurately """
-		# initialisation
-		app = application.Application(self.path,verbose=self.verbose)
-		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
-		host,annex = h.create("Host"),a.create("Annex")
-		
-		# set host
-		app.setCurrentHost(host)
-		
-		# create & init
-		path = os.path.join(self.path,"repo_host")
-		repo = r.create(host,annex,path,description="test_repo_",direct="true")
-		repo = app.assimilate(repo)
-		repo.init()
-		
-		# create file
-		self.create_file(repo,"test")
-
-		# now, there should be uncommited changes
-		self.assertTrue(repo.hasUncommitedChanges())
-
-		# sync
-		repo.finalise()
-
-		# now, there should be no uncommited changes
-		self.assertFalse(repo.hasUncommitedChanges())
-
-
-	def test_sync(self):
+	def sync_tester(self, direct):
 		"""
-			test sync
+			test sync with the given direct mode
 			procedure:
 			1. create two repositories
 			2. create file in the first repository
@@ -932,8 +903,10 @@ class TestCommands(unittest.TestCase):
 		# create & init
 		path1 = os.path.join(self.path,"repo_host1")
 		repo1 = r.create(host1,annex,path1,description="test_repo_1")
+		repo1.direct = direct
 		path2 = os.path.join(self.path,"repo_host2")
 		repo2 = r.create(host2,annex,path2,description="test_repo_2")
+		repo2.direct = direct
 		repos = [repo1,repo2]
 		
 		# assimilate
@@ -960,10 +933,15 @@ class TestCommands(unittest.TestCase):
 		# sync changes on host1
 		self.sync([repo1])
 
+	def test_sync_direct(self):
+		self.sync_tester(direct=True)
+	def test_sync_indirect(self):
+		self.sync_tester(direct=False)
 
-	def test_sync_from_remote(self):
+
+	def sync_from_remote_tester(self,direct):
 		"""
-			test sync
+			test sync from with the given direct mode
 			procedure:
 			1. create two repositories
 			2. create file in the second first repository
@@ -980,8 +958,10 @@ class TestCommands(unittest.TestCase):
 		# create & init
 		path1 = os.path.join(self.path,"repo_host1")
 		repo1 = r.create(host1,annex,path1,description="test_repo_1")
+		repo1.direct = direct
 		path2 = os.path.join(self.path,"repo_host2")
 		repo2 = r.create(host2,annex,path2,description="test_repo_2")
+		repo2.direct = direct
 		repos = [repo1,repo2]
 		
 		# assimilate
@@ -1002,6 +982,11 @@ class TestCommands(unittest.TestCase):
 		
 		# sync changes again
 		self.sync(repos)
+
+	def test_sync_from_remote_direct(self):
+		self.sync_from_remote_tester(direct=True)
+	def test_sync_from_remote_indirect(self):
+		self.sync_from_remote_tester(direct=False)
 
 
 	def test_copy(self):

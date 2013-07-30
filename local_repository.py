@@ -152,10 +152,9 @@ class LocalRepository:
 
 		# call 'git status -s'
 		output = subprocess.check_output(["git","status","-s"]).decode("UTF8").strip()
-		
 		for line in output.splitlines():
 			# we have to ignore lines which start with T
-			if line.startswith("T"):
+			if line.strip().startswith("T"):
 				continue
 			# we have found a valid line
 			return True
@@ -371,6 +370,7 @@ class LocalRepository:
 		utc = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M:%S")
 		msg = "Host: %s UTC: %s" % (self.host.name,utc)
 		try:
+			# WARNING: never think of -am
 			self.executeCommand(["git","commit","-m",msg])
 		except subprocess.CalledProcessError:
 			pass
