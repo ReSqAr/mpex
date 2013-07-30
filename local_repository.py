@@ -93,18 +93,9 @@ class LocalRepository:
 	#
 	def executeCommand(self, cmd, ignoreexception=False):
 		""" print and execute the command """
-		if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
-			print("command:"," ".join(cmd))
 		
-		try:
-			with open(os.devnull, "w") as devnull:
-				subprocess.check_call(cmd,stdout=None if self.app.verbose <= self.app.VERBOSE_NORMAL else devnull)
-		except subprocess.CalledProcessError as e:
-			if ignoreexception:
-				pass
-			else:
-				raise
-
+		# use the method given by the application
+		self.app.executeCommand(cmd, ignoreexception=ignoreexception)
 
 	def changePath(self, create=False):
 		"""
@@ -274,8 +265,9 @@ class LocalRepository:
 
 
 
-
-
+	#
+	# main methods
+	#
 	def init(self, ignorenonempty=False):
 		""" inits the repository """
 		

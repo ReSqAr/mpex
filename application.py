@@ -83,8 +83,15 @@ class Application:
 	
 	def getHostedRepositories(self):
 		""" get all repositories which are hosted on the current machine """
-		return [self.assimilate(repo) for repo in self.currentHost().repositories()]
+		return {self.assimilate(repo) for repo in self.currentHost().repositories()}
 	
+	def getConnections(self):
+		""" get all connections which originate from the current host """
+		return self.currentHost().connections()
+	
+	def getConnectedRepositories(self, conn):
+		""" find all repositories which are connected via the given connection """
+		return {self.assimilate(repo,conn) for repo in conn.dest.repositories()}
 	
 	@property
 	def gitAnnexCapabilities(self):
@@ -125,3 +132,18 @@ class Application:
 		
 		# return
 		return capabilities
+	
+
+	def executeCommand(self, cmd, ignoreexception=False):
+		""" print and execute the command """
+		if self.verbose <= self.VERBOSE_IMPORTANT:
+			print("command:"," ".join(cmd))
+		
+		try:
+			with open(os.devnull, "w") as devnull:
+				subprocess.check_call(cmd,stdout=None if self.verbose <= self.VERBOSE_NORMAL else devnull)
+		except subprocess.CalledProcessError as e:
+			if ignoreexception:
+				pass
+			else:
+				raise

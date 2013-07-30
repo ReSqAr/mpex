@@ -93,6 +93,7 @@ class Connection:
 		""" returns the used protocol """
 		return self.pathData()["protocol"]
 	
+	
 	def gitPath(self, repo):
 		""" computes the path used by git to access the repository over the connection """
 		
@@ -110,6 +111,7 @@ class Connection:
 			return path + repo.path
 		else:
 			raise ValueError("Programming error.")
+	
 	
 	def isOnline(self):
 		""" checks if the connection is online """
@@ -152,6 +154,7 @@ class Connection:
 		# return status
 		return isonline
 
+
 	def isLocal(self):
 		"""
 			is the connection local, i.e. something which can be
@@ -173,6 +176,23 @@ class Connection:
 			prefix = prefix[:-1]
 		# just join them together
 		return prefix + path
+
+
+	def supportsRemoteExecution(self):
+		""" can we execute commands remotely? """
+		# we can do that only if the protocol is 'ssh'
+		return self.protocol() in ("ssh",)
+	
+	def executeRemotely(self, cmd):
+		""" execute the command on the target machine """
+		assert self.supportsRemoteExecution(), "Incorrect usage."
+		
+		# build remote command
+		l_cmd = ["ssh",self.pathData()["server"]] + cmd
+		
+		# execute the command
+		self.app.executeCommand(l_cmd)
+
 
 	#
 	# hashable type mehods, hashable is needed for dict keys and sets
