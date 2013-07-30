@@ -67,7 +67,7 @@ class Repository:
 	
 	OPERATORS = ("(",")","+","-","&")
 	TRUST_LEVEL = ("semitrust","trust","untrust")
-	VALID_DESC_CHARS = set(string.ascii_letters + string.digits + "_")
+	VALID_DESC_CHARS = set(string.ascii_letters + string.digits + string.punctuation)
 	
 	def __init__(self, app, host, annex, path, **data):
 		# save options
@@ -243,11 +243,7 @@ class Repository:
 	def description(self):
 		""" the git annex description of the repository, default: host name """
 		if "description" not in self._data:
-			# filter unwanted characters
-			description = "".join(c for c in self.host.name if c in self.VALID_DESC_CHARS)
-			if not description:
-				raise ValueError("%s: cannot generate a valid git annex description." % self)
-			return description
+			return self.host.name
 		else:
 			return self._data["description"]
 	

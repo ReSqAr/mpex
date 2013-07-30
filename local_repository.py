@@ -1,6 +1,7 @@
 import collections
 import os
 import sys
+import string
 import subprocess
 import datetime
 
@@ -33,6 +34,9 @@ class LocalRepository:
 			
 			activeAnnexDescriptions() -> dictionary online repositories -> connection
 	"""
+
+	VALID_GITID_CHARS = set(string.ascii_letters + string.digits + "_")
+
 	def __init__(self, repo, connection=None):
 		# call super
 		super(LocalRepository,self).__init__()
@@ -183,6 +187,8 @@ class LocalRepository:
 			
 			# if the line does not start with a space, we have line of type 'key: value'
 			if not line[0].isspace():
+				# check that the line has the right form
+				assert ':' in line, "git annex status malformed: '%s'" % line
 				# split it
 				key, value = line.split(':',1)
 				# remove white spaces
@@ -365,9 +371,13 @@ class LocalRepository:
 			gitID   = repo.description
 			gitPath = connection.gitPath(repo)
 
+			# filter gitID
+			gitID = "".join(c for c in gitID if c in self.VALID_GITID_CHARS)
+			assert gitID, "Cannot build a vaild git ID."
+
 			try:
 				# determine which url was already set
-				url = self.readGitKey("remote.%s.url" % gitID, )
+				url = self.readGitKey("remote.%s.url" % gitID)
 			except subprocess.CalledProcessError:
 				# no url was yet set
 				url = None
@@ -558,7 +568,7 @@ class LocalRepository:
 			self.executeCommand(cmd, ignoreexception=True)
 
 		# sync again
-		self.sync(annex_descs, )
+		self.sync(annex_descs)
 
 
 	def deleteAllRemotes(self):
