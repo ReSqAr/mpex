@@ -46,6 +46,8 @@ def parse_annex_names(app,args):
 apply_parser = argparse.ArgumentParser(add_help=False)
 apply_parser.add_argument('--remote', action="store_true",
 						help="execute the command also on all connected remotes")
+apply_parser.add_argument('--remoteonly', action="store_true",
+						help="execute the command only on connected remotes")
 apply_parser.add_argument('--hops', type=int, default=2,
 						help="when remote is given, the maximal number of hops")
 apply_parser.add_argument('--simulate', action="store_true",
@@ -74,8 +76,21 @@ def apply_function(args,f):
 	# sort order for repositories
 	r_key = lambda r: str((r.annex,r.path))
 	
+	# sort out execution targets
+	if args.remoteonly:
+		# only remote
+		localExecution,remoteExecution = False,True
+	elif args.remote:
+		# both
+		localExecution,remoteExecution = True,True
+	else:
+		# default: only local
+		localExecution,remoteExecution = True,False
+	not args.remoteonly
+	
+	
 	# if remoted execution is wanted and we are still close enough to the origin
-	if args.remote and args.hops > 0:
+	if remoteExecution and args.hops > 0:
 		for connection in app.getConnections():
 			if not connection.isOnline():
 				print("Connection to %s is not online." % connection.dest.name)
@@ -110,10 +125,12 @@ def apply_function(args,f):
 			else:
 				raise ValueError("Connection %s does not permit remote exection."%connection)
 	
-	for repo in sorted(app.getHostedRepositories(),key=r_key):
-		# check if the repo belongs to a selected annex, if yes, then execute f
-		if repo.annex in selected_annexes:
-			f(repo)
+	# if the command should be executed locally
+	if localExecution:
+		for repo in sorted(app.getHostedRepositories(),key=r_key):
+			# check if the repo belongs to a selected annex, if yes, then execute f
+			if repo.annex in selected_annexes:
+				f(repo)
 	
 
 #
