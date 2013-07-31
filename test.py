@@ -173,6 +173,7 @@ class TestStructure(unittest.TestCase):
 		self.assertFalse(repo.strict)
 		self.assertEqual(repo.trust,"semitrust")
 		self.assertIsNone(repo.files)
+		self.assertFalse(repo.isSpecial())
 		self.assertFalse(repo.hasNonTrivialDescription())
 
 	def test_creation_repositories_metadata_direct(self):
@@ -260,7 +261,7 @@ class TestStructure(unittest.TestCase):
 		self.assertEqual(repo.filesAsCmd(),["-(","-)","--or","--not","--and","--in=Host"])
 	
 	def test_creation_repositories_metadata_description(self):
-		""" check metadata trust member """
+		""" check metadata description member """
 		# initialisation
 		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
@@ -270,6 +271,18 @@ class TestStructure(unittest.TestCase):
 		repo = r.create(host,annex,os.path.join(self.path,"repo"),description="XXX")
 		self.assertEqual(repo.description,"XXX")
 		self.assertTrue(repo.hasNonTrivialDescription())
+
+	
+	def test_repositories_special(self):
+		""" check the isSpecial method """
+		# initialisation
+		app = application.Application(self.path,verbose=self.verbose)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host,annex = h.create("Host"),a.create("Annex")
+
+		# check special
+		repo = r.create(host,annex,"special",description="XXX")
+		self.assertTrue(repo.isSpecial())
 
 	
 	def test_connection_creation(self):
