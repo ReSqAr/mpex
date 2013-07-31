@@ -136,7 +136,7 @@ class GitAnnexRepository(GitRepository):
 	def standardRepositories(self):
 		raise NotImplementedError
 	
-	def getGitAnnexStatus(self):
+	def gitAnnexStatus(self):
 		""" calls 'git-annex status --fast' and parses the output """
 		# change path
 		self.changePath()
@@ -191,7 +191,7 @@ class GitAnnexRepository(GitRepository):
 			return "indirect"
 		
 		# get git annex status
-		status = self.getGitAnnexStatus()
+		status = self.gitAnnexStatus()
 		
 		# read the mode
 		assert "repository mode" in status, "Invalid git-annex output"
@@ -204,7 +204,7 @@ class GitAnnexRepository(GitRepository):
 
 		# get git annex status and git annex uuid
 		uuid = self.getAnnexUUID()
-		status = self.getGitAnnexStatus()
+		status = self.gitAnnexStatus()
 		
 		for level in self.TRUST_LEVEL:
 			# create key
@@ -230,7 +230,7 @@ class GitAnnexRepository(GitRepository):
 
 		# get git annex status and git annex uuid
 		uuid = self.getAnnexUUID()
-		status = self.getGitAnnexStatus()
+		status = self.gitAnnexStatus()
 		
 		for level in self.TRUST_LEVEL:
 			# create key
@@ -565,28 +565,36 @@ class LocalRepository(GitAnnexRepository):
 		LocalRepository represents a realisation of a repository
 		which can be accessed from app.currentHost()
 		
-		main methods:
-			init()
+		main git annex methods:
+			init(ignorenonempty=False)
 			setProperties()
 			finalise()
-			sync(annex descriptions)
+			sync(annex descriptions=None)
 			repairMaster()
-			copy(annex descriptions, files expression, strict=True/false)
+			copy(annex descriptions, files expression, strict=true/false)
+			deleteAllRemotes()
+
+		git methods:
+			gitConfig(key) -> value
+			gitBranch() -> list of branches
+			gitDiff(filter=None, staged=False) -> dictionary: filename -> status
+			gitStatus() -> dictionary: filename -> status
+			gitHead() -> git head
+			isStageNonEmpty()
+			deletedFiles()
+			hasUncommitedChanges() (careful: slightly inaccurate)
+		
+		git annex methods:
+			standardRepositories()
+			gitAnnexStatus()
+			getAnnexUUID()
+			onDiskDirectMode()
+			onDiskTrustLevel()
+			onDiskDescription()
 			
 		other methods:
 			changePath()
-
-			gitConfig(key) -> reads key
-			gitBranch() -> list of branches
-			hasUncommitedChanges() -> True/False
-
-			getGitAnnexStatus() -> dictionary
-			getAnnexUUID() -> uuid
-			onDiskDirectMode() -> "direct"/"indirect"
-			onDiskTrustLevel() -> element of TRUST_LEVEL
-			onDiskDescription() -> description
-			
-			activeAnnexDescriptions() -> dictionary online repositories -> connection
+			standardRepositories()
 	"""
 	def __init__(self, repo, connection=None):
 		# call super
