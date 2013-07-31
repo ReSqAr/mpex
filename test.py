@@ -129,9 +129,6 @@ class TestStructure(unittest.TestCase):
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host1up = h.create("Host1"),h.create("HOST1")
 		annex1 = a.create("Annex1")
-		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"))
-		repo11up = r.create(host1up,annex1,os.path.join(self.path,"repo11"))
-		
 		# test error conditions
 		# use repoxx, some paths are already taken, hence the identity map applies
 		rxx = os.path.join(self.path,"repoxx")
@@ -147,7 +144,25 @@ class TestStructure(unittest.TestCase):
 					host1,annex1,rxx,description="ü")
 		self.assertRaisesRegex(AssertionError, "trust has to be valid", r.create,
 					host1,annex1,rxx,trust="unknown")
+
+		# get should raise an error
+		self.assertRaises(KeyError, r.get,
+					host1,annex1,os.path.join(self.path,"repo11"))
+
+		# indeed create repositories
+		repo11 = r.create(host1,annex1,os.path.join(self.path,"repo11"))
+		repo11up = r.create(host1up,annex1,os.path.join(self.path,"repo11"))
 		
+		# recreate should give an error
+		self.assertRaisesRegex(AssertionError, "already exists", r.create,
+					host1,annex1,os.path.join(self.path,"repo11"))
+		self.assertRaisesRegex(AssertionError, "already exists", r.create,
+					host1up,annex1,os.path.join(self.path,"repo11"),description=host1.name)
+		
+		# get should give the same element
+		repo11p = r.get(host1,annex1,os.path.join(self.path,"repo11"))
+		self.assertEqual(repo11,repo11p)
+
 		# files cannot be checked on initialisation, so check only <repo>.files = <expr>
 		self.assertRaisesRegex(ValueError, "non-closed", setattr,
 					repo11,"files","'")

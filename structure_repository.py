@@ -18,7 +18,8 @@ class Repositories(structure_base.Collection):
 		""" get the key from the arguments """
 		# key is annex and the description, or if the description
 		# does not exists, the host name
-		return (annex,data.get("description",host))
+		assert isinstance(host,structure_host.Host), "host %s has to be an instance of Host" % host
+		return (annex,data.get("description",host.name))
 	def objToRawData(self, obj):
 		""" converts an object into raw data """
 		raw = dict(obj._data)
