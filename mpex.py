@@ -98,8 +98,10 @@ def apply_function(args,f):
 			if connection.isLocal():
 				# if the repositories are locally accessible:
 				for repo in sorted(app.getConnectedRepositories(connection),key=r_key):
-					# check if the repo belongs to a selected annex, if yes, then execute f
-					if repo.annex in selected_annexes:
+					# check if the repo belongs to a selected annex
+					# and that it is not special, if both conditions
+					# are true, execute f
+					if repo.annex in selected_annexes and not repo.isSpecial():
 						f(repo)
 			elif connection.supportsRemoteExecution():
 				# if the connection allows remote execution, first compute the remote command
@@ -128,7 +130,7 @@ def apply_function(args,f):
 	if localExecution:
 		for repo in sorted(app.getHostedRepositories(),key=r_key):
 			# check if the repo belongs to a selected annex, if yes, then execute f
-			if repo.annex in selected_annexes:
+			if repo.annex in selected_annexes and not repo.isSpecial():
 				f(repo)
 	
 

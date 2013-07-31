@@ -81,7 +81,7 @@ class Repository:
 		# sanity check: check that we got correct classes and path is absolute
 		assert isinstance(self._host,structure_host.Host), "%s: host has to be an instance of Host" % self
 		assert isinstance(self._annex,structure_annex.Annex), "%s: annex has to be an instance of Annex" % self
-		assert self._path.startswith("/"), "%s: path has to an absolute path" % self
+		assert self._path.startswith("/") or self._path == "special", "%s: path has to an absolute path or 'special'" % self
 		assert self.trust in self.TRUST_LEVEL, "%s: trust has to be valid." % self
 		assert self.description, "%s: the git annex description has to be non-empty"
 		assert set(self.description).issubset(self.VALID_DESC_CHARS), "%s: invalid character detected." % self
@@ -245,7 +245,6 @@ class Repository:
 	def hasNonTrivialDescription(self):
 		""" is the description more than the modified host name? """
 		return "description" in self._data
-	
 	@property
 	def description(self):
 		""" the git annex description of the repository, default: host name """
@@ -305,6 +304,10 @@ class Repository:
 	
 	
 	
+	def isSpecial(self):
+		""" determines if the repository is a special remote """
+		return self._path == "special"
+
 	def connectedRepositories(self):
 		""" find all connected repositories, returns a dictionary: repository -> set of connections """
 		
@@ -328,8 +331,6 @@ class Repository:
 		assert gitID, "Cannot build a vaild git ID."
 		
 		return gitID
-
-
 
 
 

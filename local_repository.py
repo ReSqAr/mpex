@@ -315,6 +315,10 @@ class GitAnnexRepository(GitRepository):
 		
 		# set git remotes
 		for repo, connections in self.connectedRepositories().items():
+			# ignore special repositories
+			if repo.isSpecial():
+				continue
+			
 			# make sure that we have only one connection
 			assert connections, "Programming error."
 			assert len(connections) == 1, "Git supports only up to one connection."
@@ -645,6 +649,8 @@ class LocalRepository(GitAnnexRepository):
 	@property
 	def localpath(self):
 		""" returns the path on the local machine """
+		assert not self.isSpecial(), "local path can only be called for non-special remotes"
+		
 		if self.connection is None:
 			# the repository is on the local machine
 			return self.path

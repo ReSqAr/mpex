@@ -98,6 +98,7 @@ class Connection:
 		""" computes the path used by git to access the repository over the connection """
 		
 		assert self.dest == repo.host, "Programming error."
+		assert repo.isSpecial(), "There is no git path for a special repository."
 		
 		# get the protocol
 		protocol = self.protocol()

@@ -99,11 +99,12 @@ def create_annexes_table(annexes,additional_data=True):
 def create_repositories_table(repositories):
 	""" builds a table """
 	# determine if additional columns have to be shown
-	withdirect = any(repo.direct for repo in repositories)
-	withtrust  = any(repo.trust != "semitrust" for repo in repositories)
-	withfiles  = any(repo.files for repo in repositories)
-	withstrict = any(repo.strict for repo in repositories)
-	withdesc   = any(repo.hasNonTrivialDescription() for repo in repositories)
+	withspecial = any(repo.isSpecial() for repo in repositories)
+	withdirect  = any(repo.direct for repo in repositories)
+	withtrust   = any(repo.trust != "semitrust" for repo in repositories)
+	withfiles   = any(repo.files for repo in repositories)
+	withstrict  = any(repo.strict for repo in repositories)
+	withdesc    = any(repo.hasNonTrivialDescription() for repo in repositories)
 	
 	# we build a table: a 2 dimensional array
 	table = []
@@ -111,11 +112,12 @@ def create_repositories_table(repositories):
 	# build table header
 	header = ["Host","Annex","Path"]
 	# additional columns:
-	if withdirect: header.append("Direct")
-	if withtrust:  header.append("Trust")
-	if withfiles:  header.append("Files Expr")
-	if withstrict: header.append("Strict")
-	if withdesc:   header.append("Description")
+	if withspecial: header.append("Special")
+	if withdirect:  header.append("Direct")
+	if withtrust:   header.append("Trust")
+	if withfiles:   header.append("Files Expr")
+	if withstrict:  header.append("Strict")
+	if withdesc:    header.append("Description")
 	# the first line is the header
 	table.append(header)
 	
@@ -130,8 +132,10 @@ def create_repositories_table(repositories):
 		# second column is the annex name
 		row.append(repo.annex.name)
 		# third column is the path
-		row.append(repo.path)
+		row.append(repo.path if not repo.isSpecial() else "-")
 		# further columns
+		if withspecial:
+			row.append("yes" if repo.isSpecial() else "")
 		if withdirect:
 			row.append("yes" if repo.direct else "")
 		if withtrust:
@@ -383,6 +387,17 @@ def meta_edit_command(app,obj_name):
 
 
 
+def valid_values_pp(valid_values):
+	# build identity mapping
+	valid_values = {x:x for x in valid_values}
+	# define post processor via lib.fuzzy_match
+	def postprocessor(s):
+		""" checks that s is a valid value """
+		return lib.fuzzy_match.fuzzyMatch(s, valid_values)
+	# return post processor
+	return postprocessor
+
+
 
 def edit_hosts(app,host):
 	""" edit hosts """
@@ -434,6 +449,8 @@ def edit_annexes(app,annex):
 	except Exception as e:
 		print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
 		return
+
+
 
 
 def edit_repositories(app,obj):
@@ -506,12 +523,12 @@ def edit_repositories(app,obj):
 		# 3. which path
 		def postprocessor(s):
 			# test if this path is absolute
-			if not s.startswith("/"):
-				raise ValueError("path has to be absolute")
+			if not s.startswith("/") and not s == "special":
+				raise ValueError("path has to be absolute or 'special'")
 			return s
 		
 		questions.append({"name":"path",
-							"description":"absolute path to the repository",
+							"description":"absolute path to the repository or special for a special remote",
 							"postprocessor": postprocessor})
 		
 		# actual ask the questions
@@ -544,23 +561,13 @@ def edit_repositories(app,obj):
 	# gather questions
 	questions = []
 	
-	def valid_values_pp(valid_values):
-		# build identity mapping
-		valid_values = {x:x for x in valid_values}
-		# define post processor via lib.fuzzy_match
-		def postprocessor(s):
-			""" checks that s is a valid value """
-			return lib.fuzzy_match.fuzzyMatch(s, valid_values)
-		# return post processor
-		return postprocessor
-
 	# 1. question: direct mode
 	questions.append({"name":"direct",
 						"description":"direct mode, valid values: true,false",
 						"default":str(obj.direct).lower(),
 						"postprocessor": valid_values_pp(("true","false"))})
 
-	# 2. question: direct mode
+	# 2. question: trust level
 	trust_level = structure_repository.Repository.TRUST_LEVEL
 	questions.append({"name":"trust",
 						"description":"trust level, valid values: %s" % ",".join(trust_level),
@@ -699,16 +706,6 @@ def edit_connections(app,obj):
 	# gather questions
 	questions = []
 	
-	def valid_values_pp(valid_values):
-		# build identity mapping
-		valid_values = {x:x for x in valid_values}
-		# define post processor via lib.fuzzy_match
-		def postprocessor(s):
-			""" checks that s is a valid value """
-			return lib.fuzzy_match.fuzzyMatch(s, valid_values)
-		# return post processor
-		return postprocessor
-
 	# 1. question: alwaysOn
 	questions.append({"name":"alwayson",
 						"description":"is the connection always available, valid values: true,false",
