@@ -33,7 +33,7 @@ def parse_annex_names(app,args):
 		# find annexes
 		annexes = set(lib.fuzzy_match.fuzzyMultiMatch(annex_name,known_annexes))
 		if not annexes:
-			print("WARNING: could not parse the annex '%s'")
+			print("WARNING: could not parse the annex '%s'" % annex_name)
 			sys.exit(1)
 		# add found annexes
 		selected_annexes |= annexes
