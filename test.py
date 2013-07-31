@@ -110,7 +110,7 @@ class TestStructure(unittest.TestCase):
 		repo22 = r.create(host2,annex2,os.path.join(self.path,"repo22"))
 		repo23 = r.create(host2,annex3,os.path.join(self.path,"repo23"))
 		repo33 = r.create(host3,annex3,os.path.join(self.path,"repo33"))
-		repo11p= r.get(host1,annex2,os.path.join(self.path,"repo11"))
+		repo11p= r.get(host1,annex1,os.path.join(self.path,"repo11"))
 		
 		# identity (equal if host and path are equal)
 		self.assertEqual(repo11,repo11p)

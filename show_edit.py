@@ -1,5 +1,6 @@
 import collections
 import readline
+import textwrap
 
 import lib.fuzzy_match
 
@@ -205,16 +206,25 @@ def ask_edit_questions(questions):
 		# set
 		answers[name] = question.get("default") if question.get("default") else ""
 
+	prefixlength = max(len(question["name"]) for question in questions) + 1
+
 	while True:
 		print()
 		for question in questions:
 			name = question["name"]
 			
-			# print the description
-			print("\033[1m%s:\033[0m"%name, "description:", question["description"])
+			
+			# print the description (wrapped)
+			for i,line in enumerate(textwrap.wrap(question["description"],70)):
+				if i == 0:
+					print("\033[1m%s:\033[0m"%name," " * (prefixlength - len(name)-1),end="")
+				else:
+					print(" " * (prefixlength+1),end="")
+				print(line)
+			
 			# ask
 			while True:
-				inp = input("\033[1m%s:\033[0m new value [%s]: " % (name,answers[name]))
+				inp = input("%s \033[1mnew value [%s]:\033[0m " % (" "*prefixlength,answers[name]))
 				
 				# if the input is empty, use the default value
 				if not inp:
@@ -232,10 +242,10 @@ def ask_edit_questions(questions):
 						# if the original version differs from the post processed one,
 						# show it
 						if orig != inp:
-							print("%s: implicit change to: %s" % (name,inp))
+							print(" "*prefixlength, "implicit change to: %s" % (inp,))
 					except Exception as e:
 						# the post processor found an error
-						print("%s: invalid input: %s" % (name,e.args[0]))
+						print(" "*prefixlength, "invalid input: %s" % (e.args[0],))
 						continue
 				
 				# if we reach this point, everything is fine, we save the answer
@@ -407,8 +417,10 @@ def edit_hosts(app,host):
 		return
 	
 	def postprocessor(name):
-		""" test if creating an object with the name raises an error """
-		return structure_host.Host(None,name).name
+		""" only certain characters are allowed """
+		assert set(name).issubset(structure_host.Host.VALID_CHARS),\
+				"invalid character detected: %s" % ",".join(set(name) - structure_host.Host.VALID_CHARS)
+		return name
 	questions = [{"name":"name", "description":"host name","postprocessor":postprocessor}]
 	answers = ask_edit_questions(questions)
 	
@@ -433,8 +445,10 @@ def edit_annexes(app,annex):
 		return
 	
 	def postprocessor(name):
-		""" test if creating an object with the name raises an error """
-		return structure_annex.Annex(None,name).name
+		""" only certain characters are allowed """
+		assert set(name).issubset(structure_annex.Annex.VALID_CHARS),\
+				"invalid character detected: %s" % ",".join(set(name) - structure_annex.Annex.VALID_CHARS)
+		return name
 	questions = [{"name":"name", "description":"annex name","postprocessor":postprocessor}]
 	answers = ask_edit_questions(questions)
 	
@@ -531,6 +545,18 @@ def edit_repositories(app,obj):
 							"description":"absolute path to the repository or special for a special remote",
 							"postprocessor": postprocessor})
 		
+		# 4. description
+		def postprocessor(s):
+			""" only certain characters are allowed """
+			assert set(s).issubset(structure_repository.Repository.VALID_DESC_CHARS),\
+					"invalid character detected: %s" % ",".join(set(s) - structure_repository.Repository.VALID_DESC_CHARS)
+			return s
+		
+		questions.append({"name":"description",
+							"description":"description of the repository, usually only needed when there are multiple repositories of the same annex on the same host",
+							"default":"",
+							"postprocessor": postprocessor})
+		
 		# actual ask the questions
 		answers = ask_edit_questions(questions)
 
@@ -545,8 +571,11 @@ def edit_repositories(app,obj):
 			host = app.hosts.fuzzyMatch(answers["host"])
 			annex = app.annexes.fuzzyMatch(answers["annex"])
 			path = answers["path"]
+			data = {}
+			if answers["description"]:
+				data["description"] = answers["description"]
 			# create object
-			obj = app.repositories.create(host,annex,path)
+			obj = app.repositories.create(host,annex,path,**data)
 		except Exception as e:
 			print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
 			return

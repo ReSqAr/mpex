@@ -16,7 +16,9 @@ class Repositories(structure_base.Collection):
 
 	def keyFromArguments(self, host, annex, path, **data):
 		""" get the key from the arguments """
-		return (host,path,data.get("description"))
+		# key is annex and the description, or if the description
+		# does not exists, the host name
+		return (annex,data.get("description",host))
 	def objToRawData(self, obj):
 		""" converts an object into raw data """
 		raw = dict(obj._data)
