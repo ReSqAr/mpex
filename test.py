@@ -835,29 +835,33 @@ class TestCommands(unittest.TestCase):
 		# initialisation
 		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
-		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
+		host1,host2,host3,host4 = [h.create("Host%d"%i) for i in range(1,4+1)]
 		annex1 = a.create("Annex1")
 		conn12 = c.create(host1,host2,"/abc/",alwayson="true")
 		conn13 = c.create(host1,host3,"ssh://yeah/",alwayson="true")
+		conn14 = c.create(host1,host4,"/xyz",alwayson="true")
 
 		# set host
 		app.setCurrentHost(host1)
 
 		# create & init
-		repo13 = r.create(host1,annex1,os.path.join(self.path,"repo13"))
-		repo23 = r.create(host2,annex1,os.path.join(self.path,"repo23"))
-		repo33 = r.create(host3,annex1,os.path.join(self.path,"repo33"))
-		repo13 = app.assimilate(repo13)
-		repo13.init()
-		repo13.setProperties()
+		repo1 = r.create(host1,annex1,os.path.join(self.path,"repo1"))
+		repo2 = r.create(host2,annex1,os.path.join(self.path,"repo2"))
+		repo3 = r.create(host3,annex1,os.path.join(self.path,"repo3"))
+		repo4 = r.create(host4,annex1,"special")
+		repo1 = app.assimilate(repo1)
+		repo1.init()
+		repo1.setProperties()
 
 		# check remotes
 		self.assertIn("Host2",subprocess.check_output(["git","remote","show"]).decode("UTF8"))
 		self.assertIn("Host3",subprocess.check_output(["git","remote","show"]).decode("UTF8"))
-		with open(os.path.join(repo13.path,".git/config")) as fd:
+		self.assertNotIn("Host4",subprocess.check_output(["git","remote","show"]).decode("UTF8"))
+		with open(os.path.join(repo1.path,".git/config")) as fd:
 			x = fd.read()
-			self.assertIn("/abc" + repo23.path, x)
-			self.assertIn("ssh://yeah" + repo33.path, x)
+			self.assertIn("/abc" + repo2.path, x)
+			self.assertIn("ssh://yeah" + repo3.path, x)
+			self.assertNotIn("/xyz", x)
 		
 	def test_repo_init_non_empty(self):
 		""" test repository init in non-empty directory """
@@ -1078,7 +1082,7 @@ class TestCommands(unittest.TestCase):
 		self.sync([repo1])
 		
 		# sync with unknown repo
-		self.assertRaises(application.InterruptedException,repo1.sync,["yeah"])
+		self.assertRaises(application.InterruptedException,repo1.sync,["unknownrepo"])
 		
 		# sync changes on host2
 		self.sync([repo2])
