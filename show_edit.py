@@ -534,6 +534,12 @@ def edit_repositories(app,obj):
 			print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
 			return
 	
+	print()
+	print("editing the following repository:")
+	print("host: ", obj.host.name)
+	print("annex:", obj.annex.name)
+	print("path: ", obj.path)
+	
 	# ask non core questions: direct, trust, files, strict
 	# gather questions
 	questions = []
@@ -564,7 +570,7 @@ def edit_repositories(app,obj):
 	# 3. question: files expression
 	def files_pp(s):
 		""" files post processor """
-		return obj.sanitiseFilesExpression(s)
+		return obj._sanitiseFilesExpression(s)
 	questions.append({"name":"files",
 						"description":"files expression which specifies the desired content of this repository",
 						"default":obj.files if obj.files else "",
@@ -682,6 +688,12 @@ def edit_connections(app,obj):
 		except Exception as e:
 			print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
 			return
+	
+	print()
+	print("editing the following connection:")
+	print("source:     ", obj.source.name)
+	print("destination:", obj.dest.name)
+	print("path:       ", obj.path)
 	
 	# ask non core questions: direct, trust, files, strict
 	# gather questions
