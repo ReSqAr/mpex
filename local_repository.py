@@ -379,7 +379,8 @@ class GitAnnexRepository(GitRepository):
 			msg = "Host: %s UTC: %s" % (self.host.name,utc)
 			# WARNING: never think of -a
 			self.executeCommand(["git","commit","-m",msg])
-
+		else:
+			print("\033[1;37;41m", "nothing staged although there were uncommited changes, please run git status.", "\033[0m")
 
 	def sync(self, annex_descs=None):
 		"""
