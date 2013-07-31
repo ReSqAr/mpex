@@ -51,11 +51,9 @@ class GitRepository:
 		# change path
 		self.changePath()
 		
-		# get output of 'git config $key'
+		# get output of 'git config $key' and return it
 		output = subprocess.check_output(["git","config",key]).decode("UTF-8").strip()
 		assert output, "Error."
-		
-		# and return it
 		return output
 	
 	def gitBranch(self):
@@ -121,12 +119,8 @@ class GitRepository:
 	
 	def hasUncommitedChanges(self):
 		""" has the current repository uncommited changes? """
-		# ignore type changes
-		for filename, status in self.gitStatus().items():
-			if status != "T":
-				return True
-		else:
-			return False
+		# accept all except type changes
+		return any(status != 'T' for status in self.gitStatus().values())
 
 
 class GitAnnexRepository(GitRepository):
