@@ -30,9 +30,15 @@ def print_table(table,sep=2,header_sep="="):
 	
 	# output
 	for i,row in enumerate(table):
+		# print header in bold
+		if i == 0: print("\033[1m",end="")
+
 		for column_length,item in zip(column_lengths,row):
 			# print the item left justified
 			print(item.ljust(column_length+sep),end='')
+
+		if i == 0: print("\033[0m",end="")
+
 		# print a new line
 		print()
 
@@ -201,10 +207,10 @@ def ask_edit_questions(questions):
 			name = question["name"]
 			
 			# print the description
-			print("%s: description: %s" % (name,question["description"]))
+			print("\033[1m%s:\033[0m"%name, "description:", question["description"])
 			# ask
 			while True:
-				inp = input("%s: value [%s]: " % (name,answers[name]))
+				inp = input("\033[1m%s:\033[0m new value [%s]: " % (name,answers[name]))
 				
 				# if the input is empty, use the default value
 				if not inp:
@@ -235,7 +241,7 @@ def ask_edit_questions(questions):
 		
 		print()
 		# ask if everything is alright
-		x = input("Are the above answers correct? Or cancel? [Y/n/c] ")
+		x = input("\033[1mAre the above answers correct? Or cancel? [Y/n/c]\033[0m ")
 		
 		if x.strip().lower().startswith("c"):
 			# if the input starts with c, assume it is cancelled
@@ -273,7 +279,7 @@ def show(app):
 def edit(app):
 	while True:
 		print()
-		print("Available options:")
+		print("\033[1mAvailable options:\033[0m")
 		print("  edit [h]osts list")
 		print("  edit [a]nnexes list")
 		print("  edit [r]epositories list")
@@ -283,7 +289,7 @@ def edit(app):
 		
 		# ask the user what to do (until we have a valid answer)
 		while True:
-			key = input("Select [h,a,r,c,s,e]: ")
+			key = input("\033[1mSelect [h,a,r,c,s,e]:\033[0m ")
 			if key not in ['h','a','r','c','s','e']:
 				print("Invalid user input '%s'" % key)
 				continue
@@ -328,7 +334,7 @@ def meta_edit_command(app,obj_name):
 		print()
 		
 		# print available options
-		print("Available options:")
+		print("\033[1mAvailable options:\033[0m")
 		if objs:
 			print("  edit [i]-th entry (i: 1-%d)"%len(objs))
 		print("  [c]reate a new entry")
@@ -341,7 +347,7 @@ def meta_edit_command(app,obj_name):
 
 		# ask the user what to do (until we have a valid answer)
 		while True:
-			key = input("Select [%s]: " % ','.join(options))
+			key = input("\033[1mSelect [%s]:\033[0m " % ','.join(options))
 			if key in base_options:
 				# valid
 				break
