@@ -2,21 +2,21 @@ import os.path
 import io
 import subprocess
 
+# check python version
+import sys
+if sys.version_info < (3,2,0):
+	raise RuntimeError("Python version >= 3.2 is needed.")
+
+
 import local_repository
 import structure_host
 import structure_annex
 import structure_repository
 import structure_connection
 
-#
-# check python version
-#
-import sys
-if sys.version_info < (3,2,0):
-        raise RuntimeError("Python version >= 3.2 is needed.")
 
-
-
+class InterruptedException(Exception):
+	pass
 
 class Application:
 	
@@ -148,8 +148,9 @@ class Application:
 		try:
 			with open(os.devnull, "w") as devnull:
 				subprocess.check_call(cmd,stdout=None if self.verbose <= self.VERBOSE_NORMAL else devnull)
-		except subprocess.CalledProcessError as e:
+		except (subprocess.CalledProcessError,FileNotFoundError) as e:
+			print("\033[1;37;41m", "an error occured:", str(e), "\033[0m")
 			if ignoreexception:
 				pass
 			else:
-				raise
+				raise InterruptedException(e)

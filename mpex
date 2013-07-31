@@ -362,7 +362,7 @@ def runParser():
 		# if everything is OK, call the function
 		try:
 			args.func(args)
-		except KeyboardInterrupt:
+		except (KeyboardInterrupt,application.InterruptedException):
 			print()
 			print("interrupted")
 			return
