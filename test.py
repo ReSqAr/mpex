@@ -662,17 +662,17 @@ class TestCommands(unittest.TestCase):
 	#
 	# file system interaction
 	#
-	def _create_file(self, path, filename):
+	def _create_file(self, path, filename, content):
 		""" create file in the given path """
 		f_path = os.path.join(path,filename)
 		with open(f_path,"wt") as fd:
-			fd.write(filename)
-	def create_file(self, repo, filename):
+			fd.write(filename if content is None else content)
+	def create_file(self, repo, filename, content=None):
 		""" create file in the given repository """
-		self._create_file(repo.path,filename)
-	def create_file_local(self, repo, filename):
+		self._create_file(repo.path,filename,content)
+	def create_file_local(self, repo, filename, content=None):
 		""" create file in the given repository """
-		self._create_file(repo.localpath,filename)
+		self._create_file(repo.localpath,filename,content)
 
 	def _remove_file(self, path, filename):
 		""" removes the given file """
@@ -928,9 +928,11 @@ class TestCommands(unittest.TestCase):
 		# create files
 		n = 5
 		deleted,non_deleted = "going_to_be_deleted_%d","not_going_to_be_deleted_%d"
+		move_before,move_after = "move_before_%d","move_after_%d"
 		for i in range(n):
 			self.create_file(repo,non_deleted%i)
 			self.create_file(repo,deleted%i)
+			self.create_file(repo,move_before%i)
 		
 		# test not commited?
 		self.assertTrue(repo.hasUncommitedChanges())
@@ -942,13 +944,16 @@ class TestCommands(unittest.TestCase):
 		for i in range(n):
 			self.has_file(repo,non_deleted%i)
 			self.has_file(repo,deleted%i)
-			
+			self.has_file(repo,move_before%i)
+		
 		# everything commited?
 		self.assertFalse(repo.hasUncommitedChanges())
 		
-		# remove file
+		# remove and move files
 		for i in range(n):
 			self.remove_file(repo,deleted%i)
+			self.remove_file(repo,move_before%i)
+			self.create_file(repo,move_after%i,move_before%i)
 		
 		# test not commited?
 		self.assertTrue(repo.hasUncommitedChanges())

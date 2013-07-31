@@ -6,89 +6,13 @@ import subprocess
 import datetime
 
 
-class LocalRepository:
-	"""
-		LocalRepository represents a realisation of a repository
-		which can be accessed from app.currentHost()
-		
-		main methods:
-			init()
-			setProperties()
-			finalise()
-			sync(annex descriptions)
-			repairMaster()
-			copy(annex descriptions, files expression, strict=True/false)
-			
-		other methods:
-			changePath()
 
-			readGitKey(key) -> reads key
-			gitBranches() -> list of branches
-			hasUncommitedChanges() -> True/False
 
-			getGitAnnexStatus() -> dictionary
-			getAnnexUUID() -> uuid
-			onDiskDirectMode() -> "direct"/"indirect"
-			onDiskTrustLevel() -> element of TRUST_LEVEL
-			onDiskDescription() -> description
-			
-			activeAnnexDescriptions() -> dictionary online repositories -> connection
-	"""
-	def __init__(self, repo, connection=None):
-		# call super
-		super(LocalRepository,self).__init__()
-
-		# save options
-		self.repo = repo
-		self.connection = connection
-
-		# check that the gurantees are valid, i.e. it is reachable via 
-		if self.connection:
-			# if it is a remote repository, check the integrity of the arguments
-			assert self.app.currentHost() == self.connection.source,\
-					"the connection does not originate from the current host. (%s != %s)" % (self.app.currentHost(),self.connection.source)
-			# the connection should end at the host of the current repository
-			assert repo.host == connection.dest,\
-					"the connection does not end at the host of the current repository. (%s != %s)" % (self.repo.host,self.connection.dest)
-			# the connection has to be local
-			assert self.connection.isLocal(),\
-					"the connection has to be to 'local'."
-		else:
-			# otherwise, the repository is hosted on the current host
-			assert self.app.currentHost() == self.repo.host,\
-					"the repository is not hosted on the current host. (%s != %s)" % (self.app.currentHost(),self.repo.host)
-			
-	
-	def __getattribute__(self, name):
-		""" forward request to self.repo """
-		try:
-			# try to satisfy the request via self.repo
-			return getattr(self.repo,name)
-		except:
-			# otherwise, satisfy the request locally
-			return super(LocalRepository,self).__getattribute__(name)
-	
-	def __setattr__(self, name, v):
-		""" forward request to self.repo """
-		try:
-			# if repo has a variable called name, then set it there
-			if hasattr(self.repo,name):
-				return setattr(self.repo,name,v)
-		except AttributeError:
-			# no attribute named repo
-			pass
-		# otherwise, set it here
-		return super(LocalRepository,self).__setattr__(name,v)
+class GitRepository:
 	
 	@property
 	def localpath(self):
-		""" returns the path on the local machine """
-		if self.connection is None:
-			# the repository is on the local machine
-			return self.path
-		else:
-			# we are working remotely: give the path on the local machine
-			return self.connection.pathOnSource(self.path)
+		raise NotImplementedError
 	
 	#
 	# file system interaction
@@ -99,10 +23,9 @@ class LocalRepository:
 		# use the method given by the application
 		self.app.executeCommand(cmd, ignoreexception=ignoreexception)
 
+
 	def changePath(self, create=False):
-		"""
-			change the path to the current repository
-		"""
+		""" change the path to the current repository """
 
 		# get path
 		path = os.path.normpath(self.localpath)
@@ -122,9 +45,8 @@ class LocalRepository:
 		assert os.path.normpath(os.getcwd()) == path, "We are in the wrong directory?!?"
 		
 		return path
-
-	
-	def readGitKey(self, key):
+		
+	def gitConfig(self, key):
 		""" read a git key """
 		# change path
 		self.changePath()
@@ -136,7 +58,7 @@ class LocalRepository:
 		# and return it
 		return output
 	
-	def gitBranches(self):
+	def gitBranch(self):
 		""" returns all known branches """
 		# change path
 		self.changePath()
@@ -146,25 +68,71 @@ class LocalRepository:
 		# the first two characters are noise
 		return [line[2:].strip() for line in output.splitlines() if line.strip()]
 
-	def hasUncommitedChanges(self):
-		""" has the current repository uncommited changes? """
-
+	def gitDiff(self, filter=None, staged=False):
+		"""
+			calls 'git diff', with the given filter command and is
+			looking on staged files, if requested, returns with a
+			dictionary filename -> status
+		"""
 		# change into the right directory
 		self.changePath()
 
-		# call 'git status -s'
-		output = subprocess.check_output(["git","status","--porcelain"]).decode("UTF8").strip()
-		for line in output.splitlines():
-			# we have to ignore lines which start with T
-			if line.strip().startswith("T"):
-				continue
-			# we have found a valid line
-			return True
+		# the option -z is used to get NULL terminated strings
+		cmd = ["git","diff","-z","--name-status"]
+		# append filter statement
+		if filter is not None:
+			cmd.append("--diff-filter=%s"%filter)
+		# only staged files?
+		if staged:
+			cmd.append("--cached")
+		
+		# call 'git diff'
+		output = subprocess.check_output(cmd).decode("UTF-8")
+		data = output.split("\0")
+
+		# data looks like: <state>, <filename>, ..., ''
+		assert len(data) % 2 == 1, "git diff output has an unusual format"
+
+		return {filename: state for state,filename in zip(data[::2],data[1::2])}
+		
+	def gitStatus(self):
+		""" call 'git status' """
+		# change into the right directory
+		self.changePath()
+
+		# the option -z is used to get NULL terminated strings
+		cmd = ["git","status","-z","--porcelain"]
+		
+		# call 'git diff'
+		output = subprocess.check_output(cmd).decode("UTF-8")
+		data = output.split("\0")
+
+		# data looks like: <state><state><space><filename>, ..., ''
+		return {d[3:]:d[:2].strip() for d in data if d}
+
+	
+	def isStageNonEmpty(self):
+		""" are there any staged files? """
+		return bool(self.gitDiff(staged=True))
+	
+	def deletedFiles(self):
+		""" get the deleted files """
+		return list(self.gitDiff(filter="D").keys())
+	
+	def hasUncommitedChanges(self):
+		""" has the current repository uncommited changes? """
+		# ignore type changes
+		for filename, status in self.gitStatus().items():
+			if status != "T":
+				return True
 		else:
-			# nothing to do
 			return False
 
 
+class GitAnnexRepository(GitRepository):
+	def standardRepositories(self):
+		raise NotImplementedError
+	
 	def getGitAnnexStatus(self):
 		""" calls 'git-annex status --fast' and parses the output """
 		# change path
@@ -210,7 +178,7 @@ class LocalRepository:
 		
 	def getAnnexUUID(self):
 		""" get the git annex uuid of the current repository """
-		return self.readGitKey("annex.uuid")
+		return self.gitConfig("annex.uuid")
 	
 	def onDiskDirectMode(self):
 		""" finds the on disk direct mode """
@@ -281,21 +249,6 @@ class LocalRepository:
 			raise ValueError("Unable to determine the current description.")
 
 
-
-	def activeRepositories(self):
-		""" determine repositories which are online """
-		active_repos = collections.defaultdict(set)
-		
-		for repository, connections in self.connectedRepositories().items():
-			for connection in connections:
-				if connection.isOnline():
-					# add the connection
-					active_repos[repository].add(connection)
-		
-		return active_repos
-
-
-
 	#
 	# main methods
 	#
@@ -327,7 +280,7 @@ class LocalRepository:
 		
 		# set the properties
 		self.setProperties()
-	
+		
 	def setProperties(self):
 		""" sets the properties of the current repository """
 		
@@ -370,7 +323,7 @@ class LocalRepository:
 
 			try:
 				# determine which url was already set
-				url = self.readGitKey("remote.%s.url" % gitID)
+				url = self.gitConfig("remote.%s.url" % gitID)
 			except subprocess.CalledProcessError:
 				# no url was yet set
 				url = None
@@ -384,10 +337,13 @@ class LocalRepository:
 					raise RuntimeError("The url set for the connection %s does not match the computed one." % connection)
 				else:
 					continue
-	
+
 	def finalise(self):
 		""" calls git-annex add and commits all changes """
 		
+		# make sure that the master branch exists
+		self.repairMaster()
+
 		if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
 			print("\033[1;37;44m commiting changes in %s at %s \033[0m" % (self.annex.name,self.localpath))
 		
@@ -403,37 +359,39 @@ class LocalRepository:
 		# call 'git-annex add'
 		self.executeCommand(["git-annex","add"])
 		
-		# find deleted files: 'git diff -z --name-only  --diff-filter=D'
-		cmd = ["git","diff","-z","--name-only","--diff-filter=D"]
-		output = subprocess.check_output(cmd).decode("UTF-8")
-		deleted = output.split("\0")
-		deleted = [filename for filename in deleted if filename]
+		# find deleted files
+		deleted = self.deletedFiles()
 
 		if deleted and self.app.verbose <= self.app.VERBOSE_NORMAL:
 			print("found %d deleted files, removing them from git"%len(deleted))
 		
-		# call 'git rm %s' for every deleted file
+		# call 'git rm' for every deleted file
 		for filename in deleted:
 			# check that the file indeed does not exist
-			assert not os.path.isfile(os.path.join(self.localpath,filename)), "file '%s' does still exist" % filename
+			assert not os.path.isfile(os.path.join(self.localpath,filename)), "file '%s' does still exist?" % filename
 			# call 'git rm'
 			self.executeCommand(['git','rm',filename])
 			
-		# commit it
-		utc = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M:%S")
-		msg = "Host: %s UTC: %s" % (self.host.name,utc)
-		# WARNING: never think of -am
-		self.executeCommand(["git","commit","-m",msg])
+		# is anything staged?
+		if self.isStageNonEmpty():
+			# commit it
+			utc = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M:%S")
+			msg = "Host: %s UTC: %s" % (self.host.name,utc)
+			# WARNING: never think of -a
+			self.executeCommand(["git","commit","-m",msg])
+
 
 	def sync(self, annex_descs=None):
 		"""
 			calls finalise and git-annex sync, when annex_descs (list of annex
 			descriptions) is given, use this list instead of hosts with an active annex
 		"""
+		# finalise repository
 		self.finalise()
 		
+		# make sure that the master branch exists
 		self.repairMaster()
-		
+	
 		if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
 			print("\033[1;37;44m syncing %s in %s \033[0m" % (self.annex.name,self.localpath))
 		
@@ -442,7 +400,7 @@ class LocalRepository:
 
 		# if a list of hosts is not given
 		if annex_descs is None:
-			annex_descs = {repo.gitID() for repo in self.activeRepositories().keys()}
+			annex_descs = {repo.gitID() for repo in self.standardRepositories().keys()}
 		
 		if annex_descs:
 			# call 'git-annex sync'
@@ -458,7 +416,7 @@ class LocalRepository:
 		# change into the right directory
 		self.changePath()
 
-		branches = self.gitBranches()
+		branches = self.gitBranch()
 		# unneeded, if the master branch already exists
 		if "master" in branches:
 			return
@@ -480,6 +438,7 @@ class LocalRepository:
 			# 'git commit --allow-empty -m "empty commit"'
 			self.executeCommand(["git","commit","--allow-empty","-m","empty commit"])
 	
+	
 	def copy(self, annex_descs=None, files=None, strict=None):
 		"""
 			copy files, arguments:
@@ -497,7 +456,7 @@ class LocalRepository:
 			local_files_cmd = self._filesAsCmd(files)
 
 		# get active repositories
-		repos = self.activeRepositories()
+		repos = self.standardRepositories()
 		
 		if annex_descs is not None:
 			# remove all with wrong description
@@ -594,6 +553,108 @@ class LocalRepository:
 		for remote in remotes:
 			cmd = ["git","remote","remove",remote]
 			self.executeCommand(cmd)
+
+
+
+
+
+class LocalRepository(GitAnnexRepository):
+	"""
+		LocalRepository represents a realisation of a repository
+		which can be accessed from app.currentHost()
 		
+		main methods:
+			init()
+			setProperties()
+			finalise()
+			sync(annex descriptions)
+			repairMaster()
+			copy(annex descriptions, files expression, strict=True/false)
+			
+		other methods:
+			changePath()
+
+			gitConfig(key) -> reads key
+			gitBranch() -> list of branches
+			hasUncommitedChanges() -> True/False
+
+			getGitAnnexStatus() -> dictionary
+			getAnnexUUID() -> uuid
+			onDiskDirectMode() -> "direct"/"indirect"
+			onDiskTrustLevel() -> element of TRUST_LEVEL
+			onDiskDescription() -> description
+			
+			activeAnnexDescriptions() -> dictionary online repositories -> connection
+	"""
+	def __init__(self, repo, connection=None):
+		# call super
+		super(LocalRepository,self).__init__()
+
+		# save options
+		self.repo = repo
+		self.connection = connection
+
+		# check that the gurantees are valid, i.e. it is reachable via 
+		if self.connection:
+			# if it is a remote repository, check the integrity of the arguments
+			assert self.app.currentHost() == self.connection.source,\
+					"the connection does not originate from the current host. (%s != %s)" % (self.app.currentHost(),self.connection.source)
+			# the connection should end at the host of the current repository
+			assert repo.host == connection.dest,\
+					"the connection does not end at the host of the current repository. (%s != %s)" % (self.repo.host,self.connection.dest)
+			# the connection has to be local
+			assert self.connection.isLocal(),\
+					"the connection has to be to 'local'."
+		else:
+			# otherwise, the repository is hosted on the current host
+			assert self.app.currentHost() == self.repo.host,\
+					"the repository is not hosted on the current host. (%s != %s)" % (self.app.currentHost(),self.repo.host)
+			
+	
+	def __getattribute__(self, name):
+		""" forward request to self.repo """
+		try:
+			# try to satisfy the request via self.repo
+			return getattr(self.repo,name)
+		except:
+			# otherwise, satisfy the request locally
+			return super(LocalRepository,self).__getattribute__(name)
+	
+	def __setattr__(self, name, v):
+		""" forward request to self.repo """
+		try:
+			# if repo has a variable called name, then set it there
+			if hasattr(self.repo,name):
+				return setattr(self.repo,name,v)
+		except AttributeError:
+			# no attribute named repo
+			pass
+		# otherwise, set it here
+		return super(LocalRepository,self).__setattr__(name,v)
+	
+	@property
+	def localpath(self):
+		""" returns the path on the local machine """
+		if self.connection is None:
+			# the repository is on the local machine
+			return self.path
+		else:
+			# we are working remotely: give the path on the local machine
+			return self.connection.pathOnSource(self.path)
+	
+
+	def standardRepositories(self):
+		""" determine repositories which are online """
+		active_repos = collections.defaultdict(set)
 		
+		for repository, connections in self.connectedRepositories().items():
+			for connection in connections:
+				if connection.isOnline():
+					# add the connection
+					active_repos[repository].add(connection)
+		
+		return active_repos
+
+
+
  
