@@ -662,6 +662,8 @@ class TestCommands(unittest.TestCase):
 	#
 	# file system interaction
 	#
+
+	# create
 	def _create_file(self, path, filename, content):
 		""" create file in the given path """
 		f_path = os.path.join(path,filename)
@@ -674,6 +676,7 @@ class TestCommands(unittest.TestCase):
 		""" create file in the given repository """
 		self._create_file(repo.localpath,filename,content)
 
+	# remove
 	def _remove_file(self, path, filename):
 		""" removes the given file """
 		f_path = os.path.join(path,filename)
@@ -685,18 +688,20 @@ class TestCommands(unittest.TestCase):
 		""" removes the given file """
 		return self._remove_file(repo.localpath,filename)
 
-	def _has_file(self, path, filename):
+	# has file
+	def _has_file(self, path, filename, content):
 		""" checks if the path has the given file (with content) """
 		f_path = os.path.join(path,filename)
 		with open(f_path,"rt") as fd:
-			self.assertEqual(fd.read(),filename)
-	def has_file(self, repo, filename):
+			self.assertEqual(fd.read(),filename if content is None else content)
+	def has_file(self, repo, filename, content=None):
 		""" checks if the repository has the given file (with content) """
-		return self._has_file(repo.path,filename)
-	def has_file_local(self, repo, filename):
+		return self._has_file(repo.path,filename,content)
+	def has_file_local(self, repo, filename,content=None):
 		""" checks if the repository has the given file (with content) """
-		return self._has_file(repo.localpath,filename)
+		return self._has_file(repo.localpath,filename,content)
 
+	# has link
 	def _has_link(self, path, filename):
 		""" checks if the path has the given file as a link """
 		f_path = os.path.join(path,filename)
@@ -899,11 +904,11 @@ class TestCommands(unittest.TestCase):
 			test finalise in given mode
 			procedure:
 			1. setup repository
-			2. create two files (with a certain content) (which is then uncommited)
+			2. create files
 			3. call finalise
 			4. afterwards, the file should still be where
 			5. everything should commited
-			6. delete one file
+			6. delete certain files, move certain other files
 			7. there should be uncommited changes
 			8. call finalise
 			9. there shouldn't be any uncommited changes anymore
@@ -969,6 +974,38 @@ class TestCommands(unittest.TestCase):
 	def test_finalise_direct(self):
 		self.finalise_tester(direct=True)
 
+	def test_finalise_and_change(self):
+		""" test the detection of changed files """
+		# initialisation
+		app = application.Application(self.path,verbose=self.verbose)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host,annex = h.create("Host1"),a.create("Annex1")
+		app.setCurrentHost(host)
+		
+		# create, set direct mode & init
+		path = os.path.join(self.path,"repo")
+		repo = r.create(host,annex,path,direct="true")
+		repo = app.assimilate(repo)
+		repo.init()
+		
+		# create file
+		self.create_file(repo,"test")
+		
+		# finalise
+		repo.finalise()
+		
+		# get head
+		head = repo.gitHead()
+		
+		# change file
+		self.create_file(repo,"test","changed")
+		
+		# finalise
+		repo.finalise()
+		
+		# something was commited?
+		self.assertNotEqual(head,repo.gitHead())
+		
 
 
 	def test_repairMaster_in_empty(self):
@@ -1334,6 +1371,62 @@ class TestCommands(unittest.TestCase):
 		# only the link is left in repo1, where as the complete file is in repo2
 		self.has_link_local(repo1,"test")
 		self.has_file_local(repo2,"test")
+
+
+	def test_copy_change_copy(self):
+		"""
+			test copy and propagation of changes
+			procedure:
+			1. create two repositories with this connection:
+			   alice (repo1) -> bob (repo2)
+			2. create file in repository alice (repo1)
+			3. sync all
+			4. call copy in repository alice (repo1)
+			5. now the file should be in both
+			6. change the file in repository alice
+			7. sync all
+			8. copy again
+			9. now the changed file should be in repository bob too
+		"""
+		# initialisation
+		app = application.Application(self.path,verbose=self.verbose)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2 = [h.create("Host%d"%i) for i in range(1,2+1)]
+		annex = a.create("Annex")
+		conn12 = c.create(host1,host2,"/",alwayson="true")
+		
+		# create & init
+		path1 = os.path.join(self.path,"repo_host1")
+		repo1 = r.create(host1,annex,path1,description="alice",direct="true")
+		path2 = os.path.join(self.path,"repo_host2")
+		repo2 = r.create(host2,annex,path2,description="bob",direct="true")
+		repos = [repo1,repo2]
+		
+		# assimilate
+		repo1,repo2 = repos = self.assimilate_repos(repos)
+
+		# init repos
+		self.init_repos(repos)
+
+		# create file 'test' in repo1
+		self.create_file(repo1,"test")
+		
+		# sync and copy files (call copy only for repo1)
+		self.sync_and_copy(repos,[repo1])
+		
+		# the file should be in both repositories
+		self.has_file(repo1,"test")
+		self.has_file(repo2,"test")
+		
+		# change file
+		self.create_file(repo1,"test","changed")
+		
+		# sync and copy files (call copy only for repo1)
+		self.sync_and_copy(repos,[repo1])
+		
+		# the changed file should be in both repositories
+		self.has_file(repo1,"test","changed")
+		self.has_file(repo2,"test","changed")
 
 
 	def test_migration(self):

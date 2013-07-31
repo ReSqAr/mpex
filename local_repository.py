@@ -108,6 +108,11 @@ class GitRepository:
 		# data looks like: <state><state><space><filename>, ..., ''
 		return {d[3:]:d[:2].strip() for d in data if d}
 
+	def gitHead(self):
+		""" get the git HEAD of the master branch """
+		path = os.path.join(self.localpath,".git/refs/heads/master")
+		with open(path,"rt") as fd:
+			return fd.read()
 	
 	def isStageNonEmpty(self):
 		""" are there any staged files? """
@@ -118,7 +123,11 @@ class GitRepository:
 		return list(self.gitDiff(filter="D").keys())
 	
 	def hasUncommitedChanges(self):
-		""" has the current repository uncommited changes? """
+		"""
+			has the current repository uncommited changes?
+			warning: hasUncommitedChanges is inaccurate for direct
+			         repositories as a type change can mask a content change
+		"""
 		# accept all except type changes
 		return any(status != 'T' for status in self.gitStatus().values())
 
@@ -344,15 +353,11 @@ class GitAnnexRepository(GitRepository):
 		# change into the right directory
 		self.changePath()
 
-		# early exit in case of no uncommited changes
-		if not self.hasUncommitedChanges():
-			if self.app.verbose <= self.app.VERBOSE_NORMAL:
-				print("no changes")
-			return
 
 		# call 'git-annex add'
 		self.executeCommand(["git-annex","add"])
 		
+
 		# find deleted files
 		deleted = self.deletedFiles()
 
@@ -366,6 +371,7 @@ class GitAnnexRepository(GitRepository):
 			# call 'git rm'
 			self.executeCommand(['git','rm',filename])
 			
+
 		# is anything staged?
 		if self.isStageNonEmpty():
 			# commit it
@@ -374,7 +380,8 @@ class GitAnnexRepository(GitRepository):
 			# WARNING: never think of -a
 			self.executeCommand(["git","commit","-m",msg])
 		else:
-			print("\033[1;37;41m", "nothing staged although there were uncommited changes, please run git status.", "\033[0m")
+			if self.app.verbose <= self.app.VERBOSE_NORMAL:
+				print("no changes")
 
 	def sync(self, annex_descs=None):
 		"""
