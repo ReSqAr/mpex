@@ -926,7 +926,7 @@ class TestCommands(unittest.TestCase):
 		self.sync([repo1])
 		
 		# sync with unknown repo
-		self.assertRaises(subprocess.CalledProcessError,repo1.sync,["yeah"])
+		self.assertRaises(application.InterruptedException,repo1.sync,["yeah"])
 		
 		# sync changes on host2
 		self.sync([repo2])
