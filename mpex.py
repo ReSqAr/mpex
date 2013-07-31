@@ -228,6 +228,7 @@ def init_command(parsers):
 									formatter_class=argparse.RawDescriptionHelpFormatter,
 									parents=[apply_parser])
 	#parser.add_argument('annex', nargs='*', help="Annex names")
+	parser.add_argument('--force', action="store_true", help="ignore exceptions")
 	parser.add_argument('command', nargs='+', help="command to run")
 	parser.set_defaults(func=func_command)
 
@@ -241,7 +242,7 @@ def func_command(args):
 		if repo.app.verbose <= repo.app.VERBOSE_IMPORTANT:
 			print("\033[1;37;44m running the command for %s in %s \033[0m" % (repo.annex.name,repo.path))
 		# run the command in the directory
-		repo.executeCommand(args.command)
+		repo.executeCommand(args.command,ignoreexception=args.force)
 		if repo.app.verbose <= repo.app.VERBOSE_IMPORTANT:
 			print()
 	apply_function(args,repo_command)
