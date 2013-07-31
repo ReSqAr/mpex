@@ -153,7 +153,7 @@ class LocalRepository:
 		self.changePath()
 
 		# call 'git status -s'
-		output = subprocess.check_output(["git","status","-s"]).decode("UTF8").strip()
+		output = subprocess.check_output(["git","status","--porcelain"]).decode("UTF8").strip()
 		for line in output.splitlines():
 			# we have to ignore lines which start with T
 			if line.strip().startswith("T"):
@@ -403,14 +403,27 @@ class LocalRepository:
 		# call 'git-annex add'
 		self.executeCommand(["git-annex","add"])
 		
+		# find deleted files: 'git diff -z --name-only  --diff-filter=D'
+		cmd = ["git","diff","-z","--name-only","--diff-filter=D"]
+		output = subprocess.check_output(cmd).decode("UTF-8")
+		deleted = output.split("\0")
+		deleted = [filename for filename in deleted if filename]
+
+		if deleted and self.app.verbose <= self.app.VERBOSE_NORMAL:
+			print("found %d deleted files, removing them from git"%len(deleted))
+		
+		# call 'git rm %s' for every deleted file
+		for filename in deleted:
+			# check that the file indeed does not exist
+			assert not os.path.isfile(os.path.join(self.localpath,filename)), "file '%s' does still exist" % filename
+			# call 'git rm'
+			self.executeCommand(['git','rm',filename])
+			
 		# commit it
 		utc = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M:%S")
 		msg = "Host: %s UTC: %s" % (self.host.name,utc)
-		try:
-			# WARNING: never think of -am
-			self.executeCommand(["git","commit","-m",msg])
-		except subprocess.CalledProcessError:
-			pass
+		# WARNING: never think of -am
+		self.executeCommand(["git","commit","-m",msg])
 
 	def sync(self, annex_descs=None):
 		"""

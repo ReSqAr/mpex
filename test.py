@@ -926,9 +926,11 @@ class TestCommands(unittest.TestCase):
 		self.assertEqual(repo.onDiskDirectMode(),"direct" if direct else "indirect")
 		
 		# create files
-		self.create_file(repo,"test")
-		self.create_file(repo,"test2")
-		self.create_file(repo,"test3")
+		n = 5
+		deleted,non_deleted = "going_to_be_deleted_%d","not_going_to_be_deleted_%d"
+		for i in range(n):
+			self.create_file(repo,non_deleted%i)
+			self.create_file(repo,deleted%i)
 		
 		# test not commited?
 		self.assertTrue(repo.hasUncommitedChanges())
@@ -937,15 +939,16 @@ class TestCommands(unittest.TestCase):
 		repo.finalise()
 		
 		# still there?
-		self.has_file(repo,"test")
-		self.has_file(repo,"test2")
-		self.has_file(repo,"test3")
+		for i in range(n):
+			self.has_file(repo,non_deleted%i)
+			self.has_file(repo,deleted%i)
 			
 		# everything commited?
 		self.assertFalse(repo.hasUncommitedChanges())
 		
 		# remove file
-		self.remove_file(repo,"test2")
+		for i in range(n):
+			self.remove_file(repo,deleted%i)
 		
 		# test not commited?
 		self.assertTrue(repo.hasUncommitedChanges())
