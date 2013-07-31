@@ -673,6 +673,10 @@ class TestCommands(unittest.TestCase):
 		""" init the given repos """
 		self.apply_to_repos(repos,lambda r:r.setProperties())
 
+	def finalise_repos(self, repos):
+		""" finalise the given repos """
+		self.apply_to_repos(repos,lambda r:r.finalise())
+
 	def sync(self, repos):
 		""" syncs the repos """
 		self.apply_to_repos(repos,lambda r:r.sync())
@@ -1250,6 +1254,88 @@ class TestCommands(unittest.TestCase):
 					self.assertEqual(set(found),{1-1,3-1})
 				else:
 					self.assertEqual(set(found),{2-1,3-1})
+
+	def test_copy_local(self):
+		"""
+			test copy local
+			procedure:
+			1. create three repositories on the same host, hence all are connected
+			   share has set as files expression: '(alice - bob) + (bob - alice)'
+			   and strict flag set
+			2. create files in all possible repository combinations
+			3. sync all
+			4. call copy in repository repo2 and repo3 (in this order)
+			5. sync again
+			6. now the distribution of the files looks like that:
+			   share: none
+			   alice: all files
+			   bob:   all files
+		"""
+		# initialisation
+		app = application.Application(self.path,verbose=self.verbose)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host,annex = h.create("Host"),a.create("Annex")
+		
+		# create & init
+		path1 = os.path.join(self.path,"repo_host1")
+		repo1 = r.create(host,annex,path1,description="share", files="(alice - bob) + (bob - alice)", strict="true")
+		path2 = os.path.join(self.path,"repo_host2")
+		repo2 = r.create(host,annex,path2,description="alice")
+		path3 = os.path.join(self.path,"repo_host3")
+		repo3 = r.create(host,annex,path3,description="bob")
+		
+		paths = [path1,path2,path3]
+		repos = [repo1,repo2,repo3]
+		
+		# assimilate
+		repo1,repo2,repo3 = repos = self.assimilate_repos(repos)
+		
+		# init repos
+		self.init_repos(repos)
+		
+		n = 3
+		# create all possible combinations of files
+		# compute power set of {0,1,2}
+		for i in range(1,n+1):
+			for t in itertools.combinations(range(n), i):
+				# compute file name
+				name = "file_%s" % "".join(str(x+1) for x in t)
+				# create files in the individual paths
+				for j in t:
+					path = paths[j]
+					f_path = os.path.join(path,name)
+					if self.verbose:
+						print(f_path)
+					with open(f_path,"wt") as fd:
+						fd.write(name)
+		
+
+		# finalise repos
+		self.finalise_repos(repos)
+
+		# sync all repos and copy repo2 as well as repo3
+		self.sync_and_copy(repos,[repo2,repo3])
+
+		
+		# compute power set of {0,1,2}
+		for i in range(1,n+1):
+			for t in itertools.combinations(range(n), i):
+				# compute file name
+				name = "file_%s" % "".join(str(x+1) for x in t)
+				found = []
+				for j,path in enumerate(paths):
+					# check where the files exists
+					f_path = os.path.join(path,name)
+					if os.path.isfile(f_path):
+						# if it exists checks that it has the correct content
+						with open(f_path,"rt") as fd:
+							self.assertEqual(fd.read(),name)
+						found.append(j)
+				
+				#print("%s found in: %s" % (name,", ".join(str(x+1) for x in found)))
+				
+				# all should exist in alice and bob (only)
+				self.assertEqual(set(found),{2-1,3-1})
 
 
 
