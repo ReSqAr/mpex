@@ -42,7 +42,7 @@ class TestStructure(unittest.TestCase):
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 	
 		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
-		host1p= h.create("Host1")
+		host1p= h.get("Host1")
 	
 		self.assertEqual(host1,host1p)
 		self.assertEqual(id(host1),id(host1p))
@@ -70,7 +70,7 @@ class TestStructure(unittest.TestCase):
 	
 		# creation
 		annex1,annex2,annex3 = [a.create("Annex%d"%i) for i in range(1,4)]
-		annex1p= a.create("Annex1")
+		annex1p= a.get("Annex1")
 		
 		# identity
 		self.assertEqual(annex1,annex1p)
@@ -110,7 +110,7 @@ class TestStructure(unittest.TestCase):
 		repo22 = r.create(host2,annex2,os.path.join(self.path,"repo22"))
 		repo23 = r.create(host2,annex3,os.path.join(self.path,"repo23"))
 		repo33 = r.create(host3,annex3,os.path.join(self.path,"repo33"))
-		repo11p= r.create(host1,annex2,os.path.join(self.path,"repo11"))
+		repo11p= r.get(host1,annex2,os.path.join(self.path,"repo11"))
 		
 		# identity (equal if host and path are equal)
 		self.assertEqual(repo11,repo11p)
@@ -180,7 +180,7 @@ class TestStructure(unittest.TestCase):
 		# initialisation
 		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
-		host1,annex1 = h.create("Host1"),a.create("Annex1")
+		host1,host2,annex1 = h.create("Host1"),h.create("Host2"),a.create("Annex1")
 
 		# direct
 		repo = r.create(host1,annex1,os.path.join(self.path,"repo"),direct="false")
@@ -188,7 +188,7 @@ class TestStructure(unittest.TestCase):
 		repo.direct = True
 		self.assertTrue(repo.direct)
 		
-		repo = r.create(host1,annex1,os.path.join(self.path,"repo"),direct="true")
+		repo = r.create(host2,annex1,os.path.join(self.path,"repo"),direct="true")
 		self.assertTrue(repo.direct)
 		repo.direct = False
 		self.assertFalse(repo.direct)
@@ -198,7 +198,7 @@ class TestStructure(unittest.TestCase):
 		# initialisation
 		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
-		host1,annex1 = h.create("Host1"),a.create("Annex1")
+		host1,host2,annex1 = h.create("Host1"),h.create("Host2"),a.create("Annex1")
 		
 		# strict
 		repo = r.create(host1,annex1,os.path.join(self.path,"repo"),strict="false")
@@ -206,7 +206,7 @@ class TestStructure(unittest.TestCase):
 		repo.strict = True
 		self.assertTrue(repo.strict)
 		
-		repo = r.create(host1,annex1,os.path.join(self.path,"repo"),strict="true")
+		repo = r.create(host2,annex1,os.path.join(self.path,"repo"),strict="true")
 		self.assertTrue(repo.strict)
 		repo.strict = False
 		self.assertFalse(repo.strict)
@@ -285,7 +285,7 @@ class TestStructure(unittest.TestCase):
 		conn23 = c.create(host2,host3,"/")
 		conn21 = c.create(host2,host1,"/")
 		conn32 = c.create(host3,host2,"ssh://server")
-		conn12p= c.create(host1,host2,"/abc/")
+		conn12p= c.get(host1,host2,"/abc/")
 		
 		# identity
 		self.assertEqual(conn12,conn12p)

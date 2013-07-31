@@ -27,8 +27,8 @@ class Connections(structure_base.Collection):
 		# copy dictionary
 		raw = dict(raw)
 		# convert source and dest
-		raw["source"] = self.app.hosts.create(raw["source"])
-		raw["dest"]   = self.app.hosts.create(raw["dest"])
+		raw["source"] = self.app.hosts.get(raw["source"])
+		raw["dest"]   = self.app.hosts.get(raw["dest"])
 		# build dictionary
 		return raw
 

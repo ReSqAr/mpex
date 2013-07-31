@@ -53,21 +53,22 @@ class Collection:
 		"""
 			get the given object, signature matches the signature of cls, however
 			not all data has to specified, only the arguments are needed which are
-			required to the deduce the key. if the object does not exists, None is
-			returned
+			required to the deduce the key. if the object does not exists, an error
+			is raised
 		"""
 		# compute key
 		key = self.keyFromArguments(*args, **kwargs)
 		# return object
-		return self._objects.get(key)
+		return self._objects[key]
 
 	def create(self, *args, **kwargs):
 		""" get the given object, signature matches the signature of cls """
 		# compute key
 		key = self.keyFromArguments(*args, **kwargs)
-		# if an object with the given key does not yet exists, create it
-		if key not in self._objects:
-			self._objects[key] = self.cls(self.app,*args,**kwargs)
+		# the object may not exist yet
+		assert key not in self._objects, "object with key %s already exists: %s" % (key,self._objects[key])
+		# create it
+		self._objects[key] = self.cls(self.app,*args,**kwargs)
 		# return object
 		return self._objects[key]
 		

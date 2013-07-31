@@ -16,7 +16,7 @@ class Repositories(structure_base.Collection):
 
 	def keyFromArguments(self, host, annex, path, **data):
 		""" get the key from the arguments """
-		return (host,path)
+		return (host,path,data.get("description"))
 	def objToRawData(self, obj):
 		""" converts an object into raw data """
 		raw = dict(obj._data)
@@ -29,8 +29,8 @@ class Repositories(structure_base.Collection):
 		# copy dictionary
 		raw = dict(raw)
 		# convert host and annex
-		raw["host"]  = self.app.hosts.create(raw["host"])
-		raw["annex"] = self.app.annexes.create(raw["annex"])
+		raw["host"]  = self.app.hosts.get(raw["host"])
+		raw["annex"] = self.app.annexes.get(raw["annex"])
 		# build dictionary
 		return raw
 
