@@ -78,6 +78,10 @@ class TestStructure(unittest.TestCase):
 
 		self.assertEqual(a.getAll(),{annex1,annex2,annex3})
 
+		# test repr and str
+		repr(annex1)
+		str(annex1)
+
 	def test_creation_annexes_error_cases(self):
 		""" test common error cases """
 		# initialisation
@@ -113,6 +117,10 @@ class TestStructure(unittest.TestCase):
 		self.assertEqual(id(repo11),id(repo11p))
 
 		self.assertEqual(r.getAll(),{repo11,repo12,repo13,repo22,repo33,repo23,repo21})
+		
+		# test repr and str
+		repr(repo11)
+		str(repo11)
 	
 	def test_creation_repositories_error_cases(self):
 		""" """
@@ -165,6 +173,7 @@ class TestStructure(unittest.TestCase):
 		self.assertFalse(repo.strict)
 		self.assertEqual(repo.trust,"semitrust")
 		self.assertIsNone(repo.files)
+		self.assertFalse(repo.hasNonTrivialDescription())
 
 	def test_creation_repositories_metadata_direct(self):
 		""" check metadata direct member """
@@ -223,15 +232,45 @@ class TestStructure(unittest.TestCase):
 		# initialisation
 		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
-		host1,host2,annex1 = h.create("Host1"),h.create("Host2"),a.create("Annex1")
+		host1,host2,annex1 = h.create("Host1"),h.create("Host 2"),a.create("Annex1")
 		
 		# files
 		repo = r.create(host2,annex1,os.path.join(self.path,"repo"))
 		repo = r.create(host1,annex1,os.path.join(self.path,"repo"),files="  +Host1 ")
 		self.assertEqual(repo.files,"+ Host1")
-		repo.files = " (  host2 + )"
-		self.assertEqual(repo.files,"(Host2 +)")
+		repo.files = " (  'host2' + ) -'host1'"
+		self.assertEqual(repo.files,"('Host 2' +) - Host1")
+		repo.files = None
+		self.assertIsNone(repo.files)
+		self.assertNotIn("files",repo._data)
+		repo.files = None
+		self.assertIsNone(repo.files)
+		
 	
+	def test_creation_repositories_metadata_files_to_cmd(self):
+		""" check metadata files member """
+		# initialisation
+		app = application.Application(self.path,verbose=self.verbose)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host,annex1 = h.create("Host"),a.create("Annex1")
+		
+		# files
+		repo = r.create(host,annex1,os.path.join(self.path,"repo"))
+		repo.files = "()+-&host" 
+		self.assertEqual(repo.filesAsCmd(),["-(","-)","--or","--not","--and","--in=Host"])
+	
+	def test_creation_repositories_metadata_description(self):
+		""" check metadata trust member """
+		# initialisation
+		app = application.Application(self.path,verbose=self.verbose)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host,annex = h.create("Host"),a.create("Annex")
+		
+		# description
+		repo = r.create(host,annex,os.path.join(self.path,"repo"),description="XXX")
+		self.assertEqual(repo.description,"XXX")
+		self.assertTrue(repo.hasNonTrivialDescription())
+
 	
 	def test_connection_creation(self):
 		""" test the creation of connections """
@@ -253,6 +292,10 @@ class TestStructure(unittest.TestCase):
 		self.assertEqual(id(conn12),id(conn12p))
 
 		self.assertEqual(c.getAll(),{conn12,conn13,conn23,conn21,conn32})
+
+		# test repr and str
+		repr(conn12)
+		str(conn12)
 
 	def test_connection_creation_error_cases(self):
 		""" test common error cases """
@@ -366,12 +409,52 @@ class TestStructure(unittest.TestCase):
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
 		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 		
-		# connection with a server which does not exit
+		# connection with a server which does not exist
 		conn = c.create(host1,host2,"ssh://127.0.0.1:53122")
 		self.assertFalse(conn.isOnline())
 		# second time comes from cache
 		self.assertFalse(conn.isOnline())
+	
+	def test_connection_pathOnSource(self):
+		""" test the pathOnSource method for connections with protocol 'ssh' """
+		app = application.Application(self.path,verbose=self.verbose)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
 		
+		# create connection
+		conn12 = c.create(host1,host2,"/test/")
+		self.assertEqual(conn12.pathOnSource("/abc/"),"/test/abc/")
+		
+		# create connection
+		conn23 = c.create(host2,host3,"/test")
+		self.assertEqual(conn12.pathOnSource("/abc/"),"/test/abc/")
+	
+	def test_connection_remote_execution(self):
+		""" test the and supportsRemoteExecution and executeRemotely methods """
+		app = application.Application(self.path,verbose=self.verbose)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
+		
+		# create connection
+		conn12 = c.create(host1,host2,"/test/")
+		self.assertFalse(conn12.supportsRemoteExecution())
+		self.assertRaisesRegex(AssertionError, "does not support remote execution",
+												conn12.executeRemotely, ["ls"])
+		
+		# create connection
+		conn23 = c.create(host2,host3,"ssh://myserver")
+		self.assertTrue(conn23.supportsRemoteExecution())
+		self.assertRaisesRegex(AssertionError, "expected a list", conn23.executeRemotely, "ls")
+	
+		# we can only check the resulting command, so overwrite app.executeCommand
+		subroutineCalled = []
+		def checkExecuteCommand(cmd):
+			subroutineCalled.append(True)
+			self.assertEqual(cmd,["ssh","myserver","ls"])
+		app.executeCommand = checkExecuteCommand
+		conn23.executeRemotely(["ls"])
+		self.assertEqual(subroutineCalled,[True])
+	
 	def test_relations(self):
 		"""
 			test Host's repositories and connections methods as well as
@@ -683,6 +766,14 @@ class TestCommands(unittest.TestCase):
 		self.assertTrue(os.path.isdir(os.path.join(repo.path,".git")))
 		self.assertTrue(os.path.isdir(os.path.join(repo.path,".git/annex")))
 		
+		# init again
+		repo.init()
+		
+		# check properties again
+		self.assertTrue(bool(repo.getAnnexUUID()))
+		self.assertEqual(repo.onDiskDirectMode(),"indirect")
+		self.assertEqual(repo.onDiskTrustLevel(),"semitrust")
+		
 	def test_repo_setproperties(self):
 		""" test repository setProperties """
 		# initialisation
@@ -792,6 +883,9 @@ class TestCommands(unittest.TestCase):
 		repo = r.create(host1,annex1,os.path.join(self.path,"repo"))
 		repo = app.assimilate(repo)
 		repo.init()
+		
+		# set properties
+		repo.setProperties()
 		
 		# doing bad stuff
 		conn12._path = "/abcd/"

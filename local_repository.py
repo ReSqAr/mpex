@@ -479,12 +479,9 @@ class LocalRepository:
 		
 		# use files expression of the current repository, if none is given
 		if files is None:
-			files = self.files
-
-		# parse files expression
-		files = self.sanitiseFilesExpression(files)
-		files = self.tokeniseFileExpression(files)
-		cur_files_cmd = self.tokenisedFilesExpressionToCmd(files)
+			local_files_cmd = self.filesAsCmd()
+		else:
+			local_files_cmd = self._filesAsCmd(files)
 
 		# get active repositories
 		repos = self.activeRepositories()
@@ -497,7 +494,8 @@ class LocalRepository:
 		
 		# check remote files expression
 		for repo in sorted(repos.keys(),key=lambda k:str(k)):
-			self.checkFilesExpression(repo.files)
+			# if we can convert it to command line arguments, then everything is fine
+			repo.filesAsCmd()
 		
 		# sync
 		self.sync(annex_descs)
@@ -514,7 +512,7 @@ class LocalRepository:
 		
 		# call 'git-annex copy --from=target <files expression as command>'
 		for repo in sorted(repos.keys(),key=lambda k:str(k)):
-			cmd = ["git-annex","copy","--from=%s"%repo.gitID()] + cur_files_cmd
+			cmd = ["git-annex","copy","--from=%s"%repo.gitID()] + local_files_cmd
 			self.executeCommand(cmd)
 	
 	
@@ -524,9 +522,7 @@ class LocalRepository:
 		
 		for repo in sorted(repos.keys(),key=lambda k:str(k)):
 			# parse remote files expression
-			files = self.sanitiseFilesExpression(repo.files)
-			files = self.tokeniseFileExpression(files)
-			files_cmd = self.tokenisedFilesExpressionToCmd(files)
+			files_cmd = repo.filesAsCmd()
 
 			# call 'git-annex copy --to=target <files expression as command>'
 			cmd = ["git-annex","copy","--to=%s"%repo.gitID()] + files_cmd
@@ -543,7 +539,7 @@ class LocalRepository:
 
 		if strict:
 			# call 'git-annex drop --not -( <files expression -)
-			cmd = ["git-annex","drop"] + ["--not", "-("] + cur_files_cmd + ["-)"]
+			cmd = ["git-annex","drop"] + ["--not", "-("] + local_files_cmd + ["-)"]
 			self.executeCommand(cmd, ignoreexception=True)
 		
 		# apply strict for remote repositories
@@ -552,9 +548,7 @@ class LocalRepository:
 			if not repo.strict:
 				continue
 			# parse remote files expression
-			files = self.sanitiseFilesExpression(repo.files)
-			files = self.tokeniseFileExpression(files)
-			files_cmd = self.tokenisedFilesExpressionToCmd(files)
+			files_cmd = repo.filesAsCmd()
 
 			# call 'git-annex drop --from=target --not -( <files expression> -)
 			cmd = ["git-annex","drop","--from=%s"%repo.gitID()] + ["--not", "-("] + files_cmd + ["-)"]

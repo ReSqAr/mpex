@@ -67,7 +67,7 @@ class Repository:
 	
 	OPERATORS = ("(",")","+","-","&")
 	TRUST_LEVEL = ("semitrust","trust","untrust")
-	VALID_DESC_CHARS = set(string.ascii_letters + string.digits + string.punctuation)
+	VALID_DESC_CHARS = structure_host.Host.VALID_CHARS
 	VALID_GITID_CHARS = set(string.ascii_letters + string.digits + "_")
 
 	def __init__(self, app, host, annex, path, **data):
@@ -88,8 +88,25 @@ class Repository:
 		
 		# we are unable to check files here, as for that all repositories have to exist,
 		# so we check it after everything is loaded
+	
+	
+	@staticmethod
+	def checkTokenisedFilesExpression(s, tokens):
+		""" conducts some trivial tests on the tokenised expression """
 		
-	def tokeniseFileExpression(self, s):
+		# brackets: all brackets have to closed at the right level
+		number_of_brackets = 0
+		for token in tokens:
+			if token == "(": number_of_brackets += 1
+			if token == ")": number_of_brackets -= 1
+			if number_of_brackets < 0:
+				raise ValueError("too many ')' in: %s" % s)
+		else:
+			if number_of_brackets > 0:
+				raise ValueError("too many '(' in: %s" % s)
+		
+
+	def _tokeniseFilesExpression(self, s):
 		""" tokenises the file expression, returns a list of tokens """
 		if s is None:
 			return []
@@ -138,49 +155,14 @@ class Repository:
 			annex_desc = self.app.repositories.fuzzyMatch(self.annex,annex_desc)
 			tokens.append(annex_desc.description)
 		
+		# check
+		self.checkTokenisedFilesExpression(orig,tokens)
+		
 		# return the list of tokens
 		return tokens
-		
-	def sanitiseFilesExpression(self, files):
-		""" sanitise the files expression """
-		
-		# if there is nothing to do, leave
-		if files is None:
-			return
-		
-		# tokenise
-		tokens = self.tokeniseFileExpression(files)
-		
-		# some trivial properties which have to fullfilled:
-		# brackets: all brackets have to closed at the right level
-		number_of_brackets = 0
-		for token in tokens:
-			if token == "(": number_of_brackets += 1
-			if token == ")": number_of_brackets -= 1
-			if number_of_brackets < 0:
-				raise ValueError("too many ')' in: %s" % files)
-		else:
-			if number_of_brackets > 0:
-				raise ValueError("too many '(' in: %s" % files)
-		
-		# reformat files
-		files = ""
-		for token in tokens:
-			# if the annex description contains a white space, add around it ''
-			if ' ' in token:
-				token = "'%s'" % token
-			# kill the last white space in case of )
-			if token == ')' and files[-1] == " ":
-				files = files[:-1]
-			# add token
-			files += token
-			# white space after token, unless it is (
-			if token != '(':
-				files += " "
-		
-		return files.strip()
-		
-	def tokenisedFilesExpressionToCmd(self, tokens):
+
+	@classmethod
+	def _tokenisedFilesExpressionToCmd(cls, tokens):
 		""" converts a list of tokens into a command """
 		debug = " ".join(tokens)
 		tokens,cmd = list(tokens),[]
@@ -194,7 +176,7 @@ class Repository:
 			# get first token
 			token = tokens.pop(0)
 			
-			if not token in self.OPERATORS:
+			if not token in cls.OPERATORS:
 				# example: Host1, effect: selects all files on this remote
 				cmd.extend(["--in=%s"%token])
 			elif token == "(":
@@ -215,14 +197,38 @@ class Repository:
 		
 		return cmd
 	
-	def checkFilesExpression(self, files):
-		"""
-			checks if a files expression looks correct, if it is incorrect,
-			an error is raised
-		"""
-		files = self.sanitiseFilesExpression(files)
-		files = self.tokeniseFileExpression(files)
-		self.tokenisedFilesExpressionToCmd(files)
+	def _sanitiseFilesExpression(self, files):
+		""" sanitise the files expression """
+		
+		# if there is nothing to do, leave
+		if files is None:
+			return
+		
+		# tokenise
+		tokens = self._tokeniseFilesExpression(files)
+		
+		# reformat files
+		files = ""
+		for token in tokens:
+			# if the annex description contains a white space, add around it ''
+			if ' ' in token:
+				token = "'%s'" % token
+			# kill the last white space in case of )
+			if token == ')' and files[-1] == " ":
+				files = files[:-1]
+			# add token
+			files += token
+			# white space after token, unless it is (
+			if token != '(':
+				files += " "
+		
+		return files.strip()
+		
+	def _filesAsCmd(self, files):
+		""" convert the files expression to a command """
+		tokens = self._tokeniseFilesExpression(files)
+		return self._tokenisedFilesExpressionToCmd(tokens)
+	
 	
 	@property
 	def host(self):
@@ -269,14 +275,14 @@ class Repository:
 	def files(self):
 		""" determines which files should be kept in the repository, default: None """
 		files = self._data.get("files")
-		files = self.sanitiseFilesExpression(files)
+		files = self._sanitiseFilesExpression(files)
 		return files
 	
 	@files.setter
 	def files(self,v):
 		""" protected setter method """
 		# sanitise the expression
-		v = self.sanitiseFilesExpression(v)
+		v = self._sanitiseFilesExpression(v)
 		
 		if v is None and "files" in self._data:
 			# if it should be deleted and the property is set
@@ -285,6 +291,10 @@ class Repository:
 			# if the property should be set
 			self._data["files"] = v
 	
+	def filesAsCmd(self):
+		""" convert the current files expression to a command """
+		return self._filesAsCmd(self.files)
+
 	@property
 	def strict(self):
 		""" determines if ONLY files which match the files expression should be kept, default: False """

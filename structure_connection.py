@@ -185,7 +185,8 @@ class Connection:
 	
 	def executeRemotely(self, cmd):
 		""" execute the command on the target machine """
-		assert self.supportsRemoteExecution(), "Incorrect usage."
+		assert self.supportsRemoteExecution(), "does not support remote execution"
+		assert isinstance(cmd,list), "expected a list"
 		
 		# build remote command
 		l_cmd = ["ssh",self.pathData()["server"]] + cmd
