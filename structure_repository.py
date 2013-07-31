@@ -319,11 +319,14 @@ class Repository:
 		for connection in self.host.connections():
 			connections[connection.dest].add(connection)
 		
+		# add trivial connection
+		connections[self.host].add(None)
+		
 		# get repositories
 		repositories = self.annex.repositories()
 		
-		# return the desired dictionary
-		return {r:connections[r.host] for r in repositories if r.host in connections}
+		# return the desired dictionary (copy the set!)
+		return {r:set(connections[r.host]) for r in repositories if r.host in connections and r != self}
 
 	def gitID(self):
 		""" compute the current git id, use the repo description as a starting point """

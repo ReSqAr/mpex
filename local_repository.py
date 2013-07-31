@@ -326,7 +326,13 @@ class GitAnnexRepository(GitRepository):
 			# select connection and get details
 			connection = connections.pop()
 			gitID   = repo.gitID()
-			gitPath = connection.gitPath(repo)
+			# determine the git path
+			if connection is None:
+				# if it is local, use the path
+				gitPath = repo.path
+			else:
+				# otherwise delegate this question to the connection
+				gitPath = connection.gitPath(repo)
 
 			try:
 				# determine which url was already set
@@ -462,16 +468,16 @@ class GitAnnexRepository(GitRepository):
 			local_files_cmd = self._filesAsCmd(files)
 
 		# get active repositories
-		repos = self.standardRepositories()
+		repos = set(self.standardRepositories().keys())
 		
 		if annex_descs is not None:
 			# remove all with wrong description
-			for repo in list(repos.keys()):
+			for repo in list(repos):
 				if repo.description not in annex_descs:
-					del repos[repo]
+					repos.remove(repo)
 		
 		# check remote files expression
-		for repo in sorted(repos.keys(),key=lambda k:str(k)):
+		for repo in sorted(repos,key=lambda k:str(k)):
 			# if we can convert it to command line arguments, then everything is fine
 			repo.filesAsCmd()
 		
@@ -489,7 +495,7 @@ class GitAnnexRepository(GitRepository):
 		#
 		
 		# call 'git-annex copy --from=target <files expression as command>'
-		for repo in sorted(repos.keys(),key=lambda k:str(k)):
+		for repo in sorted(repos,key=lambda k:str(k)):
 			cmd = ["git-annex","copy","--from=%s"%repo.gitID()] + local_files_cmd
 			self.executeCommand(cmd)
 	
@@ -498,7 +504,7 @@ class GitAnnexRepository(GitRepository):
 		# push
 		#
 		
-		for repo in sorted(repos.keys(),key=lambda k:str(k)):
+		for repo in sorted(repos,key=lambda k:str(k)):
 			# parse remote files expression
 			files_cmd = repo.filesAsCmd()
 
@@ -521,7 +527,7 @@ class GitAnnexRepository(GitRepository):
 			self.executeCommand(cmd, ignoreexception=True)
 		
 		# apply strict for remote repositories
-		for repo in sorted(repos.keys(),key=lambda k:str(k)):
+		for repo in sorted(repos,key=lambda k:str(k)):
 			# only apply if wanted
 			if not repo.strict:
 				continue
@@ -589,7 +595,6 @@ class LocalRepository(GitAnnexRepository):
 			hasUncommitedChanges() (careful: slightly inaccurate)
 		
 		git annex methods:
-			standardRepositories()
 			gitAnnexStatus()
 			getAnnexUUID()
 			onDiskDirectMode()
@@ -665,7 +670,7 @@ class LocalRepository(GitAnnexRepository):
 		
 		for repository, connections in self.connectedRepositories().items():
 			for connection in connections:
-				if connection.isOnline():
+				if connection is None or connection.isOnline():
 					# add the connection
 					active_repos[repository].add(connection)
 		
