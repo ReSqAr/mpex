@@ -560,7 +560,7 @@ class GitAnnexRepository(GitRepository):
 		
 		# delete all remotes
 		for remote in remotes:
-			cmd = ["git","remote","remove",remote]
+			cmd = ["git","remote","rm",remote]
 			self.executeCommand(cmd)
 
 
