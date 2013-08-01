@@ -390,10 +390,10 @@ class GitAnnexRepository(GitRepository):
 			if self.app.verbose <= self.app.VERBOSE_NORMAL:
 				print("no changes")
 
-	def sync(self, annex_descs=None):
+	def sync(self, repositories=None):
 		"""
-			calls finalise and git-annex sync, when annex_descs (list of annex
-			descriptions) is given, use this list instead of hosts with an active annex
+			calls finalise and git-annex sync, when repositories is given, sync
+			only with those, otherwise with all connected repositories insted
 		"""
 		# finalise repository
 		self.finalise()
@@ -407,14 +407,16 @@ class GitAnnexRepository(GitRepository):
 		# change into the right directory
 		self.changePath()
 
-		# if a list of hosts is not given
-		if annex_descs is None:
-			# avoid syncing with special remotes
-			annex_descs = {repo.gitID() for repo in self.standardRepositories().keys() if not repo.isSpecial()}
+		# repositories to sync with (select only non-special repositories)
+		sync_repos = set(repo for repo in self.standardRepositories().keys() if not repo.isSpecial())
+		# only select wanted repositories
+		if repositories is not None:
+			sync_repos &= set(repositories)
 		
-		if annex_descs:
-			# call 'git-annex sync'
-			self.executeCommand(["git-annex","sync"] + list(annex_descs))
+		if sync_repos:
+			# call 'git-annex sync $gitIDs'
+			gitIDs = [repo.gitID() for repo in sync_repos]
+			self.executeCommand(["git-annex","sync"] + gitIDs)
 		else:
 			# if no other annex is available, still do basic maintanence
 			self.executeCommand(["git-annex","merge"])
@@ -449,10 +451,10 @@ class GitAnnexRepository(GitRepository):
 			self.executeCommand(["git","commit","--allow-empty","-m","empty commit"])
 	
 	
-	def copy(self, annex_descs=None, files=None, strict=None):
+	def copy(self, repositories=None, files=None, strict=None):
 		"""
 			copy files, arguments:
-			- annex_descs: target machines, if not specified all online machines are used
+			- repositories: target repositories, if the default is given, then all are used
 			- files: expression which specifies which files should be transfered,
 			         defaults to the local repositories files entry, if nothing is given,
 			         all files are transfered
@@ -465,14 +467,11 @@ class GitAnnexRepository(GitRepository):
 		else:
 			local_files_cmd = self._filesAsCmd(files)
 
-		# get active repositories
+		# repositories to copy from and to
 		repos = set(self.standardRepositories().keys())
-		
-		if annex_descs is not None:
-			# remove all with wrong description
-			for repo in list(repos):
-				if repo.description not in annex_descs:
-					repos.remove(repo)
+			# only select wanted repositories
+		if repositories is not None:
+			repos &= set(repositories)
 		
 		# check remote files expression
 		for repo in sorted(repos,key=lambda k:str(k)):
@@ -480,7 +479,7 @@ class GitAnnexRepository(GitRepository):
 			repo.filesAsCmd()
 		
 		# sync
-		self.sync(annex_descs)
+		self.sync(repos)
 		
 		if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
 			print("\033[1;37;44m copying files %s at %s \033[0m" % (self.annex.name,self.localpath))
@@ -537,7 +536,7 @@ class GitAnnexRepository(GitRepository):
 			self.executeCommand(cmd, ignoreexception=True)
 
 		# sync again
-		self.sync(annex_descs)
+		self.sync(repos)
 
 
 	def deleteAllRemotes(self):

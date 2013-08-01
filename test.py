@@ -1100,9 +1100,6 @@ class TestCommands(unittest.TestCase):
 		# sync changes on host1
 		self.sync([repo1])
 		
-		# sync with unknown repo
-		self.assertRaises(application.InterruptedException,repo1.sync,["unknownrepo"])
-		
 		# sync changes on host2
 		self.sync([repo2])
 		
@@ -1244,11 +1241,11 @@ class TestCommands(unittest.TestCase):
 		
 		# create & init
 		path1 = os.path.join(self.path,"repo_host1")
-		repo1 = r.create(host1,annex,path1,description="share", files="(alice - bob) + (bob - alice)", strict="true")
+		repo1 = r.create(host1,annex,path1,description="repo: share", files="(repo:alice - repo:bob) + (repo:bob - repo:alice)", strict="true")
 		path2 = os.path.join(self.path,"repo_host2")
-		repo2 = r.create(host2,annex,path2,description="alice")
+		repo2 = r.create(host2,annex,path2,description="repo: alice")
 		path3 = os.path.join(self.path,"repo_host3")
-		repo3 = r.create(host3,annex,path3,description="bob")
+		repo3 = r.create(host3,annex,path3,description="repo: bob")
 		
 		paths = [path1,path2,path3]
 		repos = [repo1,repo2,repo3]
@@ -1381,8 +1378,8 @@ class TestCommands(unittest.TestCase):
 		def f(repo):
 			# change path
 			repo.changePath()
-			# execute 'git annex initremote crypt type=rsync rsyncurl=${path0} encryption=none'
-			cmd = ['git-annex','initremote','crypt','type=rsync','rsyncurl=%s'%path0,'encryption=none']
+			# execute 'git annex initremote $gitid type=rsync rsyncurl=${path0} encryption=none'
+			cmd = ['git-annex','initremote',repo0.gitID(),'type=rsync','rsyncurl=%s'%path0,'encryption=none']
 			repo.executeCommand(cmd)
 		self.apply_to_repos([repo2],f)
 		
@@ -1391,9 +1388,9 @@ class TestCommands(unittest.TestCase):
 		
 		# enable crypt on bob
 		def f(repo):
-			# change path and execute 'git annex enableremote crypt'
+			# change path and execute 'git annex enableremote $gitid'
 			repo.changePath()
-			cmd = ['git-annex','enableremote','crypt']
+			cmd = ['git-annex','enableremote',repo0.gitID()]
 			repo.executeCommand(cmd)
 		self.apply_to_repos([repo3],f)
 		

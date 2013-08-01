@@ -149,8 +149,8 @@ class Application:
 			with open(os.devnull, "w") as devnull:
 				subprocess.check_call(cmd,stdout=None if self.verbose <= self.VERBOSE_NORMAL else devnull)
 		except (subprocess.CalledProcessError,FileNotFoundError) as e:
-			print("\033[1;37;41m", "an error occured:", str(e), "\033[0m")
 			if ignoreexception:
-				pass
+				print("\033[1;37;41m", "an ignored error occured:", str(e), "\033[0m")
 			else:
+				print("\033[1;37;41m", "an error occured:", str(e), "\033[0m")
 				raise InterruptedException(e)
