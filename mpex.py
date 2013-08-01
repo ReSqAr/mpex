@@ -88,51 +88,72 @@ def apply_function(args,f):
 		localExecution,remoteExecution = True,False
 	
 	
+	# list of connections
+	connections = []
+	
 	# if remoted execution is wanted and we are still close enough to the origin
 	if remoteExecution and args.hops > 0:
 		for connection in app.getConnections():
-			if not connection.isOnline():
-				print("Connection to %s is not online." % connection.dest.name)
-				continue
-			
-			if connection.isLocal():
-				# if the repositories are locally accessible:
-				for repo in sorted(app.getConnectedRepositories(connection),key=r_key):
-					# check if the repo belongs to a selected annex
-					# and that it is not special, if both conditions
-					# are true, execute f
-					if repo.annex in selected_annexes and not repo.isSpecial():
-						f(repo)
-			elif connection.supportsRemoteExecution():
-				# if the connection allows remote execution, first compute the remote command
-				# start with the current command
-				cmd = sys.argv[:]
-				# adjust hops
-				for i,piece in enumerate(cmd):
-					if piece == "--hops":
-						# format: --hops n, new command line: --hops (n-1)
-						cmd[i+1] = str(args.hops-1)
-						break
-					elif piece.startswith("--hops="):
-						# format: --hops=n, new command line: --hops=(n-1)
-						cmd[i] = "--hops=%s" % (args.hops-1)
-						break
-				else:
-					# no hops argument in the original command given: just add it
-					cmd = cmd[:2] + ["--hops",str(args.hops-1)] + cmd[2:]
-
-				# execute the command on the target machine
-				connection.executeRemotely(cmd)
-			else:
-				raise ValueError("Connection %s does not permit remote exection."%connection)
+			if connection.isOnline():
+				# if the connection is available, use it
+				connections.append(connection)
+		
+		# sort connections, non-local connections first
+		connections.sort(key=lambda c: c.isLocal())
+		
+		# state the connected hosts
+		print("found connections to the following hosts: ",end="")
+		if connections:
+			print(", ".join(sorted(c.dest.name for c in connections)))
+		else:
+			print("-")
 	
-	# if the command should be executed locally
+	# if local execution is requested, add the trivial connection
 	if localExecution:
-		for repo in sorted(app.getHostedRepositories(),key=r_key):
-			# check if the repo belongs to a selected annex, if yes, then execute f
-			if repo.annex in selected_annexes and not repo.isSpecial():
-				f(repo)
+		connections.append(None)
 	
+	# actually execute f
+	for connection in connections:
+		if connection is None or connection.isLocal():
+			# if the repositories are locally accessible
+			if connection is None:
+				# if we have the trivial connection, use the locally hoisted repositories
+				repositories = app.getHostedRepositories()
+			else:
+				# otherwise, all repositories which can be accessed via the connection
+				app.getConnectedRepositories(connection)
+			
+			# iterate over all found repositories
+			for repo in sorted(repositories,key=r_key):
+				# check if the repo belongs to a selected annex
+				# and that it is not special, if both conditions
+				# are true, execute f
+				if repo.annex in selected_annexes and not repo.isSpecial():
+					f(repo)
+		
+		elif connection.supportsRemoteExecution():
+			# if the connection allows remote execution, first compute the remote command
+			# based on the current command
+			cmd = sys.argv[:]
+			# adjust hops
+			for i,piece in enumerate(cmd):
+				if piece == "--hops":
+					# format: --hops n, new command line: --hops (n-1)
+					cmd[i+1] = str(args.hops-1)
+					break
+				elif piece.startswith("--hops="):
+					# format: --hops=n, new command line: --hops=(n-1)
+					cmd[i] = "--hops=%s" % (args.hops-1)
+					break
+			else:
+				# no hops argument in the original command given: just add it
+				cmd = cmd[:2] + ["--hops",str(args.hops-1)] + cmd[2:]
+
+			# execute the command on the target machine
+			connection.executeRemotely(cmd)
+		else:
+			raise ValueError("Connection %s does not permit remote execution."%connection)
+
 
 #
 # initialise repositories
