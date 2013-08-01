@@ -116,7 +116,7 @@ def create_repositories_table(repositories):
 	if withspecial: header.append("Special")
 	if withdirect:  header.append("Direct")
 	if withtrust:   header.append("Trust")
-	if withfiles:   header.append("Files Expr")
+	if withfiles:   header.append("Files")
 	if withstrict:  header.append("Strict")
 	if withdesc:    header.append("Description")
 	# the first line is the header
