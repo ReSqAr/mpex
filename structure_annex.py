@@ -28,7 +28,7 @@ class Annexes(structure_base.Collection):
 		valid = {annex.name : annex for annex in self.getAll()}
 		
 		try:
-			# try to find a 
+			# try to find an annex
 			return lib.fuzzy_match.fuzzyMatch(annexname, valid)
 		except ValueError as e:
 			raise ValueError("could not parse the annex'%s': %s" % (annexname,e.args[0]))

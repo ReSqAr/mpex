@@ -28,7 +28,7 @@ class Hosts(structure_base.Collection):
 		valid = {host.name : host for host in self.getAll()}
 		
 		try:
-			# try to find a 
+			# try to find a host
 			return lib.fuzzy_match.fuzzyMatch(hostname, valid)
 		except ValueError as e:
 			raise ValueError("could not parse the host name '%s': %s" % (hostname,e.args[0]))
