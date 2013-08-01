@@ -409,7 +409,8 @@ class GitAnnexRepository(GitRepository):
 
 		# if a list of hosts is not given
 		if annex_descs is None:
-			annex_descs = {repo.gitID() for repo in self.standardRepositories().keys()}
+			# avoid syncing with special remotes
+			annex_descs = {repo.gitID() for repo in self.standardRepositories().keys() if not repo.isSpecial()}
 		
 		if annex_descs:
 			# call 'git-annex sync'
@@ -667,8 +668,14 @@ class LocalRepository(GitAnnexRepository):
 		
 		for repository, connections in self.connectedRepositories().items():
 			for connection in connections:
-				if connection is None or connection.isOnline():
-					# add the connection
+				if connection is None:
+					# we are working locally, add the connection only if
+					# the repository is non-special, i.e. avoid implcit
+					# connections to special local repositories
+					if not repository.isSpecial():
+						active_repos[repository].add(connection)
+				elif connection.isOnline():
+					# add the connection if the connection is online
 					active_repos[repository].add(connection)
 		
 		return active_repos

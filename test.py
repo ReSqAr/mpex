@@ -1212,7 +1212,7 @@ class TestCommands(unittest.TestCase):
 							self.assertEqual(fd.read(),name)
 						found.add(j)
 					
-				#print("%s found in: %s" % (name,", ".join(str(x+1) for x in found)))
+				print("%s found in: %s" % (name,", ".join(str(x+1) for x in found)))
 
 				# callback
 				checker(set(t),found)
@@ -1275,7 +1275,7 @@ class TestCommands(unittest.TestCase):
 				self.assertEqual(set(found),{2-1,3-1})
 		# check
 		self.check_powerset_files(paths,checker)
-				
+
 
 	def test_copy_local(self):
 		"""
@@ -1329,7 +1329,90 @@ class TestCommands(unittest.TestCase):
 		# check
 		self.check_powerset_files(paths,checker)
 
+
+
+	def test_copy_special_remote(self):
+		"""
+			test copy
+			procedure:
+			1. create three repositories with this connections:
+			   alice (repo2) -> tracker (repo1), crypt (repo0) <- bob (repo3)
+			   tracker has set as files expression: '-'
+			   and strict flag set
+			   furthermore, crypt is a special remote
+			2. create files in all possible repository combinations in repositories 1-3
+			3. sync all
+			4. call copy in repository repo2 and repo3 (in this order)
+			5. sync again
+			6. now the distribution of the files looks like that:
+			   share: none
+			   alice: all except the one which was only on bob
+			   bob:   all
+			   crypt: all
+		"""
+		# initialisation
+		app = application.Application(self.path,verbose=self.verbose)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
+		annex = a.create("Annex")
+		conn12 = c.create(host2,host1,"/",alwayson="true")
+		conn13 = c.create(host3,host1,"/",alwayson="true")
 		
+		# create & init
+		path0 = os.path.join(self.path,"special")
+		repo0 = r.create(host1,annex,"special",description="crypt")
+		path1 = os.path.join(self.path,"repo_host1")
+		repo1 = r.create(host1,annex,path1,description="tracker", files="-", strict="true")
+		path2 = os.path.join(self.path,"repo_host2")
+		repo2 = r.create(host2,annex,path2,description="alice")
+		path3 = os.path.join(self.path,"repo_host3")
+		repo3 = r.create(host3,annex,path3,description="bob")
+		
+		paths = [path1,path2,path3]
+		repos = [repo1,repo2,repo3]
+		
+		# assimilate
+		repo1,repo2,repo3 = repos = self.assimilate_repos(repos)
+		
+		# init repos
+		self.init_repos(repos)
+		
+		# init special remote on alice
+		def f(repo):
+			# change path
+			repo.changePath()
+			# execute 'git annex initremote crypt type=rsync rsyncurl=${path0} encryption=none'
+			cmd = ['git-annex','initremote','crypt','type=rsync','rsyncurl=%s'%path0,'encryption=none']
+			repo.executeCommand(cmd)
+		self.apply_to_repos([repo2],f)
+		
+		# propagate changes
+		self.sync([repo2,repo3])
+		
+		# enable crypt on bob
+		def f(repo):
+			# change path and execute 'git annex enableremote crypt'
+			repo.changePath()
+			cmd = ['git-annex','enableremote','crypt']
+			repo.executeCommand(cmd)
+		self.apply_to_repos([repo3],f)
+		
+		# create all possible combinations
+		self.create_powerset_files(paths)
+		
+		# sync all repos and copy repo2, repo3
+		self.sync_and_copy(repos,[repo2,repo3])
+
+		def checker(t,found):
+			# only t = {3-1} should exist only on bob, the others
+			# should exist on alice and bob
+			if set(t) == {3-1}:
+				self.assertEqual(set(found),{3-1})
+			else:
+				self.assertEqual(set(found),{2-1,3-1})
+		# check
+		self.check_powerset_files(paths,checker)
+
 
 
 	def test_copy_strict(self):
