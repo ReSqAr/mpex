@@ -48,6 +48,8 @@ apply_parser.add_argument('--remote', action="store_true",
 						help="execute the command also on all connected remotes")
 apply_parser.add_argument('--remoteonly', action="store_true",
 						help="execute the command only on connected remotes")
+apply_parser.add_argument('--hosts', default=None,
+						help="comma seperated list of hosts on which the command should be executed, here specifies the current location")
 apply_parser.add_argument('--hops', type=int, default=2,
 						help="when remote is given, the maximal number of hops")
 apply_parser.add_argument('--simulate', action="store_true",
@@ -77,7 +79,27 @@ def apply_function(args,f):
 	r_key = lambda r: str((r.annex,r.path))
 	
 	# sort out execution targets
-	if args.remoteonly:
+	hosts_filter = None
+	if args.hosts is not None:
+		# split the comma seperated list
+		hosts = [host.strip() for host in args.hosts.split(",")]
+		# only execute locally, if the 'here' is specified
+		localExecution,remoteExecution = 'here' in hosts,True
+		
+		# find all known names
+		known_hosts = {host.name: host for host in app.hosts.getAll()}
+		hosts_filter = set()
+		for host_name in hosts:
+			# ignore here
+			if host_name == 'here': continue
+			# find annexes
+			selected_hosts = set(lib.fuzzy_match.fuzzyMultiMatch(host_name,known_hosts))
+			if not selected_hosts:
+				print("WARNING: could not parse the host '%s'" % host_name)
+				sys.exit(1)
+			# add found hosts
+			hosts_filter |= selected_hosts
+	elif args.remoteonly:
 		# only remote
 		localExecution,remoteExecution = False,True
 	elif args.remote:
@@ -94,8 +116,11 @@ def apply_function(args,f):
 	# if remoted execution is wanted and we are still close enough to the origin
 	if remoteExecution and args.hops > 0:
 		for connection in app.getConnections():
+			# filter hosts if the host filter is active
+			if hosts_filter is not None and not connection.dest in hosts_filter:
+				continue
+			# if the connection is available, use it
 			if connection.isOnline():
-				# if the connection is available, use it
 				connections.append(connection)
 		
 		# sort connections, non-local connections first
