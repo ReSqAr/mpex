@@ -1167,6 +1167,55 @@ class TestCommands(unittest.TestCase):
 	def test_sync_from_remote_indirect(self):
 		self.sync_from_remote_tester(direct=False)
 
+	
+	def create_powerset_files(self, paths):
+		""" create all possible combinations of files """
+		n = len(paths)
+		for i in range(1,n+1):
+			# t is an element of the powerset of {1,...,n} with cardinality i
+			for t in itertools.combinations(range(n), i):
+				# compute file name
+				name = "file_%s" % "".join(str(x+1) for x in t)
+				# create files in the individual paths
+				for j in t:
+					path = paths[j]
+					f_path = os.path.join(path,name)
+					if self.verbose:
+						print(f_path)
+					with open(f_path,"wt") as fd:
+						fd.write(name)
+		
+		# consistency check
+		self.check_powerset_files(paths,lambda t,f: self.assertEqual(f,t))
+
+
+	def check_powerset_files(self, paths, checker):
+		"""
+			checks in which directories the files are available,
+			checker is a callback function with signature:
+			checker(<element of powerset>, <number of the directories where
+			                                the file is available>)
+		"""
+		n = len(paths)
+		for i in range(1,n+1):
+			# t is an element of the powerset of {1,...,n} with cardinality i
+			for t in itertools.combinations(range(n), i):
+				# compute file name
+				name = "file_%s" % "".join(str(x+1) for x in t)
+				found = set()
+				for j,path in enumerate(paths):
+					# check where the files exists
+					f_path = os.path.join(path,name)
+					if os.path.isfile(f_path):
+						# if it exists checks that it has the correct content
+						with open(f_path,"rt") as fd:
+							self.assertEqual(fd.read(),name)
+						found.add(j)
+					
+				#print("%s found in: %s" % (name,", ".join(str(x+1) for x in found)))
+
+				# callback
+				checker(set(t),found)
 
 	def test_copy(self):
 		"""
@@ -1210,50 +1259,23 @@ class TestCommands(unittest.TestCase):
 		# init repos
 		self.init_repos(repos)
 		
-		n = 3
-		# create all possible combinations of files
-		# compute power set of {0,1,2}
-		for i in range(1,n+1):
-			for t in itertools.combinations(range(n), i):
-				# compute file name
-				name = "file_%s" % "".join(str(x+1) for x in t)
-				# create files in the individual paths
-				for j in t:
-					path = paths[j]
-					f_path = os.path.join(path,name)
-					if self.verbose:
-						print(f_path)
-					with open(f_path,"wt") as fd:
-						fd.write(name)
+		# create all possible combinations
+		self.create_powerset_files(paths)
 		
-
 		# sync all repos and copy repo2 as well as repo3
 		self.sync_and_copy(repos,[repo2,repo3])
 
-		
-		# compute power set of {0,1,2}
-		for i in range(1,n+1):
-			for t in itertools.combinations(range(n), i):
-				# compute file name
-				name = "file_%s" % "".join(str(x+1) for x in t)
-				found = []
-				for j,path in enumerate(paths):
-					# check where the files exists
-					f_path = os.path.join(path,name)
-					if os.path.isfile(f_path):
-						# if it exists checks that it has the correct content
-						with open(f_path,"rt") as fd:
-							self.assertEqual(fd.read(),name)
-						found.append(j)
+
+		def checker(t,found):
+			# only t = {3-1} should exist in share and bob, the others
+			# should exist in alice and bob
+			if set(t) == {3-1}:
+				self.assertEqual(set(found),{1-1,3-1})
+			else:
+				self.assertEqual(set(found),{2-1,3-1})
+		# check
+		self.check_powerset_files(paths,checker)
 				
-				#print("%s found in: %s" % (name,", ".join(str(x+1) for x in found)))
-				
-				# only t = {3} should exist in share and bob, the others
-				# should exist in alice and bob
-				if set(t) == {3-1}:
-					self.assertEqual(set(found),{1-1,3-1})
-				else:
-					self.assertEqual(set(found),{2-1,3-1})
 
 	def test_copy_local(self):
 		"""
@@ -1293,47 +1315,21 @@ class TestCommands(unittest.TestCase):
 		# init repos
 		self.init_repos(repos)
 		
-		n = 3
-		# create all possible combinations of files
-		# compute power set of {0,1,2}
-		for i in range(1,n+1):
-			for t in itertools.combinations(range(n), i):
-				# compute file name
-				name = "file_%s" % "".join(str(x+1) for x in t)
-				# create files in the individual paths
-				for j in t:
-					path = paths[j]
-					f_path = os.path.join(path,name)
-					if self.verbose:
-						print(f_path)
-					with open(f_path,"wt") as fd:
-						fd.write(name)
-		
+		# create all possible combinations
+		self.create_powerset_files(paths)
 
 		# sync all repos and copy repo2 as well as repo3
 		self.sync_and_copy(repos,[repo2,repo3])
 
-		
-		# compute power set of {0,1,2}
-		for i in range(1,n+1):
-			for t in itertools.combinations(range(n), i):
-				# compute file name
-				name = "file_%s" % "".join(str(x+1) for x in t)
-				found = []
-				for j,path in enumerate(paths):
-					# check where the files exists
-					f_path = os.path.join(path,name)
-					if os.path.isfile(f_path):
-						# if it exists checks that it has the correct content
-						with open(f_path,"rt") as fd:
-							self.assertEqual(fd.read(),name)
-						found.append(j)
-				
-				#print("%s found in: %s" % (name,", ".join(str(x+1) for x in found)))
-				
-				# all should exist in alice and bob (only)
-				self.assertEqual(set(found),{2-1,3-1})
 
+		def checker(t,found):
+			# all should exist in alice and bob (only)
+			self.assertEqual(set(found),{2-1,3-1})
+
+		# check
+		self.check_powerset_files(paths,checker)
+
+		
 
 
 	def test_copy_strict(self):
