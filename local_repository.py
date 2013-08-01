@@ -354,9 +354,6 @@ class GitAnnexRepository(GitRepository):
 	def finalise(self):
 		""" calls git-annex add and commits all changes """
 		
-		# make sure that the master branch exists
-		self.repairMaster()
-
 		if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
 			print("\033[1;37;44m commiting changes in %s at %s \033[0m" % (self.annex.name,self.localpath))
 		

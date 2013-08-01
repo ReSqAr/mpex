@@ -367,7 +367,7 @@ def runParser():
 		except (KeyboardInterrupt,application.InterruptedException):
 			print()
 			print("interrupted")
-			return
+			sys.exit(2)
 
 	else:
 		# print a warning

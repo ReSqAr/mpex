@@ -1310,9 +1310,6 @@ class TestCommands(unittest.TestCase):
 						fd.write(name)
 		
 
-		# finalise repos
-		self.finalise_repos(repos)
-
 		# sync all repos and copy repo2 as well as repo3
 		self.sync_and_copy(repos,[repo2,repo3])
 
