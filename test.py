@@ -1620,6 +1620,88 @@ class TestCommands(unittest.TestCase):
 		self.has_file(repo2,"test","changed")
 
 
+	def test_sync_copy_missing_links(self):
+		"""
+			test the behaviour of sync and copy when git remotes are missing
+		"""
+		# initialisation
+		app = application.Application(self.path,verbose=self.verbose)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,host2,host3 = [h.create("Host%d"%i) for i in range(1,4)]
+		annex = a.create("Annex")
+		
+		# create & init
+		path1 = os.path.join(self.path,"repo_host1")
+		repo1 = r.create(host1,annex,path1)
+		path2 = os.path.join(self.path,"repo_host2")
+		repo2 = r.create(host2,annex,path2)
+		
+		repos = [repo1,repo2]
+		
+		# assimilate
+		repo1,repo2 = repos = self.assimilate_repos(repos)
+		
+		# init repos
+		self.init_repos(repos)
+		
+		# sync
+		self.sync(repos)
+		
+		# create a connection host1 -> host2
+		conn12 = c.create(host1,host2,"/",alwayson="true")
+		
+		# should fail, as the connection is not yet registered
+		self.assertRaisesRegex(application.InterruptedException, "missing git remotes",
+								self.sync, [repo1])
+		self.assertRaisesRegex(application.InterruptedException, "missing git remotes",
+								self.copy, [repo1])
+		
+		# these should work
+		self.sync([repo2])
+		self.copy([repo2])
+		
+		# reinit repos
+		self.reinit_repos(repos)
+		
+		# now all should work again
+		self.sync(repos)
+		self.copy(repos)
+
+		# create special repository on Host2
+		pathS = os.path.join(self.path,"special")
+		repoS = r.create(host2,annex,"special",description="crypt")
+
+		# now all should still work, as special repositories are ignored when syncing
+		self.sync(repos)
+	
+		# however copy should fail, as the connection is not yet registered
+		self.assertRaisesRegex(application.InterruptedException, "missing git remotes",
+								self.copy, [repo1])
+		
+		# this should still work
+		self.copy([repo2])
+		
+		# reinit repos
+		self.reinit_repos(repos)
+
+		# shoud still fail
+		self.assertRaisesRegex(application.InterruptedException, "missing git remotes",
+								self.copy, [repo1])
+
+		# init special remote on repo1
+		def f(repo):
+			# change path
+			repo.changePath()
+			# execute 'git annex initremote $gitid type=rsync rsyncurl=${pathS} encryption=none'
+			cmd = ['git-annex','initremote',repoS.gitID(),'type=rsync','rsyncurl=%s'%pathS,'encryption=none']
+			repo.executeCommand(cmd)
+		self.apply_to_repos([repo1],f)
+
+		# now all should work again
+		self.sync(repos)
+		self.copy(repos)
+
+
 	def test_migration(self):
 		"""
 			test migration strategy

@@ -5,7 +5,7 @@ import string
 import subprocess
 import datetime
 
-
+import application
 
 
 class GitRepository:
@@ -113,6 +113,18 @@ class GitRepository:
 		path = os.path.join(self.localpath,".git/refs/heads/master")
 		with open(path,"rt") as fd:
 			return fd.read()
+	
+	def gitRemotes(self):
+		""" find all git remotes """
+		
+		# change into the right directory
+		self.changePath()
+		
+		# read all remotes
+		cmd = ["git","remote","show"]
+		output = subprocess.check_output(cmd).decode("UTF-8")
+		return {remote.strip() for remote in output.splitlines()}
+		
 	
 	def isStageNonEmpty(self):
 		""" are there any staged files? """
@@ -251,6 +263,34 @@ class GitAnnexRepository(GitRepository):
 		else:
 			raise ValueError("Unable to determine the current description.")
 
+	def missingGitRemotesCheck(self, repos):
+		""" check that allgiven repositories are indeed registered as a git remote """
+		# get registered git remotes
+		remotes = self.gitRemotes()
+		
+		# compute the missing ones
+		missing = {r for r in repos if r.gitID() not in remotes}
+		
+		# if none are missing, everything is alright
+		if not missing:
+			return
+		
+		# otherwise warn the user
+		print("\033[1;37;41m", "the following repositories are not registered, consider running 'mpex reinit'", "\033[0m")
+		for r in sorted(missing, key=lambda r: str((r.host,r.annex,r.path))):
+			print("Host: %s Annex: %s Path: %s" % (r.host.name,r.annex.name,r.path))
+			# there is something additional to be told in the case of special repositories
+			if r.isSpecial():
+				print("\033[1;37;41m",
+				       "warning: this is a special remote, you have to enable it", "\033[0m")
+				print("create the special remote with the following command:")
+				print("    git annex initremote %s mac=HMACSHA512 encryption=<key> type=<type> ..." % r.gitID())
+				print("activate an already existing special remote with the following command:")
+				print("    git annex enableremote %s" % r.gitID())
+				print("NEVER create a special remote twice.")
+		
+		# bail out
+		raise application.InterruptedException("there are missing git remotes")
 
 	#
 	# main methods
@@ -409,6 +449,10 @@ class GitAnnexRepository(GitRepository):
 
 		# repositories to sync with (select only non-special repositories)
 		sync_repos = set(repo for repo in self.standardRepositories().keys() if not repo.isSpecial())
+
+		# check that all these repositories are registered
+		self.missingGitRemotesCheck(sync_repos)
+
 		# only select wanted repositories
 		if repositories is not None:
 			sync_repos &= set(repositories)
@@ -469,7 +513,11 @@ class GitAnnexRepository(GitRepository):
 
 		# repositories to copy from and to
 		repos = set(self.standardRepositories().keys())
-			# only select wanted repositories
+
+		# check that all these repositories are registered
+		self.missingGitRemotesCheck(repos)
+
+		# only select wanted repositories
 		if repositories is not None:
 			repos &= set(repositories)
 		
@@ -552,9 +600,7 @@ class GitAnnexRepository(GitRepository):
 		self.changePath()
 
 		# find all remotes
-		cmd = ["git","remote","show"]
-		output = subprocess.check_output(cmd).decode("UTF-8")
-		remotes = [remote.strip() for remote in output.splitlines()]
+		remotes = self.gitRemotes()
 		if self.app.verbose <= self.app.VERBOSE_NORMAL:
 			print("remotes found: %s" % ', '.join(remotes))
 		
