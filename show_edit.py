@@ -429,7 +429,7 @@ def edit(env):
 def meta_edit_command(env, data_type):
 	""" let the user edit the $obj list """
 	print()
-	print("\033[1;37;44m", "%s list editor" % data_type, "\033[0m")
+	print("\033[1;37;44m", "%s list editor started" % data_type, "\033[0m")
 
 	# small helper function
 	def editor_helper(obj):
@@ -478,7 +478,7 @@ def meta_edit_command(env, data_type):
 		if ret == 'back':
 			break
 
-	print("\033[1;37;44m", "%s list editor ended" % data_type, "\033[0m")
+	print("\033[1;37;44m", "%s list editor finished" % data_type, "\033[0m")
 
 #
 # data post processor
