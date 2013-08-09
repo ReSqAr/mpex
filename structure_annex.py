@@ -31,7 +31,7 @@ class Annexes(structure_base.Collection):
 			# try to find an annex
 			return lib.fuzzy_match.fuzzyMatch(annexname, valid)
 		except ValueError as e:
-			raise ValueError("could not parse the annex'%s': %s" % (annexname,e.args[0]))
+			raise ValueError("could not parse the annex name '%s': %s" % (annexname,e.args[0]))
 
 	
 class Annex:

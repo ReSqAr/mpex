@@ -532,66 +532,118 @@ def sorted_obj_pp(env, data_type, sorted_objs):
 	return postprocessor
 
 
+def repo_path_pp(s):
+	""" the path has to be absolute or 'special' """
+	if not s.startswith("/") and not s == "special":
+		raise ValueError("path has to be absolute or 'special'")
+	return s
+		
+
+def connection_path_pp(s):
+	""" test has to be absolute or a ssh path """
+	if not s.startswith("/") and not s.startswith("ssh://"):
+		raise ValueError("invalid form")
+	return s
+		
+
+
 #
 # edit function
 #
-def edit_hosts(env,host):
+def edit_hosts(env, obj):
 	""" edit hosts """
-	# a host cannot be edited
-	if host is not None:
-		print("Host objects have are inmutable, edit request ignored")
-		return
+
+	to_create = not obj
+
+	if to_create or env.unsafe:
+		# we have to create a new object (or overwrite existing values)
+		
+		# gather questions
+		questions = []
+		
+		# 1. name
+		questions.append({"name":"name",
+						"description":"host name",
+						"default": None if to_create else obj.name,
+						"postprocessor":valid_char_pp(structure_host.Host.VALID_CHARS)})
+		
+		# actually ask the questions
+		answers = ask_edit_questions(questions)
 	
-	questions = [{"name":"name",
-					"description":"host name",
-					"postprocessor":valid_char_pp(structure_host.Host.VALID_CHARS)}]
-	answers = ask_edit_questions(questions)
+		# check if asking the questions was cancelled
+		if answers is None:
+			print("host creation cancelled.")
+			return
+
+		try:
+			# pre process raw data
+			name = answers["name"]
+
+			if to_create:
+				# create object
+				obj = env.app.hosts.create(name)
+			else:
+				# overwrite (very unsafe)
+				obj._name = name
+		except Exception as e:
+			print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
+			return
+
+
 	
-	# check if asking the questions was cancelled
-	if answers is None:
-		print("host creation cancelled.")
-		return
-	
-	# create the object
-	try:
-		env.app.hosts.create(answers["name"])
-	except Exception as e:
-		print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
-		return
-	
-	
-def edit_annexes(env,annex):
+def edit_annexes(env, obj):
 	""" edit annexes """
-	# an annex cannot be edited
-	if annex is not None:
+
+	to_create = not obj
+
+	if to_create or env.unsafe:
+		# we have to create a new object (or overwrite existing values)
+		
+		# gather questions
+		questions = []
+		
+		# 1. name
+		questions.append({"name":"name",
+						"description":"annex name",
+						"default": None if to_create else obj.name,
+						"postprocessor":valid_char_pp(structure_annex.Annex.VALID_CHARS)})
+		
+		# actually ask the questions
+		answers = ask_edit_questions(questions)
+	
+		# check if asking the questions was cancelled
+		if answers is None:
+			print("annex creation cancelled.")
+			return
+
+
+		try:
+			# pre process raw data
+			name = answers["name"]
+
+			if to_create:
+				# create object
+				obj = env.app.annexes.create(name)
+			else:
+				# overwrite (very unsafe)
+				obj._name = name
+		except Exception as e:
+			print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
+			return
+
+	else:
 		print("Annex objects have are inmutable, edit request ignored")
-		return
 	
-	questions = [{"name":"name",
-					"description":"annex name",
-					"postprocessor":valid_char_pp(structure_annex.Annex.VALID_CHARS)}]
-	answers = ask_edit_questions(questions)
-	
-	# check if asking the questions was cancelled
-	if answers is None:
-		print("annex creation cancelled.")
-		return
-
-	# create the object
-	try:
-		env.app.annexes.create(answers["name"])
-	except Exception as e:
-		print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
-		return
 
 
 
-
-def edit_repositories(env,obj):
+def edit_repositories(env, obj):
 	""" edit repositories """
 	
-	if not obj:
-		# we have to create a new object
+	to_create = not obj
+
+	if to_create or env.unsafe:
+		# we have to create a new object (or overwrite existing values)
 		
 		# at least one host and one annex have to exist
 		if not env.app.hosts.getAll() or not env.app.annexes.getAll():
@@ -610,6 +662,7 @@ def edit_repositories(env,obj):
 			# 1. which host 
 			questions.append({"name":"host",
 								"description":"the host of the repository, use the first letters of the host name or a number from above",
+								"default": None if to_create else obj.host.name,
 								"postprocessor": sorted_obj_pp(env,"hosts",sorted_objs)})
 		
 		if env.annex is None:
@@ -619,26 +672,22 @@ def edit_repositories(env,obj):
 			# 2. which annex
 			questions.append({"name":"annex",
 								"description":"the annex of the repository, use the first letters of the annex name or a number from above",
+								"default": None if to_create else obj.annex.name,
 								"postprocessor": sorted_obj_pp(env,"annexes",sorted_objs)})
 		
 		# 3. which path
-		def postprocessor(s):
-			""" the path has to be absolute or 'special' """
-			if not s.startswith("/") and not s == "special":
-				raise ValueError("path has to be absolute or 'special'")
-			return s
-		
 		questions.append({"name":"path",
 							"description":"absolute path to the repository or special for a special remote",
-							"postprocessor": postprocessor})
+							"default": None if to_create else obj.path,
+							"postprocessor": repo_path_pp})
 		
 		# 4. description
 		questions.append({"name":"description",
 							"description":"description of the repository, usually only needed when there are multiple repositories of the same annex on the same host",
-							"default":"",
+							"default": None if to_create else obj._data.get("description"),
 							"postprocessor": valid_char_pp(structure_repository.Repository.VALID_DESC_CHARS)})
 		
-		# actual ask the questions
+		# actually ask the questions
 		answers = ask_edit_questions(questions)
 
 		# check if asking the questions was cancelled
@@ -646,17 +695,26 @@ def edit_repositories(env,obj):
 			print("repository creation cancelled.")
 			return
 
-		# create the object
 		try:
 			# pre process raw data
 			host = env.app.hosts.fuzzyMatch(answers["host"]) if env.host is None else env.host
 			annex = env.app.annexes.fuzzyMatch(answers["annex"])  if env.annex is None else env.annex
 			path = answers["path"]
-			data = {}
-			if answers["description"]:
-				data["description"] = answers["description"]
-			# create object
-			obj = env.app.repositories.create(host,annex,path,**data)
+			description = answers["description"]
+
+			if to_create:
+				# create parameter
+				data = {"description": description} if description else {}
+				# create object
+				obj = env.app.repositories.create(host,annex,path,**data)
+			else:
+				# overwrite (very unsafe)
+				obj._host,obj._annex,obj._path = host,annex,path
+				# overwrite description (or delete it)
+				if description:
+					obj._data["description"] = description
+				elif "description" in obj._data:
+					del obj._data["description"]
 		except Exception as e:
 			print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
 			return
@@ -696,7 +754,7 @@ def edit_repositories(env,obj):
 						"default":str(obj.strict).lower(),
 						"postprocessor": valid_values_pp(("true","false"))})
 
-	# actual ask the questions
+	# actually ask the questions
 	answers = ask_edit_questions(questions)
 
 	# check if asking the questions was cancelled
@@ -721,11 +779,13 @@ def edit_repositories(env,obj):
 		return
 
 
-def edit_connections(env,obj):
+def edit_connections(env, obj):
 	""" edit connections """
 
-	if not obj:
-		# we have to create a new object
+	to_create = not obj
+
+	if to_create or env.unsafe:
+		# we have to create a new object (or overwrite existing values)
 		
 		# at least two hosts have to exist
 		if len(env.app.hosts.getAll()) < 2:
@@ -737,23 +797,6 @@ def edit_connections(env,obj):
 		for data_type in ("hosts",):
 			sorted_objs[data_type] = print_data(env, data_type, enumerated=True)
 		
-		def hosts_postprocessor(s):
-			# two modes: fuzzy match and number
-			# first try if this is a number
-			if s.isnumeric():
-				# convert number
-				n = int(s)-1
-				# is it in the correct range?
-				if 0 <= n < len(sorted_objs["hosts"]):
-					# we found something, return the name
-					return sorted_objs["hosts"][n].name
-				else:
-					print("%d is not a valid number as it is not in the right range" % (n+1))
-			
-			# otherwise, try to fuzzily match against a host name
-			# this may raise an exception, this exception is used by ask_edit_questions
-			return env.app.hosts.fuzzyMatch(s).name
-
 		# ask core data
 		questions = []
 
@@ -761,25 +804,22 @@ def edit_connections(env,obj):
 			# 1. which source
 			questions.append({"name":"source",
 								"description":"the source of the connection, use the first letters of the host name or a number from above",
+								"default": None if to_create else obj.source.name,
 								"postprocessor": sorted_obj_pp(env,"hosts",sorted_objs)})
 
 		# 2. which destination
 		questions.append({"name":"destination",
 							"description":"the destination of the connection, use the first letters of the host name or a number from above",
+								"default": None if to_create else obj.dest.name,
 							"postprocessor": sorted_obj_pp(env,"hosts",sorted_objs)})
 
 		# 3. which path
-		def postprocessor(s):
-			""" test has to be absolute or a ssh path """
-			if not s.startswith("/") and not s.startswith("ssh://"):
-				raise ValueError("invalid form")
-			return s
-		
 		questions.append({"name": "path",
 							"description": "form: mount: absolute path, ssh: ssh://<server>",
-							"postprocessor": postprocessor})
+							"default": None if to_create else obj.path,
+							"postprocessor": connection_path_pp})
 		
-		# actual ask the questions
+		# actually ask the questions
 		answers = ask_edit_questions(questions)
 
 		# check if asking the questions was cancelled
@@ -787,14 +827,19 @@ def edit_connections(env,obj):
 			print("connection creation cancelled.")
 			return
 
-		# create the object
+		# create or overwrite object
 		try:
 			# pre process raw data
 			source = env.app.hosts.fuzzyMatch(answers["source"]) if env.host is None else env.host
 			destination = env.app.hosts.fuzzyMatch(answers["destination"])
 			path = answers["path"]
-			# create object
-			obj = env.app.connections.create(source,destination,path)
+			
+			if to_create:
+				# create object
+				obj = env.app.connections.create(source,destination,path)
+			else:
+				# overwrite (very unsafe)
+				obj._source,obj._dest,obj._path = source,destination,path
 		except Exception as e:
 			print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
 			return
@@ -815,7 +860,7 @@ def edit_connections(env,obj):
 						"default":str(obj.alwaysOn).lower(),
 						"postprocessor": valid_values_pp(("true","false"))})
 
-	# actual ask the questions
+	# actually ask the questions
 	answers = ask_edit_questions(questions)
 
 	# check if asking the questions was cancelled

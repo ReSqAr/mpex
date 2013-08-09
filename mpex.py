@@ -337,12 +337,21 @@ def func_show(args):
 #
 def init_edit(parsers):
 	parser = parsers.add_parser('edit', help='edit data',parents=[show_edit_parser])
+	parser.add_argument('--unsafe', action="store_true",
+						help="allow unsafe operations (default: off)")
+
 	parser.set_defaults(func=func_edit)
 
 def func_edit(args):
 	# create env
 	env = createEnv(args)
-
+	
+	# parse unsafe
+	env.unsafe = args.unsafe
+	
+	if env.unsafe:
+		print("\033[1;37;41m", "WARNING: take extreme care as unsafe operations are allowed", "\033[0m")
+	
 	try:
 		# edit app data
 		show_edit.edit(env)
