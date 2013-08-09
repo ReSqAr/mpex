@@ -293,36 +293,59 @@ def func_command(args):
 			print()
 	apply_function(args,repo_command)
 
-
 #
+# show/edit helper
+#
+
+# parser used by the next function
+show_edit_parser = argparse.ArgumentParser(add_help=False)
+show_edit_parser.add_argument('--host', default=None,
+						help="restrict show/edit to the given host")
+show_edit_parser.add_argument('--annex', default=None,
+						help="restrict show/edit to the given annex")
+
+def createEnv(args):
+	# create application
+	app = application.Application(CONFIG_PATH)
+	
+	# define environment
+	class Env:
+		def __init__(self):
+			self.app = app
+			self.host = app.hosts.fuzzyMatch(args.host) if args.host is not None else None
+			self.annex = app.annexes.fuzzyMatch(args.annex)  if args.annex is not None else None
+	# create environment
+	return Env()
+
+
 #
 # show data
 #
 def init_show(parsers):
-	parser = parsers.add_parser('show', help='show data')
+	parser = parsers.add_parser('show', help='show data',parents=[show_edit_parser])
 	parser.set_defaults(func=func_show)
 
 def func_show(args):
-	# create application
-	app = application.Application(CONFIG_PATH)
+	# create env
+	env = createEnv(args)
 	
 	# show app data
-	show_edit.show(app)
+	show_edit.show(env)
 
 #
 # edit data
 #
 def init_edit(parsers):
-	parser = parsers.add_parser('edit', help='edit data')
+	parser = parsers.add_parser('edit', help='edit data',parents=[show_edit_parser])
 	parser.set_defaults(func=func_edit)
 
 def func_edit(args):
-	# create application
-	app = application.Application(CONFIG_PATH)
+	# create env
+	env = createEnv(args)
 
 	try:
 		# edit app data
-		show_edit.edit(app)
+		show_edit.edit(env)
 	except KeyboardInterrupt:
 		print()
 		print("interrupted, going down WITHOUT saving")

@@ -273,24 +273,71 @@ def ask_edit_questions(questions):
 
 
 #
+# print 
+#
+def print_data(env, data_type, enumerated=False):
+	""" print all data known for data type data_type """
+	
+	# get known objects
+	objs = getattr(env.app,data_type).getAll()
+
+	appendix = []
+
+	# filter repositories if desired
+	if data_type == "repositories":
+		# filter host
+		if env.host is not None:
+			objs = [obj for obj in objs if obj.host == env.host]
+			appendix.append("on host %s" % env.host.name)
+			
+		# filter annex
+		if env.annex is not None:
+			objs = [obj for obj in objs if obj.annex == env.annex]
+			appendix.append("of annex %s" % env.annex.name)
+
+	# filter connections if desired
+	if data_type == "connections":
+		# filter source
+		if env.host is not None:
+			objs = [obj for obj in objs if obj.source == env.host]
+			appendix.append("from host %s" % env.host.name)
+	
+	# post process appendix
+	appendix = " ".join(appendix)
+	if appendix:
+		appendix = " " + appendix
+	
+	if not objs:
+		# state that there are not any objects of the given type
+		print("There are no registered %s%s." % (data_type,appendix))
+	else:
+		# print the count
+		print("There are %d registered %s%s:" % (len(objs),data_type,appendix))
+		
+		# create table
+		objs,table = eval("create_%s_table"%data_type)(objs)
+
+		# enumerate the lines if wanted
+		if enumerated:
+			table = enumerate_table(table)
+		
+		# print the table
+		print_table(table)
+	print()
+	
+	return objs
+
+
+
+#
 # actual functions
 #
-def show(app):
+def show(env):
 	# print known objs
-	for obj_name in ("hosts","annexes","repositories","connections"):
-		# print known objs
-		objs = getattr(app,obj_name).getAll()
-		if not objs:
-			print("There are no registered %s." % obj_name)
-		else:
-			print("There are %d registered %s:" % (len(objs),obj_name))
-			# create and print table
-			_,table = eval("create_%s_table"%obj_name)(objs)
-			print_table(table)
-		print()
+	for data_type in ("hosts","annexes","repositories","connections"):
+		print_data(env,data_type)
 
-
-def edit(app):
+def edit(env):
 	while True:
 		print()
 		print("\033[1mAvailable options:\033[0m")
@@ -316,7 +363,7 @@ def edit(app):
 			break
 		elif key == 's':
 			# save
-			app.save()
+			env.app.save()
 			print("\033[1;37;44m", "saved", "\033[0m")
 		else:
 			# edit command arguments
@@ -326,26 +373,17 @@ def edit(app):
 								'c':"connections",
 							}
 			# call function
-			meta_edit_command(app,edit_command_arguments[key])
+			meta_edit_command(env,edit_command_arguments[key])
 
-def meta_edit_command(app,obj_name):
+def meta_edit_command(env, data_type):
 	""" let the user edit the $obj list """
 	print()
-	print("\033[1;37;44m", "%s list editor" % obj_name, "\033[0m")
+	print("\033[1;37;44m", "%s list editor" % data_type, "\033[0m")
 	while True:
 		print()
-
-		# print known objs
-		objs = getattr(app,obj_name).getAll()
-		if not objs:
-			print("There are no registered %s." % obj_name)
-		else:
-			print("There are %d registered %s:" % (len(objs),obj_name))
-			# create, enumerate and print table
-			objs,table = eval("create_%s_table"%obj_name)(objs)
-			table = enumerate_table(table)
-			print_table(table)
-		print()
+		
+		# print data in data_type, objs is a sorted version of the data
+		objs = print_data(env, data_type)
 		
 		# print available options
 		print("\033[1mAvailable options:\033[0m")
@@ -385,19 +423,39 @@ def meta_edit_command(app,obj_name):
 			break
 		elif key == "s":
 			# option 'save'
-			app.save()
+			env.app.save()
 			print("\033[1;37;44m", "saved", "\033[0m")
 		else:
 			# compute row to work on, or if the row should be created, None
 			row = objs[key] if key != "c" else None
 			# call edit command
-			print("\033[1;37;44m", "%s object editor started" % obj_name, "\033[0m")
-			eval("edit_%s"%obj_name)(app,row)
-			print("\033[1;37;44m", "%s object editor finished" % obj_name, "\033[0m")
+			print("\033[1;37;44m", "%s object editor started" % data_type, "\033[0m")
+			eval("edit_%s"%data_type)(env,row)
+			print("\033[1;37;44m", "%s object editor finished" % data_type, "\033[0m")
 
 
+
+#
+# data post processor
+#
+
+def valid_char_pp(valid_chars):
+	""" checks that only valid characters are used """
+
+	# convert valid_chars to a set
+	valid_chars = set(valid_chars)
+
+	# define post processor
+	def postprocessor(s):
+		assert set(s).issubset(valid_chars),\
+				"invalid character detected: %s" % ",".join(set(s) - valid_chars)
+		return s
+	return postprocessor
+
+	
 
 def valid_values_pp(valid_values):
+	""" select from the given values """
 	# build identity mapping
 	valid_values = {x:x for x in valid_values}
 	# define post processor via lib.fuzzy_match
@@ -407,21 +465,39 @@ def valid_values_pp(valid_values):
 	# return post processor
 	return postprocessor
 
+	
+
+def sorted_obj_pp(env, data_type, sorted_objs):
+	""" host/annex post processor """
+	def postprocessor(s):
+		# two modes: fuzzy match and number
+		# first try if this is a number
+		if s.isnumeric():
+			# convert number
+			n = int(s)-1
+			# is it in the correct range?
+			if 0 <= n < len(sorted_objs[data_type]):
+				# we found something, return the name
+				return sorted_objs[data_type][n].name
+			else:
+				print("%d is not a valid number as it is not in the right range" % (n+1))
+		
+		# otherwise, try to fuzzily match against a host name
+		# this may raise an exception, this exception is used by ask_edit_questions
+		return getattr(env.app,data_type).fuzzyMatch(s).name
+	return postprocessor
 
 
-def edit_hosts(app,host):
+def edit_hosts(env,host):
 	""" edit hosts """
 	# a host cannot be edited
 	if host is not None:
 		print("Host objects have are inmutable, edit request ignored")
 		return
 	
-	def postprocessor(name):
-		""" only certain characters are allowed """
-		assert set(name).issubset(structure_host.Host.VALID_CHARS),\
-				"invalid character detected: %s" % ",".join(set(name) - structure_host.Host.VALID_CHARS)
-		return name
-	questions = [{"name":"name", "description":"host name","postprocessor":postprocessor}]
+	questions = [{"name":"name",
+					"description":"host name",
+					"postprocessor":valid_char_pp(structure_host.Host.VALID_CHARS)}]
 	answers = ask_edit_questions(questions)
 	
 	# check if asking the questions was cancelled
@@ -431,25 +507,22 @@ def edit_hosts(app,host):
 	
 	# create the object
 	try:
-		app.hosts.create(answers["name"])
+		env.app.hosts.create(answers["name"])
 	except Exception as e:
 		print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
 		return
 	
 	
-def edit_annexes(app,annex):
+def edit_annexes(env,annex):
 	""" edit annexes """
 	# an annex cannot be edited
 	if annex is not None:
 		print("Annex objects have are inmutable, edit request ignored")
 		return
 	
-	def postprocessor(name):
-		""" only certain characters are allowed """
-		assert set(name).issubset(structure_annex.Annex.VALID_CHARS),\
-				"invalid character detected: %s" % ",".join(set(name) - structure_annex.Annex.VALID_CHARS)
-		return name
-	questions = [{"name":"name", "description":"annex name","postprocessor":postprocessor}]
+	questions = [{"name":"name",
+					"description":"annex name",
+					"postprocessor":valid_char_pp(structure_annex.Annex.VALID_CHARS)}]
 	answers = ask_edit_questions(questions)
 	
 	# check if asking the questions was cancelled
@@ -459,7 +532,7 @@ def edit_annexes(app,annex):
 
 	# create the object
 	try:
-		app.annexes.create(answers["name"])
+		env.app.annexes.create(answers["name"])
 	except Exception as e:
 		print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
 		return
@@ -467,76 +540,43 @@ def edit_annexes(app,annex):
 
 
 
-def edit_repositories(app,obj):
+def edit_repositories(env,obj):
 	""" edit repositories """
 	
 	if not obj:
 		# we have to create a new object
 		
 		# at least one host and one annex have to exist
-		if not app.hosts.getAll() or not app.annexes.getAll():
+		if not env.app.hosts.getAll() or not env.app.annexes.getAll():
 			print("error: you have to have at least one host and one annex to be able to create a repository")
 			return
 		
 		sorted_objs = {}
-		# show hosts and annexes
-		for obj_name in ("hosts","annexes",):
-			# print known objs
-			objs = getattr(app,obj_name).getAll()
-			print("There are %d registered %s:" % (len(objs),obj_name))
-			# create, enumerate and print table
-			sorted_objs[obj_name],table = eval("create_%s_table"%obj_name)(objs,additional_data=False)
-			table = enumerate_table(table)
-			print_table(table)
-			print()
 		
 		# ask core data
 		questions = []
-		# 1. which host 
-		def postprocessor(s):
-			# two modes: fuzzy match and number
-			# first try if this is a number
-			if s.isnumeric():
-				# convert number
-				n = int(s)-1
-				# is it in the correct range?
-				if 0 <= n < len(sorted_objs["hosts"]):
-					# we found something, return the name
-					return sorted_objs["hosts"][n].name
-				else:
-					print("%d is not a valid number as it is not in the right range" % (n+1))
+		
+		if env.host is None:
+			# show host data
+			sorted_objs["hosts"] = print_data(env, "hosts", enumerated=True)
 			
-			# otherwise, try to fuzzily match against a host name
-			# this may raise an exception, this exception is used by ask_edit_questions
-			return app.hosts.fuzzyMatch(s).name
-			
-		questions.append({"name":"host",
-							"description":"the host of the repository, use the first letters of the host name or a number from above",
-							"postprocessor": postprocessor})
-		# 2. which annex
-		def postprocessor(s):
-			# two modes: fuzzy match and number
-			# first try if this is a number
-			if s.isnumeric():
-				# convert number
-				n = int(s)-1
-				# is it in the correct range?
-				if 0 <= n < len(sorted_objs["annexes"]):
-					# we found something, return the name
-					return sorted_objs["annexes"][n].name
-				else:
-					print("%d is not a valid number as it is not in the right range" % (n+1))
-			
-			# otherwise, try to fuzzily match against a annex name
-			# this may raise an exception, this exception is used by ask_edit_questions
-			return app.annexes.fuzzyMatch(s).name
-			
-		questions.append({"name":"annex",
-							"description":"the annex of the repository, use the first letters of the annex name or a number from above",
-							"postprocessor": postprocessor})
+			# 1. which host 
+			questions.append({"name":"host",
+								"description":"the host of the repository, use the first letters of the host name or a number from above",
+								"postprocessor": sorted_obj_pp(env,"hosts",sorted_objs)})
+		
+		if env.annex is None:
+			# show annex data
+			sorted_objs["annexes"] = print_data(env, "annexes", enumerated=True)
+
+			# 2. which annex
+			questions.append({"name":"annex",
+								"description":"the annex of the repository, use the first letters of the annex name or a number from above",
+								"postprocessor": sorted_obj_pp(env,"annexes",sorted_objs)})
+		
 		# 3. which path
 		def postprocessor(s):
-			# test if this path is absolute
+			""" the path has to be absolute or 'special' """
 			if not s.startswith("/") and not s == "special":
 				raise ValueError("path has to be absolute or 'special'")
 			return s
@@ -546,16 +586,10 @@ def edit_repositories(app,obj):
 							"postprocessor": postprocessor})
 		
 		# 4. description
-		def postprocessor(s):
-			""" only certain characters are allowed """
-			assert set(s).issubset(structure_repository.Repository.VALID_DESC_CHARS),\
-					"invalid character detected: %s" % ",".join(set(s) - structure_repository.Repository.VALID_DESC_CHARS)
-			return s
-		
 		questions.append({"name":"description",
 							"description":"description of the repository, usually only needed when there are multiple repositories of the same annex on the same host",
 							"default":"",
-							"postprocessor": postprocessor})
+							"postprocessor": valid_char_pp(structure_repository.Repository.VALID_DESC_CHARS)})
 		
 		# actual ask the questions
 		answers = ask_edit_questions(questions)
@@ -568,14 +602,14 @@ def edit_repositories(app,obj):
 		# create the object
 		try:
 			# pre process raw data
-			host = app.hosts.fuzzyMatch(answers["host"])
-			annex = app.annexes.fuzzyMatch(answers["annex"])
+			host = env.app.hosts.fuzzyMatch(answers["host"]) if env.host is None else env.host
+			annex = env.app.annexes.fuzzyMatch(answers["annex"])  if env.annex is None else env.annex
 			path = answers["path"]
 			data = {}
 			if answers["description"]:
 				data["description"] = answers["description"]
 			# create object
-			obj = app.repositories.create(host,annex,path,**data)
+			obj = env.app.repositories.create(host,annex,path,**data)
 		except Exception as e:
 			print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
 			return
@@ -604,13 +638,10 @@ def edit_repositories(app,obj):
 						"postprocessor": valid_values_pp(trust_level)})
 
 	# 3. question: files expression
-	def files_pp(s):
-		""" files post processor """
-		return obj._sanitiseFilesExpression(s)
 	questions.append({"name":"files",
 						"description":"files expression which specifies the desired content of this repository",
 						"default":obj.files if obj.files else "",
-						"postprocessor": files_pp})
+						"postprocessor": obj._sanitiseFilesExpression})
 
 	# 4. question: strict?
 	questions.append({"name":"strict",
@@ -643,28 +674,21 @@ def edit_repositories(app,obj):
 		return
 
 
-def edit_connections(app,obj):
+def edit_connections(env,obj):
 	""" edit connections """
 
 	if not obj:
 		# we have to create a new object
 		
 		# at least two hosts have to exist
-		if len(app.hosts.getAll()) < 2:
+		if len(env.app.hosts.getAll()) < 2:
 			print("error: you have to have at least two hosts to be able to create a connection")
 			return
 		
 		sorted_objs = {}
 		# show hosts and annexes
-		for obj_name in ("hosts",):
-			# print known objs
-			objs = getattr(app,obj_name).getAll()
-			print("There are %d registered %s:" % (len(objs),obj_name))
-			# create, enumerate and print table
-			sorted_objs[obj_name],table = eval("create_%s_table"%obj_name)(objs,additional_data=False)
-			table = enumerate_table(table)
-			print_table(table)
-			print()
+		for data_type in ("hosts",):
+			sorted_objs[data_type] = print_data(env, data_type, enumerated=True)
 		
 		def hosts_postprocessor(s):
 			# two modes: fuzzy match and number
@@ -681,22 +705,25 @@ def edit_connections(app,obj):
 			
 			# otherwise, try to fuzzily match against a host name
 			# this may raise an exception, this exception is used by ask_edit_questions
-			return app.hosts.fuzzyMatch(s).name
+			return env.app.hosts.fuzzyMatch(s).name
 
 		# ask core data
 		questions = []
-		# 1. which source
-		questions.append({"name":"source",
-							"description":"the source of the connection, use the first letters of the host name or a number from above",
-							"postprocessor": hosts_postprocessor})
+
+		if env.host is None:
+			# 1. which source
+			questions.append({"name":"source",
+								"description":"the source of the connection, use the first letters of the host name or a number from above",
+								"postprocessor": sorted_obj_pp(env,"hosts",sorted_objs)})
+
 		# 2. which destination
 		questions.append({"name":"destination",
 							"description":"the destination of the connection, use the first letters of the host name or a number from above",
-							"postprocessor": hosts_postprocessor})
-		
+							"postprocessor": sorted_obj_pp(env,"hosts",sorted_objs)})
+
 		# 3. which path
 		def postprocessor(s):
-			# test if this path is absolute
+			""" test has to be absolute or a ssh path """
 			if not s.startswith("/") and not s.startswith("ssh://"):
 				raise ValueError("invalid form")
 			return s
@@ -716,11 +743,11 @@ def edit_connections(app,obj):
 		# create the object
 		try:
 			# pre process raw data
-			source = app.hosts.fuzzyMatch(answers["source"])
-			destination = app.hosts.fuzzyMatch(answers["destination"])
+			source = env.app.hosts.fuzzyMatch(answers["source"]) if env.host is None else env.host
+			destination = env.app.hosts.fuzzyMatch(answers["destination"])
 			path = answers["path"]
 			# create object
-			obj = app.connections.create(source,destination,path)
+			obj = env.app.connections.create(source,destination,path)
 		except Exception as e:
 			print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
 			return

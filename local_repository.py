@@ -282,7 +282,7 @@ class GitAnnexRepository(GitRepository):
 			# there is something additional to be told in the case of special repositories
 			if r.isSpecial():
 				print("\033[1;37;41m",
-				       "warning: this is a special remote, you have to enable it", "\033[0m")
+				       "warning: this is a special remote, you have to enable it manually", "\033[0m")
 				print("create the special remote with the following command:")
 				print("    git annex initremote %s mac=HMACSHA512 encryption=<key> type=<type> ..." % r.gitID())
 				print("activate an already existing special remote with the following command:")
