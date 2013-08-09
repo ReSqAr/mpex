@@ -445,7 +445,7 @@ def meta_edit_command(env, data_type):
 		options = collections.OrderedDict()
 
 		# print data in data_type, objs is a sorted version of the data
-		objs = print_data(env, data_type)
+		objs = print_data(env, data_type, enumerated=True)
 		
 		# print available options
 		print("\033[1mAvailable options:\033[0m")
