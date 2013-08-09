@@ -189,8 +189,114 @@ def create_connections_table(connections):
 
 
 #
+# print 
+#
+def print_data(env, data_type, enumerated=False):
+	""" print all data known for data type data_type """
+	
+	# get known objects
+	objs = getattr(env.app,data_type).getAll()
+
+	appendix = []
+
+	# filter repositories if desired
+	if data_type == "repositories":
+		# filter host
+		if env.host is not None:
+			objs = [obj for obj in objs if obj.host == env.host]
+			appendix.append("on host %s" % env.host.name)
+			
+		# filter annex
+		if env.annex is not None:
+			objs = [obj for obj in objs if obj.annex == env.annex]
+			appendix.append("of annex %s" % env.annex.name)
+
+	# filter connections if desired
+	if data_type == "connections":
+		# filter source
+		if env.host is not None:
+			objs = [obj for obj in objs if obj.source == env.host]
+			appendix.append("from host %s" % env.host.name)
+	
+	# post process appendix
+	appendix = " ".join(appendix)
+	if appendix:
+		appendix = " " + appendix
+	
+	if not objs:
+		# state that there are not any objects of the given type
+		print("There are no registered %s%s." % (data_type,appendix))
+	else:
+		# print the count
+		print("There are %d registered %s%s:" % (len(objs),data_type,appendix))
+		
+		# create table
+		objs,table = eval("create_%s_table"%data_type)(objs)
+
+		# enumerate the lines if wanted
+		if enumerated:
+			table = enumerate_table(table)
+		
+		# print the table
+		print_table(table)
+	print()
+	
+	return objs
+
+
+#
 # ask questions
 #
+def choose(options):
+	"""
+		choose one of the options:
+		options: dictionary: letter/possible range -> function
+	"""
+	# ask the user what to do (until we have a valid answer)
+	while True:
+		# build a nice representation of all options
+		def convert(option):
+			if isinstance(option,range):
+				assert option.step == 1, "step is wrong"
+				return "i∊[%d,%d]" % (option.start,option.stop-1)
+			else:
+				return str(option)
+		opt_text = ",".join(convert(opt) for opt in options.keys())
+		
+		# ask question
+		answer = input("\033[1mSelect [%s]:\033[0m " % opt_text)
+		
+		# find selected option
+		selected = options.get(answer)
+		
+		# if we found a selected option, call it
+		if selected:
+			print()
+			return selected()
+		
+		# otherwise we have a special option
+		for option,f in options.items():
+			# special options are: range
+
+			# try to interpret answer as a number in the given range
+			if isinstance(option,range):
+				try:
+					# convert to an integer
+					number = int(answer)
+				except:
+					# if it fails, it cannot be a number
+					continue
+				
+				# if it has the right range, select it
+				if number in option:
+					print()
+					return f(number)
+		
+		# if we are here, the input was invalid
+		print("Invalid user input '%s'" % answer)
+
+		
+
 def ask_edit_questions(questions):
 	"""
 		ask the user the given questions,
@@ -272,62 +378,6 @@ def ask_edit_questions(questions):
 	return answers
 
 
-#
-# print 
-#
-def print_data(env, data_type, enumerated=False):
-	""" print all data known for data type data_type """
-	
-	# get known objects
-	objs = getattr(env.app,data_type).getAll()
-
-	appendix = []
-
-	# filter repositories if desired
-	if data_type == "repositories":
-		# filter host
-		if env.host is not None:
-			objs = [obj for obj in objs if obj.host == env.host]
-			appendix.append("on host %s" % env.host.name)
-			
-		# filter annex
-		if env.annex is not None:
-			objs = [obj for obj in objs if obj.annex == env.annex]
-			appendix.append("of annex %s" % env.annex.name)
-
-	# filter connections if desired
-	if data_type == "connections":
-		# filter source
-		if env.host is not None:
-			objs = [obj for obj in objs if obj.source == env.host]
-			appendix.append("from host %s" % env.host.name)
-	
-	# post process appendix
-	appendix = " ".join(appendix)
-	if appendix:
-		appendix = " " + appendix
-	
-	if not objs:
-		# state that there are not any objects of the given type
-		print("There are no registered %s%s." % (data_type,appendix))
-	else:
-		# print the count
-		print("There are %d registered %s%s:" % (len(objs),data_type,appendix))
-		
-		# create table
-		objs,table = eval("create_%s_table"%data_type)(objs)
-
-		# enumerate the lines if wanted
-		if enumerated:
-			table = enumerate_table(table)
-		
-		# print the table
-		print_table(table)
-	print()
-	
-	return objs
-
-
 
 #
 # actual functions
@@ -339,106 +389,100 @@ def show(env):
 
 def edit(env):
 	while True:
+		# build ordered dict of options
+		options = collections.OrderedDict()
+
 		print()
 		print("\033[1mAvailable options:\033[0m")
-		print("  edit [h]osts list")
-		print("  edit [a]nnexes list")
-		print("  edit [r]epositories list")
-		print("  edit [c]onnections list")
-		print("  [s]ave changes")
-		print("  [e]xit")
+
+		# edit commands
+		data_types = ['hosts', 'annexes', 'repositories', 'connections']
 		
-		# ask the user what to do (until we have a valid answer)
-		while True:
-			key = input("\033[1mSelect [h,a,r,c,s,e]:\033[0m ")
-			if key not in ['h','a','r','c','s','e']:
-				print("Invalid user input '%s'" % key)
-				continue
-			else:
-				# we found something
-				break
+		for data_type in data_types:
+			# print option
+			print("  edit [%s]%s list" % (data_type[0],data_type[1:]))
 			
-		if key == 'e':
-			# exit
-			break
-		elif key == 's':
-			# save
+			# create edit command: break scoping rule
+			def create_edit_command(data_type):
+				return lambda: meta_edit_command(env,data_type)
+			options[data_type[0]] = create_edit_command(data_type)
+		
+		# save command
+		print("  [s]ave changes")
+		def save():
 			env.app.save()
 			print("\033[1;37;44m", "saved", "\033[0m")
-		else:
-			# edit command arguments
-			edit_command_arguments = {'h':"hosts",
-								'a':"annexes",
-								'r':"repositories",
-								'c':"connections",
-							}
-			# call function
-			meta_edit_command(env,edit_command_arguments[key])
+		options["s"] = save
+		
+		# exit command
+		print("  [e]xit")
+		options["e"] = lambda: "exit"
+
+		# let the user choose
+		ret = choose(options)
+		
+		# if ret indicates 'exit', do it
+		if ret == 'exit':
+			break
+
 
 def meta_edit_command(env, data_type):
 	""" let the user edit the $obj list """
 	print()
 	print("\033[1;37;44m", "%s list editor" % data_type, "\033[0m")
+
+	# small helper function
+	def editor_helper(obj):
+		print("\033[1;37;44m", "%s object editor started" % data_type, "\033[0m")
+		eval("edit_%s"%data_type)(env,obj)
+		print("\033[1;37;44m", "%s object editor finished" % data_type, "\033[0m")
+
+		
 	while True:
 		print()
 		
+		# build ordered dict of options
+		options = collections.OrderedDict()
+
 		# print data in data_type, objs is a sorted version of the data
 		objs = print_data(env, data_type)
 		
 		# print available options
 		print("\033[1mAvailable options:\033[0m")
+		
+		# if objects exist, give the possiblity to edit them
 		if objs:
 			print("  edit [i]-th entry (i: 1-%d)"%len(objs))
-		print("  [c]reate a new entry")
-		print("  [s]ave changes")
-		print("  [b]ack")
-	
-		options = base_options = ["c","s","b"]
-		if objs:
-			options = ["i∊[1,%d]"%len(objs)] + options 
+			# create edit command: break scoping rule
+			options[range(1,len(objs)+1)] = lambda ipp: editor_helper(objs[ipp-1])
 
-		# ask the user what to do (until we have a valid answer)
-		while True:
-			key = input("\033[1mSelect [%s]:\033[0m " % ','.join(options))
-			if key in base_options:
-				# valid
-				break
-			else:
-				# may be it is a number?
-				try:
-					# try to convert it to a number
-					key = int(key) - 1
-					# if it has the right range, select it
-					if 0 <= key < len(objs):
-						break
-				except:
-					pass
-			# if we are here, the input was invalid
-			print("Invalid user input '%s'" % key)
+		# create new ones
+		print("  [c]reate a new entry")
+		options["c"] = lambda: editor_helper(None)
 		
-		print()
-		
-		if key == "b":
-			# option 'back'
-			break
-		elif key == "s":
-			# option 'save'
+		# save command
+		print("  [s]ave changes")
+		def save():
 			env.app.save()
 			print("\033[1;37;44m", "saved", "\033[0m")
-		else:
-			# compute row to work on, or if the row should be created, None
-			row = objs[key] if key != "c" else None
-			# call edit command
-			print("\033[1;37;44m", "%s object editor started" % data_type, "\033[0m")
-			eval("edit_%s"%data_type)(env,row)
-			print("\033[1;37;44m", "%s object editor finished" % data_type, "\033[0m")
+		options["s"] = save
+		
+		# back command
+		print("  [b]ack")
+		options["b"] = lambda: "back"
 
+		# let the user choose
+		ret = choose(options)
+		
+		# if ret indicates 'back', do it
+		if ret == 'back':
+			break
 
+	print("\033[1;37;44m", "%s list editor ended" % data_type, "\033[0m")
 
 #
 # data post processor
 #
-
 def valid_char_pp(valid_chars):
 	""" checks that only valid characters are used """
 
@@ -488,6 +532,9 @@ def sorted_obj_pp(env, data_type, sorted_objs):
 	return postprocessor
 
 
+#
+# edit function
+#
 def edit_hosts(env,host):
 	""" edit hosts """
 	# a host cannot be edited
