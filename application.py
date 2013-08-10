@@ -127,6 +127,10 @@ class Application:
 		# if the current git annex version is newer than the 2013-04-01 version,
 		# it supports direct mode (this date is just a guess)
 		capabilities["direct"] = ( date >= (2013,4,1) )
+
+		# if the current git annex version is newer than the 2013-04-01 version,
+		# it supports copy --all (this date is just a guess)
+		capabilities["all"] = ( date >= (2013,4,1) )
 		
 		# cache it
 		self._gitAnnexCapabilities_Cache = capabilities
