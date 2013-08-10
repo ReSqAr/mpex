@@ -564,7 +564,7 @@ class GitAnnexRepository(GitRepository):
 			files_cmd = repo.filesAsCmd()
 
 			# call 'git-annex copy --fast --all --to=target <files expression as command>'
-			cmd = ["git-annex","copy","--fast"] + flags + ["--to=%s"%repo.gitID()] + files_cmd
+			cmd = ["git-annex","copy"] + flags + ["--to=%s"%repo.gitID()] + files_cmd
 			self.executeCommand(cmd)
 		
 		
