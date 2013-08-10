@@ -540,9 +540,10 @@ class GitAnnexRepository(GitRepository):
 		# pull
 		#
 		
-		# call 'git-annex copy --from=target <files expression as command>'
+		# call 'git-annex copy --fast --from=target <files expression as command>'
+		# (rationale behind --fast: we are synced)
 		for repo in sorted(repos,key=lambda k:str(k)):
-			cmd = ["git-annex","copy","--from=%s"%repo.gitID()] + local_files_cmd
+			cmd = ["git-annex","copy","--fast","--from=%s"%repo.gitID()] + local_files_cmd
 			self.executeCommand(cmd)
 	
 	
@@ -554,8 +555,8 @@ class GitAnnexRepository(GitRepository):
 			# parse remote files expression
 			files_cmd = repo.filesAsCmd()
 
-			# call 'git-annex copy --to=target <files expression as command>'
-			cmd = ["git-annex","copy","--to=%s"%repo.gitID()] + files_cmd
+			# call 'git-annex copy --fast --to=target <files expression as command>'
+			cmd = ["git-annex","copy","--fast","--to=%s"%repo.gitID()] + files_cmd
 			self.executeCommand(cmd)
 		
 		
