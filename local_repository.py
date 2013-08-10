@@ -7,6 +7,8 @@ import datetime
 
 import application
 
+from lib.terminal import print_blue, print_red
+
 
 class GitRepository:
 	
@@ -276,13 +278,12 @@ class GitAnnexRepository(GitRepository):
 			return
 		
 		# otherwise warn the user
-		print("\033[1;37;41m", "the following repositories are not registered, consider running 'mpex reinit'", "\033[0m")
+		print_red("the following repositories are not registered, consider running 'mpex reinit'", sep='')
 		for r in sorted(missing, key=lambda r: str((r.host,r.annex,r.path))):
 			print("Host: %s Annex: %s Path: %s" % (r.host.name,r.annex.name,r.path))
 			# there is something additional to be told in the case of special repositories
 			if r.isSpecial():
-				print("\033[1;37;41m",
-				       "warning: this is a special remote, you have to enable it manually", "\033[0m")
+				print_red("warning: this is a special remote, you have to enable it manually", sep='')
 				print("create the special remote with the following command:")
 				print("    git annex initremote %s mac=HMACSHA512 encryption=<key> type=<type> ..." % r.gitID())
 				print("activate an already existing special remote with the following command:")
@@ -299,7 +300,7 @@ class GitAnnexRepository(GitRepository):
 		""" inits the repository """
 		
 		if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
-			print("\033[1;37;44m initialise %s at %s \033[0m" % (self.annex.name,self.localpath))
+			print_blue("initialise", self.annex.name, "at", self.localpath)
 
 		# change into the right directory, create it if necessary
 		self.changePath(create=True)
@@ -328,7 +329,7 @@ class GitAnnexRepository(GitRepository):
 		""" sets the properties of the current repository """
 		
 		if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
-			print("\033[1;37;44m setting properties of %s at %s \033[0m" % (self.annex.name,self.localpath))
+			print_blue("setting properties of", self.annex.name, "at", self.localpath)
 		
 		# change into the right directory
 		self.changePath()
@@ -395,7 +396,7 @@ class GitAnnexRepository(GitRepository):
 		""" calls git-annex add and commits all changes """
 		
 		if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
-			print("\033[1;37;44m commiting changes in %s at %s \033[0m" % (self.annex.name,self.localpath))
+			print_blue("commiting changes in", self.annex.name, "at", self.localpath)
 		
 		# change into the right directory
 		self.changePath()
@@ -442,7 +443,7 @@ class GitAnnexRepository(GitRepository):
 		self.repairMaster()
 	
 		if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
-			print("\033[1;37;44m syncing %s in %s \033[0m" % (self.annex.name,self.localpath))
+			print_blue("syncing", self.annex.name, "in", self.localpath)
 		
 		# change into the right directory
 		self.changePath()
@@ -480,7 +481,7 @@ class GitAnnexRepository(GitRepository):
 		if "synced/master" in branches:
 			# use the 'synced/master' branch if possible
 			if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
-				print("\033[1;37;44m repairing master branch in %s at %s \033[0m" % (self.annex.name,self.localpath))
+				print_blue("repairing master branch in", self.annex.name, "at", self.localpath)
 			
 			# checkout synced/master
 			self.executeCommand(["git","checkout","synced/master"])
@@ -530,7 +531,7 @@ class GitAnnexRepository(GitRepository):
 		self.sync(repos)
 		
 		if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
-			print("\033[1;37;44m copying files %s at %s \033[0m" % (self.annex.name,self.localpath))
+			print_blue("copying files of", self.annex.name, "at", self.localpath)
 		
 		# change into the right directory
 		self.changePath()
@@ -594,7 +595,7 @@ class GitAnnexRepository(GitRepository):
 		"""
 		
 		if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
-			print("\033[1;37;44m delete all remotes of %s in %s\033[0m" % (self.annex.name,self.localpath))
+			print_blue("delete all remotes of", self.annex.name, "in", self.localpath)
 
 		# change path to current directory
 		self.changePath()

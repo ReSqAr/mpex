@@ -1,6 +1,4 @@
 import collections
-import readline
-import textwrap
 
 import lib.fuzzy_match
 
@@ -8,6 +6,7 @@ import structure_host
 import structure_annex
 import structure_repository
 
+from lib.terminal import print_blue, print_red, print_bold, choose, ask_questions
 
 #
 # table helper functions
@@ -245,141 +244,6 @@ def print_data(env, data_type, enumerated=False):
 
 
 #
-# ask questions
-#
-def choose(options):
-	"""
-		choose one of the options:
-		options: dictionary: letter/possible range -> function
-	"""
-	# ask the user what to do (until we have a valid answer)
-	while True:
-		# build a nice representation of all options
-		def convert(option):
-			if isinstance(option,range):
-				assert option.step == 1, "step is wrong"
-				return "i∊[%d,%d]" % (option.start,option.stop-1)
-			else:
-				return str(option)
-		opt_text = ",".join(convert(opt) for opt in options.keys())
-		
-		# ask question
-		answer = input("\033[1mSelect [%s]:\033[0m " % opt_text)
-		
-		# find selected option
-		selected = options.get(answer)
-		
-		# if we found a selected option, call it
-		if selected:
-			print()
-			return selected()
-		
-		# otherwise we have a special option
-		for option,f in options.items():
-			# special options are: range
-
-			# try to interpret answer as a number in the given range
-			if isinstance(option,range):
-				try:
-					# convert to an integer
-					number = int(answer)
-				except:
-					# if it fails, it cannot be a number
-					continue
-				
-				# if it has the right range, select it
-				if number in option:
-					print()
-					return f(number)
-		
-		# if we are here, the input was invalid
-		print("Invalid user input '%s'" % answer)
-
-		
-
-def ask_edit_questions(questions):
-	"""
-		ask the user the given questions,
-		questions is a list of dictionaries with keys:
-			name, description, [default], [postprocessor]
-		postprocessor may raise an error if the input is invalid
-	"""
-	answers = collections.OrderedDict()
-	
-	# set default value in answers:
-	for question in questions:
-		name = question["name"]
-		# set
-		answers[name] = question.get("default") if question.get("default") else ""
-
-	prefixlength = max(len(question["name"]) for question in questions) + 1
-
-	while True:
-		print()
-		for question in questions:
-			name = question["name"]
-			
-			
-			# print the description (wrapped)
-			for i,line in enumerate(textwrap.wrap(question["description"],70)):
-				if i == 0:
-					print("\033[1m%s:\033[0m"%name," " * (prefixlength - len(name)-1),end="")
-				else:
-					print(" " * (prefixlength+1),end="")
-				print(line)
-			
-			# ask
-			while True:
-				inp = input("%s \033[1mnew value [%s]:\033[0m " % (" "*prefixlength,answers[name]))
-				
-				# if the input is empty, use the default value
-				if not inp:
-					inp = answers[name]
-				
-				# strip input, this means you can set '' via entering a space
-				inp = inp.strip()
-				
-				# post process data
-				postprocessor = question.get("postprocessor")
-				if postprocessor:
-					try:
-						# apply the postprocessor
-						orig,inp = inp,postprocessor(inp)
-						# if the original version differs from the post processed one,
-						# show it
-						if orig != inp:
-							print(" "*prefixlength, "implicit change to: %s" % (inp,))
-					except Exception as e:
-						# the post processor found an error
-						print(" "*prefixlength, "invalid input: %s" % (e.args[0],))
-						continue
-				
-				# if we reach this point, everything is fine, we save the answer
-				# and can proceed to the next question
-				answers[name] = inp
-				break
-		
-		print()
-		# ask if everything is alright
-		x = input("\033[1mAre the above answers correct? Or cancel? [Y/n/c]\033[0m ")
-		
-		if x.strip().lower().startswith("c"):
-			# if the input starts with c, assume it is cancelled
-			return None
-		elif x.strip().lower().startswith("n"):
-			# if the input starts with 'n', continue
-			continue
-		else:
-			# default: we are done
-			break
-	print()
-	
-	# return the answers
-	return answers
-
-
-
-#
 # actual functions
 #
 def show(env):
@@ -393,7 +257,7 @@ def edit(env):
 		options = collections.OrderedDict()
 
 		print()
-		print("\033[1mAvailable options:\033[0m")
+		print_bold("Available options:",sep='')
 
 		# edit commands
 		data_types = ['hosts', 'annexes', 'repositories', 'connections']
@@ -411,7 +275,7 @@ def edit(env):
 		print("  [s]ave changes")
 		def save():
 			env.app.save()
-			print("\033[1;37;44m", "saved", "\033[0m")
+			print_blue("saved")
 		options["s"] = save
 		
 		# exit command
@@ -429,13 +293,13 @@ def edit(env):
 def meta_edit_command(env, data_type):
 	""" let the user edit the $obj list """
 	print()
-	print("\033[1;37;44m", "%s list editor started" % data_type, "\033[0m")
+	print_blue("%s list editor started" % data_type)
 
 	# small helper function
 	def editor_helper(obj):
-		print("\033[1;37;44m", "%s object editor started" % data_type, "\033[0m")
+		print_blue("%s object editor started" % data_type)
 		eval("edit_%s"%data_type)(env,obj)
-		print("\033[1;37;44m", "%s object editor finished" % data_type, "\033[0m")
+		print_blue("%s object editor finished" % data_type)
 
 		
 	while True:
@@ -448,7 +312,7 @@ def meta_edit_command(env, data_type):
 		objs = print_data(env, data_type, enumerated=True)
 		
 		# print available options
-		print("\033[1mAvailable options:\033[0m")
+		print_bold("Available options:",sep='')
 		
 		# if objects exist, give the possiblity to edit them
 		if objs:
@@ -464,7 +328,7 @@ def meta_edit_command(env, data_type):
 		print("  [s]ave changes")
 		def save():
 			env.app.save()
-			print("\033[1;37;44m", "saved", "\033[0m")
+			print_blue("saved")
 		options["s"] = save
 		
 		# back command
@@ -478,7 +342,7 @@ def meta_edit_command(env, data_type):
 		if ret == 'back':
 			break
 
-	print("\033[1;37;44m", "%s list editor finished" % data_type, "\033[0m")
+	print_blue("%s list editor finished" % data_type)
 
 #
 # data post processor
@@ -527,7 +391,7 @@ def sorted_obj_pp(env, data_type, sorted_objs):
 				print("%d is not a valid number as it is not in the right range" % (n+1))
 		
 		# otherwise, try to fuzzily match against a host name
-		# this may raise an exception, this exception is used by ask_edit_questions
+		# this may raise an exception, this exception is used by ask_questions
 		return getattr(env.app,data_type).fuzzyMatch(s).name
 	return postprocessor
 
@@ -568,7 +432,7 @@ def edit_hosts(env, obj):
 						"postprocessor":valid_char_pp(structure_host.Host.VALID_CHARS)})
 		
 		# actually ask the questions
-		answers = ask_edit_questions(questions)
+		answers = ask_questions(questions)
 	
 		# check if asking the questions was cancelled
 		if answers is None:
@@ -586,7 +450,7 @@ def edit_hosts(env, obj):
 				# overwrite (very unsafe)
 				obj._name = name
 		except Exception as e:
-			print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
+			print_red("an error occured:", e.args[0])
 			return
 
 
@@ -609,7 +473,7 @@ def edit_annexes(env, obj):
 						"postprocessor":valid_char_pp(structure_annex.Annex.VALID_CHARS)})
 		
 		# actually ask the questions
-		answers = ask_edit_questions(questions)
+		answers = ask_questions(questions)
 	
 		# check if asking the questions was cancelled
 		if answers is None:
@@ -628,7 +492,7 @@ def edit_annexes(env, obj):
 				# overwrite (very unsafe)
 				obj._name = name
 		except Exception as e:
-			print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
+			print_red("an error occured:", e.args[0])
 			return
 
 	else:
@@ -688,7 +552,7 @@ def edit_repositories(env, obj):
 							"postprocessor": valid_char_pp(structure_repository.Repository.VALID_DESC_CHARS)})
 		
 		# actually ask the questions
-		answers = ask_edit_questions(questions)
+		answers = ask_questions(questions)
 
 		# check if asking the questions was cancelled
 		if answers is None:
@@ -716,7 +580,7 @@ def edit_repositories(env, obj):
 				elif "description" in obj._data:
 					del obj._data["description"]
 		except Exception as e:
-			print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
+			print_red("an error occured:", e.args[0])
 			return
 	
 	print()
@@ -755,7 +619,7 @@ def edit_repositories(env, obj):
 						"postprocessor": valid_values_pp(("true","false"))})
 
 	# actually ask the questions
-	answers = ask_edit_questions(questions)
+	answers = ask_questions(questions)
 
 	# check if asking the questions was cancelled
 	if answers is None:
@@ -775,7 +639,7 @@ def edit_repositories(env, obj):
 		obj.strict = strict
 		obj.files = files # files should be last, as it more likely to fail
 	except Exception as e:
-		print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
+		print_red("an error occured:", e.args[0])
 		return
 
 
@@ -820,7 +684,7 @@ def edit_connections(env, obj):
 							"postprocessor": connection_path_pp})
 		
 		# actually ask the questions
-		answers = ask_edit_questions(questions)
+		answers = ask_questions(questions)
 
 		# check if asking the questions was cancelled
 		if answers is None:
@@ -841,7 +705,7 @@ def edit_connections(env, obj):
 				# overwrite (very unsafe)
 				obj._source,obj._dest,obj._path = source,destination,path
 		except Exception as e:
-			print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
+			print_red("an error occured:", e.args[0])
 			return
 	
 	print()
@@ -861,7 +725,7 @@ def edit_connections(env, obj):
 						"postprocessor": valid_values_pp(("true","false"))})
 
 	# actually ask the questions
-	answers = ask_edit_questions(questions)
+	answers = ask_questions(questions)
 
 	# check if asking the questions was cancelled
 	if answers is None:
@@ -875,5 +739,5 @@ def edit_connections(env, obj):
 		# set values
 		obj.alwaysOn = alwayson
 	except Exception as e:
-		print("\033[1;37;41m", "an error occured: %s" % e.args[0], "\033[0m")
+		print_red("an error occured:", e.args[0])
 		return

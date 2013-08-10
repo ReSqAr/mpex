@@ -10,6 +10,7 @@ import lib.fuzzy_match
 
 import application
 import show_edit
+from lib.terminal import print_blue, print_red
 
 CONFIG_PATH = "~/.config/mpex/"
 CONFIG_PATH = os.path.expanduser(CONFIG_PATH)
@@ -286,7 +287,7 @@ def func_command(args):
 		# change path
 		repo.changePath()
 		if repo.app.verbose <= repo.app.VERBOSE_IMPORTANT:
-			print("\033[1;37;44m running the command for %s in %s \033[0m" % (repo.annex.name,repo.path))
+			print_blue("running the command for", repo.annex.name, "in", repo.localpath)
 		# run the command in the directory
 		repo.executeCommand(args.command,ignoreexception=args.force)
 		if repo.app.verbose <= repo.app.VERBOSE_IMPORTANT:
@@ -350,7 +351,7 @@ def func_edit(args):
 	env.unsafe = args.unsafe
 	
 	if env.unsafe:
-		print("\033[1;37;41m", "WARNING: take extreme care as unsafe operations are allowed", "\033[0m")
+		print_red("WARNING: take extreme care as UNSAFE operations are allowed")
 	
 	try:
 		# edit app data
