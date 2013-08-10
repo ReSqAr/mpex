@@ -496,9 +496,10 @@ class GitAnnexRepository(GitRepository):
 			self.executeCommand(["git","commit","--allow-empty","-m","empty commit"])
 	
 	
-	def copy(self, repositories=None, files=None, strict=None):
+	def copy(self, copy_all=False, repositories=None, files=None, strict=None):
 		"""
 			copy files, arguments:
+			- copy_all: call git annex with the --all flag
 			- repositories: target repositories, if the default is given, then all are used
 			- files: expression which specifies which files should be transfered,
 			         defaults to the local repositories files entry, if nothing is given,
@@ -541,15 +542,14 @@ class GitAnnexRepository(GitRepository):
 		#
 		
 		# compute flags which should be used:
-		#   --fast and --all (if available)
-		# rationales
+		#   --fast and --all (if available and wanted)
+		# rationale:
 		#   --fast: we are synced
-		#   --all:  we do not want to miss old versions
 		flags = ["--fast"]
-		if self.app.gitAnnexCapabilities["all"]:
+		if self.app.gitAnnexCapabilities["all"] and copy_all:
 			flags.append("--all")
 		
-		# call 'git-annex copy --fast --all --from=target <files expression as command>'
+		# call 'git-annex copy --fast [--all] --from=target <files expression as command>'
 		for repo in sorted(repos,key=lambda k:str(k)):
 			cmd = ["git-annex","copy"] + flags + ["--from=%s"%repo.gitID()] + local_files_cmd
 			self.executeCommand(cmd)
@@ -563,7 +563,7 @@ class GitAnnexRepository(GitRepository):
 			# parse remote files expression
 			files_cmd = repo.filesAsCmd()
 
-			# call 'git-annex copy --fast --all --to=target <files expression as command>'
+			# call 'git-annex copy --fast [--all] --to=target <files expression as command>'
 			cmd = ["git-annex","copy"] + flags + ["--to=%s"%repo.gitID()] + files_cmd
 			self.executeCommand(cmd)
 		

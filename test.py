@@ -1758,8 +1758,8 @@ class TestCommands(unittest.TestCase):
 		host2._name = "NotHost2"
 		
 		# change descriptions
-		repo1._data["description"] = "eve"
-		repo2._data["description"] = "abel"
+		repo1._data["description"] = "abel"
+		repo2._data["description"] = "eve"
 		
 		# restart app
 		for x in [h,a,r,c]:
@@ -1789,12 +1789,9 @@ class TestCommands(unittest.TestCase):
 		self.create_file(repo1,"test1")
 		self.create_file(repo2,"test2")
 		
-		# sync
-		self.sync(repos)
-		
-		# copy
-		self.copy(repos)
-		
+		# sync and copy files (call copy only for repo1)
+		self.sync_and_copy(repos,[repo1])
+
 		# the files should be in both repositories
 		for repo in repos:
 			self.has_file(repo,"test1")

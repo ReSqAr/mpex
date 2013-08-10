@@ -242,6 +242,7 @@ def func_sync(args):
 def init_copy(parsers):
 	parser = parsers.add_parser('copy', help='copy repositories',parents=[apply_parser])
 	parser.add_argument('annex', nargs='*', help="annex names")
+	parser.add_argument('--all', action="store_true", help="call git-annex with --all")
 	parser.add_argument('--files', default=None, help="files expression for the local host")
 	parser.add_argument('--strict', action="store_true", help="apply strict")
 	parser.add_argument('--nostrict', action="store_true", help="apply no strict")
@@ -256,7 +257,7 @@ def func_copy(args):
 		strict = False
 	
 	def repo_copy(repo):
-		repo.copy(files=args.files,strict=strict)
+		repo.copy(copy_all=args.all,files=args.files,strict=strict)
 	apply_function(args,repo_copy)
 
 #
