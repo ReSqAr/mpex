@@ -128,11 +128,11 @@ def apply_function(args,f):
 		connections.sort(key=lambda c: c.isLocal())
 		
 		# state the connected hosts
-		print("found connections to the following hosts: ",end="")
+		
 		if connections:
-			print(", ".join(sorted(c.dest.name for c in connections)))
+			print("found connections to the following hosts:", ", ".join(sorted(c.dest.name for c in connections)))
 		else:
-			print("-")
+			print("found no connections to other hosts")
 	
 	# if local execution is requested, add the trivial connection
 	if localExecution:
@@ -147,7 +147,7 @@ def apply_function(args,f):
 				repositories = app.getHostedRepositories()
 			else:
 				# otherwise, all repositories which can be accessed via the connection
-				app.getConnectedRepositories(connection)
+				repositories = app.getConnectedRepositories(connection)
 			
 			# iterate over all found repositories
 			for repo in sorted(repositories,key=r_key):

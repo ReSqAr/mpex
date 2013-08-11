@@ -266,7 +266,7 @@ class GitAnnexRepository(GitRepository):
 			raise ValueError("Unable to determine the current description.")
 
 	def missingGitRemotesCheck(self, repos):
-		""" check that allgiven repositories are indeed registered as a git remote """
+		""" check that all given repositories are indeed registered as a git remote """
 		# get registered git remotes
 		remotes = self.gitRemotes()
 		
@@ -355,7 +355,7 @@ class GitAnnexRepository(GitRepository):
 			self.executeCommand(["git-annex",self.trust,"here"])
 		
 		# set git remotes
-		for repo, connections in self.connectedRepositories().items():
+		for repo, connections in self.standardRepositories().items():
 			# ignore special repositories
 			if repo.isSpecial():
 				continue
@@ -718,11 +718,27 @@ class LocalRepository(GitAnnexRepository):
 	
 
 	def standardRepositories(self):
-		""" determine repositories which are online """
+		""" determine repositories which are online (from the point of view of the current host) """
+		# convert connections to a dictionary dest -> set of connections to dest
+		connections = collections.defaultdict(set)
+		for connection in self.app.currentHost().connections():
+			connections[connection.dest].add(connection)
+		
+		# add trivial connection from the current host!
+		connections[self.host].add(None)
+		
+		# get repositories
+		repositories = self.annex.repositories()
+		
+		# get the repositories which are online
 		active_repos = collections.defaultdict(set)
 		
-		for repository, connections in self.connectedRepositories().items():
-			for connection in connections:
+		for repository in repositories:
+			# filter out the current repository
+			if repository == self:
+				continue
+			
+			for connection in connections[repository.host]:
 				if connection is None:
 					# we are working locally, add the connection only if
 					# the repository is non-special, i.e. avoid implcit
