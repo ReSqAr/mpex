@@ -461,7 +461,7 @@ class GitAnnexRepository(GitRepository):
 		
 		if sync_repos:
 			# call 'git-annex sync $gitIDs'
-			gitIDs = [repo.gitID() for repo in sync_repos]
+			gitIDs = [repo.gitID() for repo in sorted(sync_repos,key=str)]
 			self.executeCommand(["git-annex","sync"] + gitIDs)
 		else:
 			# if no other annex is available, still do basic maintanence
@@ -525,7 +525,7 @@ class GitAnnexRepository(GitRepository):
 			repos &= set(repositories)
 		
 		# check remote files expression
-		for repo in sorted(repos,key=lambda k:str(k)):
+		for repo in sorted(repos,key=str):
 			# if we can convert it to command line arguments, then everything is fine
 			repo.filesAsCmd()
 		
@@ -551,7 +551,7 @@ class GitAnnexRepository(GitRepository):
 			flags.append("--all")
 		
 		# call 'git-annex copy --fast [--all] --from=target <files expression as command>'
-		for repo in sorted(repos,key=lambda k:str(k)):
+		for repo in sorted(repos,key=str):
 			cmd = ["git-annex","copy"] + flags + ["--from=%s"%repo.gitID()] + local_files_cmd
 			self.executeCommand(cmd)
 	
@@ -560,7 +560,7 @@ class GitAnnexRepository(GitRepository):
 		# push
 		#
 		
-		for repo in sorted(repos,key=lambda k:str(k)):
+		for repo in sorted(repos,key=str):
 			# parse remote files expression
 			files_cmd = repo.filesAsCmd()
 
@@ -583,7 +583,7 @@ class GitAnnexRepository(GitRepository):
 			self.executeCommand(cmd, ignoreexception=True)
 		
 		# apply strict for remote repositories
-		for repo in sorted(repos,key=lambda k:str(k)):
+		for repo in sorted(repos,key=str):
 			# only apply if wanted
 			if not repo.strict:
 				continue
