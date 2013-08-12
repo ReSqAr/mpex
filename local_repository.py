@@ -171,7 +171,7 @@ class GitAnnexRepository(GitRepository):
 			# if the line does not start with a space, we have line of type 'key: value'
 			if not line[0].isspace():
 				# check that the line has the right form
-				assert ':' in line, "git annex status malformed: '%s'" % line
+				assert ':' in line, "git annex status malformed: '%s' in:\n%s" % (line,output)
 				# split it
 				key, value = line.split(':',1)
 				# remove white spaces
