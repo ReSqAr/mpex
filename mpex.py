@@ -10,7 +10,7 @@ import lib.fuzzy_match
 
 import application
 import show_edit
-from lib.terminal import print_blue, print_red
+from lib.terminal import print_blue, print_red, print_green
 
 CONFIG_PATH = "~/.config/mpex/"
 CONFIG_PATH = os.path.expanduser(CONFIG_PATH)
@@ -182,7 +182,11 @@ def apply_function(args,f):
 				cmd = cmd[:2] + ["--hops",str(args.hops-1)] + cmd[2:]
 
 			# execute the command on the target machine
+			print()
+			print_green("executing command on host %s" % connection.dest.name)
 			connection.executeRemotely(cmd)
+			print_green("command finished on host %s" % connection.dest.name)
+			print()
 		else:
 			raise ValueError("Connection %s does not permit remote execution."%connection)
 

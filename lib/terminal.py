@@ -12,6 +12,10 @@ def print_red(*args,**kwargs):
 	new_args = ["\033[1;37;41m"] + list(args) + ["\033[0m"]
 	print(*new_args, **kwargs)
 
+def print_green(*args,**kwargs):
+	new_args = ["\033[1;37;42m"] + list(args) + ["\033[0m"]
+	print(*new_args, **kwargs)
+
 def print_bold(*args,**kwargs):
 	new_args = ["\033[1m"] + list(args) + ["\033[0m"]
 	print(*new_args, **kwargs)
