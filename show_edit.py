@@ -11,6 +11,16 @@ from lib.terminal import print_blue, print_red, print_bold, choose, ask_question
 #
 # table helper functions
 #
+
+def printed_len(s):
+	""" computes the printed length of a string s """
+	# strip all non-printed characters: \033...m
+	while "\033" in s:
+		a,b = s.split("\033",1)
+		b = b.split("m",1)[1]
+		s = a + b
+	return len(s)
+
 def print_table(table,sep=2,header_sep="="):
 	""" prints a table """
 	# empty table -> do nothing
@@ -26,7 +36,7 @@ def print_table(table,sep=2,header_sep="="):
 		# check that it has the correct number of columns
 		assert len(row) == columns, "Programming error."
 		# update lengths array
-		column_lengths = [max(len(row[i]),column_lengths[i]) for i in range(columns)]
+		column_lengths = [max(printed_len(row[i]),column_lengths[i]) for i in range(columns)]
 	
 	# output
 	for i,row in enumerate(table):
@@ -35,7 +45,8 @@ def print_table(table,sep=2,header_sep="="):
 
 		for column_length,item in zip(column_lengths,row):
 			# print the item left justified
-			print(item.ljust(column_length+sep),end='')
+			print(item,end='')
+			print(' '*(column_length + sep - printed_len(item)),end='')
 
 		if i == 0: print("\033[0m",end="")
 
@@ -50,7 +61,13 @@ def enumerate_table(table):
 	""" adds the row number to the first line """
 	return [ [str(i-1+1) if i>0 else "n"] + row for i,row in enumerate(table) ]
 
-def create_hosts_table(hosts,additional_data=True):
+def format_host(env, host):
+	if env.app.currentHost() == host:
+		return "\033[1m%s\033[0m" % host.name
+	else:
+		return host.name
+
+def create_hosts_table(env, hosts, additional_data=True):
 	""" builds a table """
 	# we build a table: a 2 dimensional array
 	table = []
@@ -63,7 +80,7 @@ def create_hosts_table(hosts,additional_data=True):
 		# create a row
 		row = []
 		# first column is the host name
-		row.append(host.name)
+		row.append(format_host(env,host))
 		# second column (if wanted) are all associated annexes
 		if additional_data:
 			repos = host.repositories()
@@ -73,7 +90,7 @@ def create_hosts_table(hosts,additional_data=True):
 	
 	return hosts,table
 
-def create_annexes_table(annexes,additional_data=True):
+def create_annexes_table(env, annexes, additional_data=True):
 	""" builds a table """
 	# we build a table: a 2 dimensional array
 	table = []
@@ -90,13 +107,13 @@ def create_annexes_table(annexes,additional_data=True):
 		# second column (if wanted) are all associated hosts
 		if additional_data:
 			repos = annex.repositories()
-			row.append(", ".join(sorted(repo.host.name for repo in repos)))
+			row.append(", ".join(format_host(env,repo.host) for repo in sorted(repos,key=lambda r:r.host.name)))
 		# append row
 		table.append(row)
 	
 	return annexes,table
 		
-def create_repositories_table(repositories):
+def create_repositories_table(env, repositories):
 	""" builds a table """
 	# determine if additional columns have to be shown
 	withspecial = any(repo.isSpecial() for repo in repositories)
@@ -128,7 +145,7 @@ def create_repositories_table(repositories):
 		# create a row
 		row = []
 		# first column is the host name
-		row.append(repo.host.name)
+		row.append(format_host(env,repo.host))
 		# second column is the annex name
 		row.append(repo.annex.name)
 		# third column is the path
@@ -151,7 +168,7 @@ def create_repositories_table(repositories):
 
 	return repositories,table
 
-def create_connections_table(connections):
+def create_connections_table(env, connections):
 	""" builds a table """
 	
 	# determine if additional columns have to be shown
@@ -174,9 +191,9 @@ def create_connections_table(connections):
 		# create a row
 		row = []
 		# first column is the source host name
-		row.append(conn.source.name)
+		row.append(format_host(env,conn.source))
 		# second column is the destination host name
-		row.append(conn.dest.name)
+		row.append(format_host(env,conn.dest))
 		# third column is the path
 		row.append(conn.path)
 		# further columns
@@ -230,7 +247,7 @@ def print_data(env, data_type, enumerated=False):
 		print("There are %d registered %s%s:" % (len(objs),data_type,appendix))
 		
 		# create table
-		objs,table = eval("create_%s_table"%data_type)(objs)
+		objs,table = eval("create_%s_table"%data_type)(env,objs)
 
 		# enumerate the lines if wanted
 		if enumerated:
