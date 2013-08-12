@@ -316,6 +316,8 @@ def createEnv(args):
 			self.app = app
 			self.host = app.hosts.fuzzyMatch(args.host) if args.host is not None else None
 			self.annex = app.annexes.fuzzyMatch(args.annex)  if args.annex is not None else None
+			
+			self.highlightedhost = self.host if self.host else app.currentHost()
 	# create environment
 	return Env()
 
