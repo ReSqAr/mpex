@@ -779,7 +779,7 @@ class TestCommands(unittest.TestCase):
 		# test getHostedRepositories (which returns the assimilated version repo1i)
 		self.assertEqual({a.repo for a in app.getHostedRepositories()},{repo11,repo12})
 
-	def test_repo_init(self):
+	def test_init(self):
 		""" test repository init and conduct some basic checks """
 		# initialisation
 		app = application.Application(self.path,verbose=self.verbose)
@@ -811,7 +811,7 @@ class TestCommands(unittest.TestCase):
 		self.assertEqual(repo.onDiskDirectMode(),"indirect")
 		self.assertEqual(repo.onDiskTrustLevel(),"semitrust")
 		
-	def test_repo_setproperties(self):
+	def test_setproperties(self):
 		""" test repository setProperties """
 		# initialisation
 		app = application.Application(self.path,verbose=self.verbose)
@@ -849,7 +849,7 @@ class TestCommands(unittest.TestCase):
 		self.assertEqual(repo.onDiskTrustLevel(),"untrust")
 		self.assertEqual(repo.onDiskDescription(),"DESC")
 
-	def test_repo_init_remotes(self):
+	def test_init_remotes(self):
 		""" test repository init and remotes"""
 		# initialisation
 		app = application.Application(self.path,verbose=self.verbose)
@@ -882,7 +882,7 @@ class TestCommands(unittest.TestCase):
 			self.assertIn("ssh://yeah" + repo3.path, x)
 			self.assertNotIn("/xyz", x)
 		
-	def test_repo_init_non_empty(self):
+	def test_init_non_empty(self):
 		""" test repository init in non-empty directory """
 		# initialisation
 		app = application.Application(self.path,verbose=self.verbose)
@@ -908,7 +908,7 @@ class TestCommands(unittest.TestCase):
 		repo.init(ignorenonempty=True)
 		self.assertTrue(os.path.isdir(os.path.join(repo.path,".git/annex")))
 		
-	def test_repo_init_remotes_change_location(self):
+	def test_init_remotes_change_location(self):
 		""" test repository set properties and changing of the remotes location """
 		# initialisation
 		app = application.Application(self.path,verbose=self.verbose)

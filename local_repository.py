@@ -4,6 +4,7 @@ import sys
 import string
 import subprocess
 import datetime
+import json
 
 import application
 
@@ -152,45 +153,17 @@ class GitAnnexRepository(GitRepository):
 		raise NotImplementedError
 	
 	def gitAnnexStatus(self):
-		""" calls 'git-annex status --fast' and parses the output """
+		""" calls 'git-annex status --fast --json' and parses the output """
 		# change path
 		self.changePath()
 
 		# call the command
-		cmd = ["git-annex","status","--fast"]
+		cmd = ["git-annex","status","--fast","--json"]
 		with open(os.devnull, "w") as devnull:
 			output = subprocess.check_output(cmd,stderr=devnull).decode("UTF-8")
 		
-		# parse it
-		status,lastkey = {},None
-		for line in output.splitlines():
-			# ignore empty lines
-			if not line.strip():
-				continue
-			
-			# if the line does not start with a space, we have line of type 'key: value'
-			if not line[0].isspace():
-				# check that the line has the right form
-				assert ':' in line, "git annex status malformed: '%s' in:\n%s" % (line,output)
-				# split it
-				key, value = line.split(':',1)
-				# remove white spaces
-				key, value = key.strip(), value.strip()
-				# recored it
-				status[key] = value
-				lastkey = key
-			else:
-				# if we have a line which starts with a white space,
-				# then add it to '$lastkey - list'
-				assert lastkey is not None, "invalid output"
-				key = "%s | list" % lastkey
-				
-				# create the list if necessary
-				if key not in status:
-					status[key] = []
-				
-				# append the current line
-				status[key].append(line.strip())
+		# parse output
+		status = json.loads(output)
 		
 		return status
 		
@@ -223,18 +196,22 @@ class GitAnnexRepository(GitRepository):
 		
 		for level in self.TRUST_LEVEL:
 			# create key
-			key = "%sed repositories | list" % level
+			key = "%sed repositories" % level
 			
 			# if there is repository on the current trust level, ignore it
 			if key not in status:
 				continue
 			
-			# read the list of repositories, format: UUID -- name
+			# read the list of repositories
+			# format: dictionary with keys:
+			# - description -> git id (desc) or desc
+			# - here -> bool
+			# - uuid -> uuid
 			repos = status[key]
 			
 			for repo in repos:
 				# find the repository with our current uuid
-				if repo.startswith(uuid):
+				if repo["uuid"] == uuid:
 					return level
 		else:
 			raise ValueError("Unable to determine the trust level.")
@@ -249,20 +226,27 @@ class GitAnnexRepository(GitRepository):
 		
 		for level in self.TRUST_LEVEL:
 			# create key
-			key = "%sed repositories | list" % level
+			key = "%sed repositories" % level
 			
 			# if there is repository on the current trust level, ignore it
 			if key not in status:
 				continue
 			
-			# read the list of repositories, format: UUID -- name
+			# read the list of repositories
+			# format: dictionary with keys:
+			# - description -> git id (desc) or desc
+			# - here -> bool
+			# - uuid -> uuid
 			repos = status[key]
 			
 			for repo in repos:
 				# find the repository with our current uuid
-				if repo.startswith(uuid):
-					# format: uuid -- here (<repo name>)
-					return repo.strip().split("here (",1)[1][:-1]
+				if repo["uuid"] == uuid:
+					# format as indicated above
+					if '(' in repo["description"]:
+						return repo["description"].split("(",1)[1][:-1]
+					else:
+						return repo["description"]
 		else:
 			raise ValueError("Unable to determine the current description.")
 
