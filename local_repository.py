@@ -309,7 +309,8 @@ class GitAnnexRepository(GitRepository):
 		# init git
 		if not os.path.isdir(os.path.join(self.localpath,".git")):
 			if os.listdir(self.localpath) and not ignorenonempty:
-				raise RuntimeError("Trying to run 'git init' in a non-empty directory, set ignorenonempty=True.")
+				print_red("trying to run 'git init' in a non-empty directory, use --ignorenonempty",sep='')
+				raise application.InterruptedException("non-empty directory")
 			else:
 				self.executeCommand(["git","init"])
 		else:

@@ -903,7 +903,7 @@ class TestCommands(unittest.TestCase):
 		repo = app.assimilate(repo)
 		
 		# try init
-		self.assertRaisesRegex(RuntimeError,"non-empty directory",repo.init)
+		self.assertRaisesRegex(application.InterruptedException,"non-empty directory",repo.init)
 		# force creation and check disk format
 		repo.init(ignorenonempty=True)
 		self.assertTrue(os.path.isdir(os.path.join(repo.path,".git/annex")))
