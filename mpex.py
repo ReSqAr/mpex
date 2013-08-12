@@ -51,6 +51,8 @@ apply_parser.add_argument('--remoteonly', action="store_true",
 						help="execute the command only on connected remotes")
 apply_parser.add_argument('--hosts', default=None,
 						help="comma seperated list of hosts on which the command should be executed, here specifies the current location")
+apply_parser.add_argument('--remotempex', default="mpex", metavar="cmd",
+						help="remote mpex command (default: mpex)")
 apply_parser.add_argument('--hops', type=int, default=2,
 						help="when remote is given, the maximal number of hops")
 apply_parser.add_argument('--simulate', action="store_true",
@@ -161,6 +163,10 @@ def apply_function(args,f):
 			# if the connection allows remote execution, first compute the remote command
 			# based on the current command
 			cmd = sys.argv[:]
+
+			# adjust command name
+			cmd[0] = args.remotempex
+			
 			# adjust hops
 			for i,piece in enumerate(cmd):
 				if piece == "--hops":
