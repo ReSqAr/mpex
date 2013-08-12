@@ -317,7 +317,15 @@ def createEnv(args):
 			self.host = app.hosts.fuzzyMatch(args.host) if args.host is not None else None
 			self.annex = app.annexes.fuzzyMatch(args.annex)  if args.annex is not None else None
 			
-			self.highlightedhost = self.host if self.host else app.currentHost()
+			# find the host which should be highlighted
+			if self.host:
+				self.highlightedhost = self.host
+			else:
+				try:
+					self.highlightedhost = app.currentHost()
+				except:
+					# there is no distinguished host
+					self.highlightedhost = None
 	# create environment
 	return Env()
 
