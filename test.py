@@ -826,7 +826,7 @@ class TestCommands(unittest.TestCase):
 		repo = app.assimilate(repo)
 		
 		# check
-		self.assertRaisesRegex(AssertionError,"is not a git annex", repo.setProperties)
+		self.assertRaisesRegex(application.InterruptedException,"is not a git annex", repo.setProperties)
 		
 		# init
 		repo.init()

@@ -36,9 +36,10 @@ class GitRepository:
 			# create the path if needed
 			if not os.path.isdir(path):
 				os.makedirs(path)
-		else:
+		elif not os.path.isdir(os.path.join(path,".git/annex")):
 			# if we are not allowed to create it, it has to be git annex archive
-			assert os.path.isdir(os.path.join(path,".git/annex")), "%s is not a git annex repository, please run 'init' first." % path
+			print_red("%s is not a git annex repository, please run 'mpex init' first." % path,sep='')
+			raise application.InterruptedException("this is not a git annex repository")
 			
 		# change to it
 		os.chdir(path)
