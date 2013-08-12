@@ -62,7 +62,7 @@ def enumerate_table(table):
 	return [ [str(i-1+1) if i>0 else "n"] + row for i,row in enumerate(table) ]
 
 def format_host(env, host):
-	if env.highlightedhost == host:
+	if env.highlightedhost and env.highlightedhost == host:
 		return "\033[1m%s\033[0m" % host.name
 	else:
 		return host.name
