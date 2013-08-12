@@ -67,6 +67,12 @@ def format_host(env, host):
 	else:
 		return host.name
 
+def format_annex(env, annex):
+	if env.highlightedannex and env.highlightedannex == annex:
+		return "\033[1m%s\033[0m" % annex.name
+	else:
+		return annex.name
+
 def create_hosts_table(env, hosts, additional_data=True):
 	""" builds a table """
 	# we build a table: a 2 dimensional array
@@ -84,7 +90,7 @@ def create_hosts_table(env, hosts, additional_data=True):
 		# second column (if wanted) are all associated annexes
 		if additional_data:
 			repos = host.repositories()
-			row.append(", ".join(sorted(repo.annex.name for repo in repos)))
+			row.append(", ".join(format_annex(env,repo.annex) for repo in sorted(repos,key=lambda r:r.annex.name)))
 		# append row
 		table.append(row)
 	
@@ -103,7 +109,7 @@ def create_annexes_table(env, annexes, additional_data=True):
 		# create a row
 		row = []
 		# first column is the annex name
-		row.append(annex.name)
+		row.append(format_annex(env,annex))
 		# second column (if wanted) are all associated hosts
 		if additional_data:
 			repos = annex.repositories()
@@ -147,7 +153,7 @@ def create_repositories_table(env, repositories):
 		# first column is the host name
 		row.append(format_host(env,repo.host))
 		# second column is the annex name
-		row.append(repo.annex.name)
+		row.append(format_annex(env,repo.annex))
 		# third column is the path
 		row.append(repo.path if not repo.isSpecial() else "-")
 		# further columns

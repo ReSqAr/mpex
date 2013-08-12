@@ -326,6 +326,9 @@ def createEnv(args):
 				except:
 					# there is no distinguished host
 					self.highlightedhost = None
+			
+			# find annex which should be highlighted
+			self.highlightedannex = self.annex
 	# create environment
 	return Env()
 
