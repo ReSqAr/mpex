@@ -50,7 +50,7 @@ apply_parser.add_argument('--remote', action="store_true",
 apply_parser.add_argument('--remoteonly', action="store_true",
 						help="execute the command only on connected remotes")
 apply_parser.add_argument('--hosts', default=None,
-						help="comma seperated list of hosts on which the command should be executed, here specifies the current location")
+						help="comma seperated list of hosts on which the command should be executed")
 apply_parser.add_argument('--remotempex', default="mpex", metavar="cmd",
 						help="remote mpex command (default: mpex)")
 apply_parser.add_argument('--hops', type=int, default=2,
@@ -86,15 +86,11 @@ def apply_function(args,f):
 	if args.hosts is not None:
 		# split the comma seperated list
 		hosts = [host.strip() for host in args.hosts.split(",")]
-		# only execute locally, if the 'here' is specified
-		localExecution,remoteExecution = 'here' in hosts,True
 		
 		# find all known names
 		known_hosts = {host.name: host for host in app.hosts.getAll()}
 		hosts_filter = set()
 		for host_name in hosts:
-			# ignore here
-			if host_name == 'here': continue
 			# find annexes
 			selected_hosts = set(lib.fuzzy_match.fuzzyMultiMatch(host_name,known_hosts))
 			if not selected_hosts:
@@ -102,6 +98,18 @@ def apply_function(args,f):
 				sys.exit(1)
 			# add found hosts
 			hosts_filter |= selected_hosts
+
+		# only execute locally, if the current host is specified
+		if app.currentHost() in hosts_filter:
+			localExecution = True
+			# remove local host
+			hosts_filter.remove(app.currentHost())
+		else:
+			localExecution = False
+		
+		# only execute remotely, if the filter is non-empty
+		remoteExecution = bool(hosts_filter)
+
 	elif args.remoteonly:
 		# only remote
 		localExecution,remoteExecution = False,True
