@@ -188,7 +188,8 @@ def apply_function(args,f):
 			else:
 				# no hops argument in the original command given: just add it
 				cmd = cmd[:2] + ["--hops",str(args.hops-1)] + cmd[2:]
-
+			# TODO: ssh problems....
+			
 			# execute the command on the target machine
 			print()
 			print_green("executing command on host %s" % connection.dest.name)
