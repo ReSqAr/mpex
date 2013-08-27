@@ -325,16 +325,14 @@ class GitAnnexRepository(GitRepository):
 			cmd = ["git-annex","describe","here",self.description]
 			self.executeCommand(cmd)
 
-		# set the requested direct mode, if doable
-		if self.app.gitAnnexCapabilities["direct"]:
-			# change only if needed
-			d = "direct" if self.direct else "indirect"
-			if self.onDiskDirectMode() != d:
-				self.executeCommand(["git-annex",d])
-		else:
-			if self.direct:
-				if self.app.verbose <= self.app.VERBOSE_NORMAL:
-					print("direct mode is requested, however it is not supported by your git-annex version.")
+		# fail if an unsupported operation is requested
+		if not self.app.gitAnnexCapabilities["direct"] and self.direct:
+			raise application.InterruptedException("direct mode is requested, however it is not supported by your git-annex version.")
+		
+		# set the requested direct mode, change only if needed
+		d = "direct" if self.direct else "indirect"
+		if self.onDiskDirectMode() != d:
+			self.executeCommand(["git-annex",d])
 		
 		# set trust level if necessary
 		if self.onDiskTrustLevel() != self.trust:

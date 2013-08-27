@@ -3,6 +3,7 @@ import tempfile
 import os.path
 import subprocess
 import itertools
+import functools
 
 import application
 
@@ -558,7 +559,6 @@ class TestStructure(unittest.TestCase):
 				# they should be equal
 				self.assertEqual(repos[i][j].connectedRepositories(),d)
 
-
 	def test_save(self):
 		"""
 			test save and load procedures and that they are an identity operation
@@ -635,7 +635,16 @@ class TestStructure(unittest.TestCase):
 
 
 
-
+# helper function
+def unsupportedDirectModeFailure(f):
+	""" f() fails if the current git annex version does not support direct mode """
+	@functools.wraps(f)
+	def testedF(self):
+		if self.directModeSupported:
+			f(self)
+		else:
+			self.assertRaisesRegex(application.InterruptedException, "direct mode is requested", f, self)
+	return testedF
 
 
 class TestCommands(unittest.TestCase):
@@ -643,6 +652,13 @@ class TestCommands(unittest.TestCase):
 	"""
 		test command aspects of the application
 	"""
+	def __init__(self, *args, **kwargs):
+		# call super
+		super(TestCommands,self).__init__(*args, **kwargs)
+		# does the current git annex version support direct mode?
+		app = application.Application("/tmp/",verbose=self.verbose)
+		self.directModeSupported = app.gitAnnexCapabilities["direct"]
+	
 	def setUp(self):
 		# create temporary directory
 		self.path = tempfile.mkdtemp()
@@ -810,9 +826,10 @@ class TestCommands(unittest.TestCase):
 		self.assertTrue(bool(repo.getAnnexUUID()))
 		self.assertEqual(repo.onDiskDirectMode(),"indirect")
 		self.assertEqual(repo.onDiskTrustLevel(),"semitrust")
-		
-	def test_setproperties(self):
-		""" test repository setProperties """
+	
+	@unsupportedDirectModeFailure
+	def test_setproperties_direct(self):
+		""" test repository setProperties with direct mode"""
 		# initialisation
 		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
@@ -832,12 +849,46 @@ class TestCommands(unittest.TestCase):
 		repo.init()
 		
 		# check
-		if app.gitAnnexCapabilities["direct"]:
-			self.assertEqual(repo.onDiskDirectMode(),"direct")
+		self.assertEqual(repo.onDiskDirectMode(),"direct")
 		self.assertEqual(repo.onDiskTrustLevel(),"trust")
 
 		# change
 		repo.direct = False
+		repo.trust = "untrust"
+		repo._data["description"] = "DESC"
+		
+		# apply changes
+		repo.setProperties()
+		
+		# check
+		self.assertEqual(repo.onDiskDirectMode(),"indirect")
+		self.assertEqual(repo.onDiskTrustLevel(),"untrust")
+		self.assertEqual(repo.onDiskDescription(),"DESC")
+
+	def test_setproperties_notdirect(self):
+		""" test repository setProperties without direct mode """
+		# initialisation
+		app = application.Application(self.path,verbose=self.verbose)
+		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
+		host1,annex1 = h.create("Host1"),a.create("Annex1")
+
+		# set host
+		app.setCurrentHost(host1)
+		
+		# create
+		repo = r.create(host1,annex1,os.path.join(self.path,"repo"),trust="trust")
+		repo = app.assimilate(repo)
+		
+		# check
+		self.assertRaisesRegex(application.InterruptedException,"is not a git annex", repo.setProperties)
+		
+		# init
+		repo.init()
+		
+		# check
+		self.assertEqual(repo.onDiskTrustLevel(),"trust")
+
+		# change
 		repo.trust = "untrust"
 		repo._data["description"] = "DESC"
 		
@@ -1007,9 +1058,11 @@ class TestCommands(unittest.TestCase):
 
 	def test_finalise_indirect(self):
 		self.finalise_tester(direct=False)
+	@unsupportedDirectModeFailure
 	def test_finalise_direct(self):
 		self.finalise_tester(direct=True)
-
+		
+	@unsupportedDirectModeFailure
 	def test_finalise_and_change(self):
 		""" test the detection of changed files """
 		# initialisation
@@ -1109,6 +1162,7 @@ class TestCommands(unittest.TestCase):
 		# sync changes on host1
 		self.sync([repo1])
 
+	@unsupportedDirectModeFailure
 	def test_sync_direct(self):
 		self.sync_tester(direct=True)
 	def test_sync_indirect(self):
@@ -1159,6 +1213,7 @@ class TestCommands(unittest.TestCase):
 		# sync changes again
 		self.sync(repos)
 
+	@unsupportedDirectModeFailure
 	def test_sync_from_remote_direct(self):
 		self.sync_from_remote_tester(direct=True)
 	def test_sync_from_remote_indirect(self):
@@ -1563,7 +1618,7 @@ class TestCommands(unittest.TestCase):
 		self.has_link_local(repo1,"test")
 		self.has_file_local(repo2,"test")
 
-
+	@unsupportedDirectModeFailure
 	def test_copy_change_copy(self):
 		"""
 			test copy and propagation of changes
