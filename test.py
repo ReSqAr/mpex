@@ -640,10 +640,19 @@ def unsupportedDirectModeFailure(f):
 	""" f() fails if the current git annex version does not support direct mode """
 	@functools.wraps(f)
 	def testedF(self):
-		if self.directModeSupported:
+		if self._gitAnnexCapabilities["direct"]:
 			f(self)
 		else:
 			self.assertRaisesRegex(application.InterruptedException, "direct mode is requested", f, self)
+	return testedF
+def complexFilesExprFailure(f):
+	""" f() fails if the current git annex version does not support complex files expressions """
+	@functools.wraps(f)
+	def testedF(self):
+		if self._gitAnnexCapabilities["complexfileexpr"]:
+			f(self)
+		else:
+			self.assertRaisesRegex(application.InterruptedException, "bug in git-annex", f, self)
 	return testedF
 
 
@@ -657,7 +666,7 @@ class TestCommands(unittest.TestCase):
 		super(TestCommands,self).__init__(*args, **kwargs)
 		# does the current git annex version support direct mode?
 		app = application.Application("/tmp/",verbose=self.verbose)
-		self.directModeSupported = app.gitAnnexCapabilities["direct"]
+		self._gitAnnexCapabilities = app.gitAnnexCapabilities
 	
 	def setUp(self):
 		# create temporary directory
@@ -1269,6 +1278,7 @@ class TestCommands(unittest.TestCase):
 				# callback
 				checker(set(t),found)
 
+	@complexFilesExprFailure
 	def test_copy(self):
 		"""
 			test copy
@@ -1329,6 +1339,7 @@ class TestCommands(unittest.TestCase):
 		self.check_powerset_files(paths,checker)
 
 
+	@complexFilesExprFailure
 	def test_copy_local(self):
 		"""
 			test copy local
@@ -1402,6 +1413,7 @@ class TestCommands(unittest.TestCase):
 			   bob:   all
 			   crypt: all
 		"""
+		
 		# initialisation
 		app = application.Application(self.path,verbose=self.verbose)
 		h,a,r,c = app.hosts,app.annexes,app.repositories,app.connections
@@ -1410,6 +1422,11 @@ class TestCommands(unittest.TestCase):
 		conn12 = c.create(host2,host1,"/",alwayson="true")
 		conn13 = c.create(host3,host1,"/",alwayson="true")
 		
+		# check if the current git annex version supports enableremote
+		if not app.gitAnnexCapabilities["enableremote"]:
+			# if not, ignore this test
+			return
+
 		# create & init
 		path0 = os.path.join(self.path,"special")
 		repo0 = r.create(host1,annex,"special",description="crypt")

@@ -496,7 +496,11 @@ class GitAnnexRepository(GitRepository):
 			local_files_cmd = self.filesAsCmd()
 		else:
 			local_files_cmd = self._filesAsCmd(files)
-
+		
+		# stop, if the files expression triggers a bug in git annex
+		if not self.app.gitAnnexCapabilities["complexfileexpr"] and len(local_files_cmd) >= 2:
+			raise application.InterruptedException("the given files expression triggers a bug in git-annex, stopping")
+			
 		# repositories to copy from and to
 		repos = set(self.standardRepositories().keys())
 
@@ -510,7 +514,10 @@ class GitAnnexRepository(GitRepository):
 		# check remote files expression
 		for repo in sorted(repos,key=str):
 			# if we can convert it to command line arguments, then everything is fine
-			repo.filesAsCmd()
+			files_cmd = repo.filesAsCmd()
+			# stop, if the files expression triggers a bug in git annex
+			if not self.app.gitAnnexCapabilities["complexfileexpr"] and len(files_cmd) >= 2:
+				raise application.InterruptedException("the given files expression triggers a bug in git-annex, stopping")
 		
 		# sync
 		self.sync(repos)
