@@ -369,13 +369,17 @@ class GitAnnexRepository(GitRepository):
 			if not url:
 				# if no url was yet set, set it
 				self.executeCommand(["git","remote","add",gitID,gitPath])
+			elif url != gitPath:
+				# if the url was incorrect, warn the user and reset it
+				print_red("The url set for the connection %s does not match the computed one: %s != %s"
+							% (connection,url,gitPath))
+				# remove the old url and set it again
+				self.executeCommand(["git","remote","remove",gitID])
+				self.executeCommand(["git","remote","add",gitID,gitPath])
 			else:
-				# otherwise, check that the correct one has been set
-				if url != gitPath:
-					raise RuntimeError("The url set for the connection %s does not match the computed one." % connection)
-				else:
-					continue
-
+				# if everything is alright
+				continue
+			
 	def finalise(self):
 		""" calls git-annex add and commits all changes """
 		

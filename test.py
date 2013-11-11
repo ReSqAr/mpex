@@ -988,9 +988,10 @@ class TestCommands(unittest.TestCase):
 		# set properties
 		repo.setProperties()
 		
-		# doing bad stuff
+		# doing bad stuff, still, repo should adapt
 		conn12._path = "/abcd/"
-		self.assertRaisesRegex(RuntimeError,"does not match",repo.setProperties)
+		repo.setProperties()
+		
 
 
 
