@@ -50,15 +50,18 @@ class GitRepository:
 		
 		return path
 		
-	def gitConfig(self, key):
+	def gitConfig(self, key, default=None):
 		""" read a git key """
 		# change path
 		self.changePath()
 		
-		# get output of 'git config $key' and return it
-		output = subprocess.check_output(["git","config",key]).decode("UTF-8").strip()
-		assert output, "Error."
-		return output
+		try:
+			# get output of 'git config $key' and return it
+			output = subprocess.check_output(["git","config",key]).decode("UTF-8").strip()
+			assert output, "Error."
+			return output
+		except subprocess.CalledProcessError:
+			return default
 	
 	def gitBranch(self):
 		""" returns all known branches """
@@ -152,20 +155,20 @@ class GitAnnexRepository(GitRepository):
 	def standardRepositories(self):
 		raise NotImplementedError
 	
-	def gitAnnexStatus(self):
-		""" calls 'git-annex status --fast --json' and parses the output """
+	def gitAnnexInfo(self):
+		""" calls 'git-annex info --fast --json' and parses the output """
 		# change path
 		self.changePath()
 
 		# call the command
-		cmd = ["git-annex","status","--fast","--json"]
+		cmd = ["git-annex","info","--fast","--json"]
 		with open(os.devnull, "w") as devnull:
 			output = subprocess.check_output(cmd,stderr=devnull).decode("UTF-8")
 		
 		# parse output
-		status = json.loads(output)
+		info = json.loads(output)
 		
-		return status
+		return info
 		
 	def getAnnexUUID(self):
 		""" get the git annex uuid of the current repository """
@@ -174,28 +177,25 @@ class GitAnnexRepository(GitRepository):
 	def onDiskDirectMode(self):
 		""" finds the on disk direct mode """
 		
-		# get git annex status
-		status = self.gitAnnexStatus()
-		
-		# read the mode
-		assert "repository mode" in status, "Invalid git-annex output"
-		mode = status["repository mode"]
-		assert mode in ("direct","indirect"), "Unknown direct mode detected: %s" % mode
-		return mode
+		# get the config entry for 'annex.direct'
+		direct = self.gitConfig("annex.direct","false")
 
+		# translate it to 'direct'/'indirect'
+		return "direct" if direct == "true" else "indirect"
+		
 	def onDiskTrustLevel(self):
 		""" determines the current trust level """
 
-		# get git annex status and git annex uuid
+		# get git annex info and git annex uuid
 		uuid = self.getAnnexUUID()
-		status = self.gitAnnexStatus()
+		info = self.gitAnnexInfo()
 		
 		for level in self.TRUST_LEVEL:
 			# create key
 			key = "%sed repositories" % level
 			
 			# if there is repository on the current trust level, ignore it
-			if key not in status:
+			if key not in info:
 				continue
 			
 			# read the list of repositories
@@ -203,7 +203,7 @@ class GitAnnexRepository(GitRepository):
 			# - description -> git id (desc) or desc
 			# - here -> bool
 			# - uuid -> uuid
-			repos = status[key]
+			repos = info[key]
 			
 			for repo in repos:
 				# find the repository with our current uuid
@@ -216,16 +216,16 @@ class GitAnnexRepository(GitRepository):
 		""" find the on disk description of the current repository """
 		""" determines the current trust level """
 
-		# get git annex status and git annex uuid
+		# get git annex info and git annex uuid
 		uuid = self.getAnnexUUID()
-		status = self.gitAnnexStatus()
+		info = self.gitAnnexInfo()
 		
 		for level in self.TRUST_LEVEL:
 			# create key
 			key = "%sed repositories" % level
 			
 			# if there is repository on the current trust level, ignore it
-			if key not in status:
+			if key not in info:
 				continue
 			
 			# read the list of repositories
@@ -233,7 +233,7 @@ class GitAnnexRepository(GitRepository):
 			# - description -> git id (desc) or desc
 			# - here -> bool
 			# - uuid -> uuid
-			repos = status[key]
+			repos = info[key]
 			
 			for repo in repos:
 				# find the repository with our current uuid
@@ -438,11 +438,15 @@ class GitAnnexRepository(GitRepository):
 		if repositories is not None:
 			sync_repos &= set(repositories)
 		
-		# call 'git-annex sync $gitIDs'
-		gitIDs = [repo.gitID() for repo in sorted(sync_repos,key=str)]
-		self.executeCommand(["git-annex","sync"] + gitIDs)
+		if sync_repos:
+			# call 'git-annex sync $gitIDs'
+			gitIDs = [repo.gitID() for repo in sorted(sync_repos,key=str)]
+			self.executeCommand(["git-annex","sync"] + gitIDs)
+		else:
+			# if no other annex is available, still do basic maintanence
+			self.executeCommand(["git-annex","merge"])
 
-	
+
 	def repairMaster(self):
 		""" creates the master branch if necessary """
 		
@@ -624,7 +628,7 @@ class LocalRepository(GitAnnexRepository):
 			hasUncommitedChanges() (careful: slightly inaccurate)
 		
 		git annex methods:
-			gitAnnexStatus()
+			gitAnnexInfo()
 			getAnnexUUID()
 			onDiskDirectMode()
 			onDiskTrustLevel()

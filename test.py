@@ -1393,11 +1393,6 @@ class TestCommands(unittest.TestCase):
 		conn12 = c.create(host2,host1,"/",alwayson="true")
 		conn13 = c.create(host3,host1,"/",alwayson="true")
 		
-		# check if the current git annex version supports enableremote
-		if not app.gitAnnexCapabilities["enableremote"]:
-			# if not, ignore this test
-			return
-
 		# create & init
 		path0 = os.path.join(self.path,"special")
 		repo0 = r.create(host1,annex,"special",description="crypt")
