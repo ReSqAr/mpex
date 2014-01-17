@@ -73,53 +73,11 @@ class GitRepository:
 		# the first two characters are noise
 		return [line[2:].strip() for line in output.splitlines() if line.strip()]
 
-	def gitDiff(self, filter=None, staged=False):
-		"""
-			calls 'git diff', with the given filter command and is
-			looking on staged files, if requested, returns with a
-			dictionary filename -> status
-		"""
-		# change into the right directory
-		self.changePath()
-
-		# the option -z is used to get NULL terminated strings
-		cmd = ["git","diff","-z","--name-status"]
-		# append filter statement
-		if filter is not None:
-			cmd.append("--diff-filter=%s"%filter)
-		# only staged files?
-		if staged:
-			cmd.append("--cached")
-		
-		# call 'git diff'
-		output = subprocess.check_output(cmd).decode("UTF-8")
-		data = output.split("\0")
-
-		# data looks like: <state>, <filename>, ..., ''
-		assert len(data) % 2 == 1, "git diff output has an unusual format"
-
-		return {filename: state for state,filename in zip(data[::2],data[1::2])}
-		
-	def gitStatus(self):
-		""" call 'git status' """
-		# change into the right directory
-		self.changePath()
-
-		# the option -z is used to get NULL terminated strings
-		cmd = ["git","status","-z","--porcelain"]
-		
-		# call 'git diff'
-		output = subprocess.check_output(cmd).decode("UTF-8")
-		data = output.split("\0")
-
-		# data looks like: <state><state><space><filename>, ..., ''
-		return {d[3:]:d[:2].strip() for d in data if d}
-
 	def gitHead(self):
 		""" get the git HEAD of the master branch """
 		path = os.path.join(self.localpath,".git/refs/heads/master")
 		with open(path,"rt") as fd:
-			return fd.read()
+			return fd.read().strip()
 	
 	def gitRemotes(self):
 		""" find all git remotes """
@@ -133,24 +91,6 @@ class GitRepository:
 		return {remote.strip() for remote in output.splitlines()}
 		
 	
-	def isStageNonEmpty(self):
-		""" are there any staged files? """
-		return bool(self.gitDiff(staged=True))
-	
-	def deletedFiles(self):
-		""" get the deleted files """
-		return list(self.gitDiff(filter="D").keys())
-	
-	def hasUncommitedChanges(self):
-		"""
-			has the current repository uncommited changes?
-			warning: hasUncommitedChanges is inaccurate for direct
-			         repositories as a type change can mask a content change
-		"""
-		# accept all except type changes
-		return any(status != 'T' for status in self.gitStatus().values())
-
-
 class GitAnnexRepository(GitRepository):
 	def standardRepositories(self):
 		raise NotImplementedError
@@ -316,6 +256,9 @@ class GitAnnexRepository(GitRepository):
 		# change into the right directory
 		self.changePath()
 
+		# make sure that the master branch exists
+		self.repairMaster()
+		
 		# set the description, if needed
 		if self.onDiskDescription() != self.description:
 			cmd = ["git-annex","describe","here",self.description]
@@ -381,35 +324,9 @@ class GitAnnexRepository(GitRepository):
 		# change into the right directory
 		self.changePath()
 
-
 		# call 'git-annex add'
 		self.executeCommand(["git-annex","add"])
-		
 
-		# find deleted files
-		deleted = self.deletedFiles()
-
-		if deleted and self.app.verbose <= self.app.VERBOSE_NORMAL:
-			print("found %d deleted files, removing them from git"%len(deleted))
-		
-		# call 'git rm' for every deleted file
-		for filename in deleted:
-			# check that the file indeed does not exist
-			assert not os.path.isfile(os.path.join(self.localpath,filename)), "file '%s' does still exist?" % filename
-			# call 'git rm'
-			self.executeCommand(['git','rm',filename])
-			
-
-		# is anything staged?
-		if self.isStageNonEmpty():
-			# commit it
-			utc = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M:%S")
-			msg = "Host: %s UTC: %s" % (self.host.name,utc)
-			# WARNING: never think of -a
-			self.executeCommand(["git","commit","-m",msg])
-		else:
-			if self.app.verbose <= self.app.VERBOSE_NORMAL:
-				print("no changes")
 
 	def sync(self, repositories=None):
 		"""
@@ -458,22 +375,9 @@ class GitAnnexRepository(GitRepository):
 		if "master" in branches:
 			return
 		
-		if "synced/master" in branches:
-			# use the 'synced/master' branch if possible
-			if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
-				print_blue("repairing master branch in", self.annex.name, "at", self.localpath)
-			
-			# checkout synced/master
-			self.executeCommand(["git","checkout","synced/master"])
-			
-			# create the master branch and check it put
-			self.executeCommand(["git","branch","master"])
-			self.executeCommand(["git","checkout","master"])
-		else:
-			# no we have a problem, we have to create a master branch but do not have
-			# many opportunities, use this:
-			# 'git commit --allow-empty -m "empty commit"'
-			self.executeCommand(["git","commit","--allow-empty","-m","empty commit"])
+		# we have to use this
+		# (http://git-annex.branchable.com/direct_mode/)
+		self.executeCommand(["git","-c","core.bare=false","commit","--allow-empty","-m","empty commit"])
 	
 	
 	def copy(self, copy_all=False, repositories=None, files=None, strict=None):
@@ -620,12 +524,7 @@ class LocalRepository(GitAnnexRepository):
 		git methods:
 			gitConfig(key) -> value
 			gitBranch() -> list of branches
-			gitDiff(filter=None, staged=False) -> dictionary: filename -> status
-			gitStatus() -> dictionary: filename -> status
 			gitHead() -> git head
-			isStageNonEmpty()
-			deletedFiles()
-			hasUncommitedChanges() (careful: slightly inaccurate)
 		
 		git annex methods:
 			gitAnnexInfo()
