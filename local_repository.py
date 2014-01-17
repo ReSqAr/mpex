@@ -174,10 +174,6 @@ class GitAnnexRepository(GitRepository):
 	def onDiskDirectMode(self):
 		""" finds the on disk direct mode """
 		
-		# if the current version does not have direct mode capability, return indirect
-		if not self.app.gitAnnexCapabilities["direct"]:
-			return "indirect"
-		
 		# get git annex status
 		status = self.gitAnnexStatus()
 		
@@ -325,10 +321,6 @@ class GitAnnexRepository(GitRepository):
 			cmd = ["git-annex","describe","here",self.description]
 			self.executeCommand(cmd)
 
-		# fail if an unsupported operation is requested
-		if not self.app.gitAnnexCapabilities["direct"] and self.direct:
-			raise application.InterruptedException("direct mode is requested, however it is not supported by your git-annex version.")
-		
 		# set the requested direct mode, change only if needed
 		d = "direct" if self.direct else "indirect"
 		if self.onDiskDirectMode() != d:
@@ -446,14 +438,10 @@ class GitAnnexRepository(GitRepository):
 		if repositories is not None:
 			sync_repos &= set(repositories)
 		
-		if sync_repos:
-			# call 'git-annex sync $gitIDs'
-			gitIDs = [repo.gitID() for repo in sorted(sync_repos,key=str)]
-			self.executeCommand(["git-annex","sync"] + gitIDs)
-		else:
-			# if no other annex is available, still do basic maintanence
-			self.executeCommand(["git-annex","merge"])
-		
+		# call 'git-annex sync $gitIDs'
+		gitIDs = [repo.gitID() for repo in sorted(sync_repos,key=str)]
+		self.executeCommand(["git-annex","sync"] + gitIDs)
+
 	
 	def repairMaster(self):
 		""" creates the master branch if necessary """
@@ -501,10 +489,6 @@ class GitAnnexRepository(GitRepository):
 		else:
 			local_files_cmd = self._filesAsCmd(files)
 		
-		# stop, if the files expression triggers a bug in git annex
-		if not self.app.gitAnnexCapabilities["complexfileexpr"] and len(local_files_cmd) >= 2:
-			raise application.InterruptedException("the given files expression triggers a bug in git-annex, stopping")
-			
 		# repositories to copy from and to
 		repos = set(self.standardRepositories().keys())
 
@@ -519,9 +503,6 @@ class GitAnnexRepository(GitRepository):
 		for repo in sorted(repos,key=str):
 			# if we can convert it to command line arguments, then everything is fine
 			files_cmd = repo.filesAsCmd()
-			# stop, if the files expression triggers a bug in git annex
-			if not self.app.gitAnnexCapabilities["complexfileexpr"] and len(files_cmd) >= 2:
-				raise application.InterruptedException("the given files expression triggers a bug in git-annex, stopping")
 		
 		# sync
 		self.sync(repos)
@@ -541,7 +522,7 @@ class GitAnnexRepository(GitRepository):
 		# rationale:
 		#   --fast: we are synced
 		flags = ["--fast"]
-		if self.app.gitAnnexCapabilities["all"] and copy_all:
+		if copy_all:
 			flags.append("--all")
 		
 		# call 'git-annex copy --fast [--all] --from=target <files expression as command>'

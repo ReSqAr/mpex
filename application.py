@@ -42,7 +42,11 @@ class Application:
 		
 		# post load checks
 		self.repositories.check()
-	
+		
+		# we want to have a new version
+		assert self.gitAnnexCapabilities["date"] >= (2014,1,1)
+		
+
 	def save(self):
 		""" saves all data """
 		self.hosts.save()
@@ -123,23 +127,6 @@ class Application:
 		year,month,day = date[:4],date[4:6],date[6:]
 		year,month,day = int(year),int(month),int(day)
 		date = capabilities["date"] = year,month,day
-		
-		# if the current git annex version is newer than the 2013-04-01 version,
-		# it supports direct mode (this date is just a guess)
-		capabilities["direct"] = ( date >= (2013,4,1) )
-
-		# if the current git annex version is newer than the 2013-04-01 version,
-		# it supports copy --all (this date is just a guess)
-		capabilities["all"] = ( date >= (2013,4,1) )
-		
-		# if the current git annex version is newer than the 2013-04-01 version,
-		# it supports enableremote (this date is just a guess)
-		capabilities["enableremote"] = ( date >= (2013,4,1) )
-		
-		# if the current git annex version is newer than the 2013-04-01 version,
-		# it supports complex file expressions (this date is just a guess)
-		capabilities["complexfileexpr"] = ( date >= (2013,4,1) )
-		
 		
 		# cache it
 		self._gitAnnexCapabilities_Cache = capabilities

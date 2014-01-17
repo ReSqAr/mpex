@@ -618,9 +618,7 @@ class TestStructure(unittest.TestCase):
 		app = application.Application(self.path,verbose=self.verbose)
 		
 		capabilities = app.gitAnnexCapabilities
-		self.assertIn("version",capabilities)
 		self.assertIn("date",capabilities)
-		self.assertIn("direct",capabilities)
 		
 		# the second call is from a cache
 		capabilities2 = app.gitAnnexCapabilities
@@ -633,27 +631,6 @@ class TestStructure(unittest.TestCase):
 
 
 
-
-
-# helper function
-def unsupportedDirectModeFailure(f):
-	""" f() fails if the current git annex version does not support direct mode """
-	@functools.wraps(f)
-	def testedF(self):
-		if self._gitAnnexCapabilities["direct"]:
-			f(self)
-		else:
-			self.assertRaisesRegex(application.InterruptedException, "direct mode is requested", f, self)
-	return testedF
-def complexFilesExprFailure(f):
-	""" f() fails if the current git annex version does not support complex files expressions """
-	@functools.wraps(f)
-	def testedF(self):
-		if self._gitAnnexCapabilities["complexfileexpr"]:
-			f(self)
-		else:
-			self.assertRaisesRegex(application.InterruptedException, "bug in git-annex", f, self)
-	return testedF
 
 
 class TestCommands(unittest.TestCase):
@@ -836,7 +813,6 @@ class TestCommands(unittest.TestCase):
 		self.assertEqual(repo.onDiskDirectMode(),"indirect")
 		self.assertEqual(repo.onDiskTrustLevel(),"semitrust")
 	
-	@unsupportedDirectModeFailure
 	def test_setproperties_direct(self):
 		""" test repository setProperties with direct mode"""
 		# initialisation
@@ -1068,11 +1044,9 @@ class TestCommands(unittest.TestCase):
 
 	def test_finalise_indirect(self):
 		self.finalise_tester(direct=False)
-	@unsupportedDirectModeFailure
 	def test_finalise_direct(self):
 		self.finalise_tester(direct=True)
 		
-	@unsupportedDirectModeFailure
 	def test_finalise_and_change(self):
 		""" test the detection of changed files """
 		# initialisation
@@ -1172,7 +1146,6 @@ class TestCommands(unittest.TestCase):
 		# sync changes on host1
 		self.sync([repo1])
 
-	@unsupportedDirectModeFailure
 	def test_sync_direct(self):
 		self.sync_tester(direct=True)
 	def test_sync_indirect(self):
@@ -1223,7 +1196,6 @@ class TestCommands(unittest.TestCase):
 		# sync changes again
 		self.sync(repos)
 
-	@unsupportedDirectModeFailure
 	def test_sync_from_remote_direct(self):
 		self.sync_from_remote_tester(direct=True)
 	def test_sync_from_remote_indirect(self):
@@ -1279,7 +1251,6 @@ class TestCommands(unittest.TestCase):
 				# callback
 				checker(set(t),found)
 
-	@complexFilesExprFailure
 	def test_copy(self):
 		"""
 			test copy
@@ -1340,7 +1311,6 @@ class TestCommands(unittest.TestCase):
 		self.check_powerset_files(paths,checker)
 
 
-	@complexFilesExprFailure
 	def test_copy_local(self):
 		"""
 			test copy local
@@ -1636,7 +1606,6 @@ class TestCommands(unittest.TestCase):
 		self.has_link_local(repo1,"test")
 		self.has_file_local(repo2,"test")
 
-	@unsupportedDirectModeFailure
 	def test_copy_change_copy(self):
 		"""
 			test copy and propagation of changes
