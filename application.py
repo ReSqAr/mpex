@@ -113,7 +113,7 @@ class Application:
 		
 		# call git annex
 		version_string = subprocess.check_output(["git-annex","version"])
-		version_string = version_string.decode("UTF8")
+		version_string = version_string.decode("UTF8").split("ubuntu")[0]
 		
 		for line in version_string.splitlines():
 			# extract the line 'git-annex version: *'
