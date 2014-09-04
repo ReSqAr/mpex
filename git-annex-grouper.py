@@ -214,7 +214,8 @@ def print_report(root, repositories, number_of_content_lines = 5):
 	# sort by occurences
 	flattened_list = sum((list(uuids) for uuids,_ in description), [])
 	counter_dict = collections.Counter(flattened_list)
-	sorted_repos = sorted(repositories.items(), key=lambda kv: -counter_dict[kv[0]])
+	sorted_repos = sorted(repositories.items(),
+						key=lambda kv: (-counter_dict[kv[0]],kv[1]))
 	
 	for uuids, mixed_directory_file_list in description:
 		# print header
