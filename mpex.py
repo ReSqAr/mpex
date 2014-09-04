@@ -12,6 +12,8 @@ import application
 import show_edit
 from lib.terminal import print_blue, print_red, print_green
 
+import git_annex_grouper
+
 CONFIG_PATH = "~/.config/mpex/"
 CONFIG_PATH = os.path.expanduser(CONFIG_PATH)
 
@@ -280,6 +282,27 @@ def func_copy(args):
 	apply_function(args,repo_copy)
 
 #
+# group repositories
+#
+def init_group(parsers):
+	parser = parsers.add_parser('group', help='group repositories',parents=[apply_parser])
+	parser.add_argument('annex', nargs='*', help="annex names")
+	parser.add_argument('--lines', type=int, default=5,
+						help="number of printed lines per repository (default: 5)")
+	parser.add_argument('--no-untrusted', action="store_true",
+						help="only show trusted repositories")
+	parser.set_defaults(func=func_group)
+
+def func_group(args):
+	def repo_group(repo):
+		git_annex_grouper.do_report(repo.path,args.lines,args.no_untrusted)
+
+	apply_function(args,repo_group)
+	
+
+
+
+#
 # run the given command against the repositories
 #
 def init_command(parsers):
@@ -461,6 +484,7 @@ def runParser():
 	init_init(subparsers)
 	init_reinit(subparsers)
 	init_finalise(subparsers)
+	init_group(subparsers)
 	init_sync(subparsers)
 	init_copy(subparsers)
 	init_command(subparsers)
