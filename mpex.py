@@ -12,7 +12,7 @@ import application
 import show_edit
 from lib.terminal import print_blue, print_red, print_green
 
-import git_annex_grouper
+import grouped_repositories
 
 CONFIG_PATH = "~/.config/mpex/"
 CONFIG_PATH = os.path.expanduser(CONFIG_PATH)
@@ -155,7 +155,7 @@ def apply_function(args,f):
 		if connection is None or connection.isLocal():
 			# if the repositories are locally accessible
 			if connection is None:
-				# if we have the trivial connection, use the locally hoisted repositories
+				# if we have the trivial connection, use the locally hosted repositories
 				repositories = app.getHostedRepositories()
 			else:
 				# otherwise, all repositories which can be accessed via the connection
@@ -295,8 +295,13 @@ def init_group(parsers):
 
 def func_group(args):
 	def repo_group(repo):
-		git_annex_grouper.do_report(repo.path,args.lines,args.no_untrusted)
-
+		if repo.app.verbose <= repo.app.VERBOSE_IMPORTANT:
+			print_blue("grouping repositories of", repo.annex.name, "in", repo.path)
+			print()
+		
+		grouped_repositories.do_report(repo.path,args.lines,args.no_untrusted)
+		print()
+	
 	apply_function(args,repo_group)
 	
 
