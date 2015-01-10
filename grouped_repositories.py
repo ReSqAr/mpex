@@ -5,6 +5,14 @@ import json
 import os
 import subprocess
 
+def check_output_no_ret(*popenargs, **kwargs):
+    """ see subprocess.check_output """
+    if 'stdout' in kwargs:
+        raise ValueError('stdout argument not allowed, it will be overridden.')
+    process = subprocess.Popen(stdout=subprocess.PIPE, stderr=subprocess.PIPE, *popenargs, **kwargs)
+    output, unused_error = process.communicate()
+    unused_retcode = process.poll()
+    return output
 
 def annex_whereis(path):
 	"""
@@ -12,7 +20,7 @@ def annex_whereis(path):
 	"""
 	os.chdir(path)
 	cmd = ["git-annex","whereis","--json"]
-	return subprocess.check_output(cmd)
+	return check_output_no_ret(cmd)
 
 
 def parse_annex_whereis(raw, omit_untrusted=False):
