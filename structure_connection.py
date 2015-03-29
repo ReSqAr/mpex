@@ -142,7 +142,7 @@ class Connection:
 				# flush the above statement
 				sys.stdout.flush()
 				with open(os.devnull, "w") as devnull:
-					subprocess.check_output(["ssh",data["server"],"echo","test"],stderr=devnull)
+					subprocess.check_output(["ssh",data["server"],"help"],stderr=devnull)
 				# if it succeeds, say the connection is online
 				isonline = True
 				print("online")
