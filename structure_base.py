@@ -56,7 +56,7 @@ class Collection:
 			readable_key = readable_key.lower()
 			readable_key = re.sub("[^a-zA-Z0-9]","_",readable_key)
 			
-			filename = self.fileprefix + "_" + readable_key + "_" + raw_json_hash
+			filename = self.fileprefix + "__" + readable_key + "__" + raw_json_hash
 			path = os.path.join(self.app.path,filename)
 			
 			used_names.add(filename)
