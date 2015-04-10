@@ -8,12 +8,12 @@ if sys.version_info < (3,2,0):
 	raise RuntimeError("Python version >= 3.2 is needed.")
 
 
-import local_repository
-import structure_host
-import structure_annex
-import structure_repository
-import structure_connection
-from lib.terminal import print_blue, print_red
+from . import local_repository
+from . import structure_host
+from . import structure_annex
+from . import structure_repository
+from . import structure_connection
+from .lib.terminal import print_blue, print_red
 
 class InterruptedException(Exception):
 	pass
@@ -24,6 +24,8 @@ class Application:
 	VERBOSE_DEBUG = 0
 	VERBOSE_NORMAL = 1
 	VERBOSE_IMPORTANT = 2
+	
+	InterruptedException = InterruptedException
 	
 	def __init__(self, path, verbose=True, simulate=False):
 		# save option

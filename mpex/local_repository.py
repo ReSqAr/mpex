@@ -6,9 +6,7 @@ import subprocess
 import datetime
 import json
 
-import application
-
-from lib.terminal import print_blue, print_red
+from .lib.terminal import print_blue, print_red
 
 
 class GitRepository:
@@ -40,7 +38,7 @@ class GitRepository:
 		elif not os.path.isdir(os.path.join(path,".git/annex")):
 			# if we are not allowed to create it, it has to be git annex archive
 			print_red("%s is not a git annex repository, please run 'mpex init' first." % path,sep='')
-			raise application.InterruptedException("this is not a git annex repository")
+			raise self.app.InterruptedException("this is not a git annex repository")
 			
 		# change to it
 		os.chdir(path)
@@ -233,7 +231,7 @@ class GitAnnexRepository(GitRepository):
 				print("NEVER create a special remote twice.")
 		
 		# bail out
-		raise application.InterruptedException("there are missing git remotes")
+		raise self.app.InterruptedException("there are missing git remotes")
 
 	#
 	# main methods
@@ -251,7 +249,7 @@ class GitAnnexRepository(GitRepository):
 		if not os.path.isdir(os.path.join(self.localpath,".git")):
 			if os.listdir(self.localpath) and not ignorenonempty:
 				print_red("trying to run 'git init' in a non-empty directory, use --ignorenonempty",sep='')
-				raise application.InterruptedException("non-empty directory")
+				raise self.app.InterruptedException("non-empty directory")
 			else:
 				self.executeCommand(["git","init"])
 		else:

@@ -1,12 +1,13 @@
 import collections
 
-import lib.fuzzy_match
+from .lib import fuzzy_match
+from .lib.terminal import print_blue, print_red, print_bold, choose, ask_questions
 
-import structure_host
-import structure_annex
-import structure_repository
+from . import structure_host
+from . import structure_annex
+from . import structure_repository
 
-from lib.terminal import print_blue, print_red, print_bold, choose, ask_questions
+
 
 #
 # table helper functions
@@ -389,10 +390,10 @@ def valid_values_pp(valid_values):
 	""" select from the given values """
 	# build identity mapping
 	valid_values = {x:x for x in valid_values}
-	# define post processor via lib.fuzzy_match
+	# define post processor via fuzzy_match
 	def postprocessor(s):
 		""" checks that s is a valid value """
-		return lib.fuzzy_match.fuzzyMatch(s, valid_values)
+		return fuzzy_match.fuzzyMatch(s, valid_values)
 	# return post processor
 	return postprocessor
 

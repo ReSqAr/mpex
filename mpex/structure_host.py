@@ -1,7 +1,8 @@
 import string
-import lib.fuzzy_match
 
-import structure_base
+from .lib import fuzzy_match
+
+from . import structure_base
 
 
 

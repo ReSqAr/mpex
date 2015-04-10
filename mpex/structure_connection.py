@@ -3,8 +3,8 @@ import os
 import sys
 import subprocess
 
-import structure_base
-import structure_host
+from . import structure_base
+from . import structure_host
 
 
 class Connections(structure_base.Collection):

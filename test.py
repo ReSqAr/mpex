@@ -5,7 +5,7 @@ import subprocess
 import itertools
 import functools
 
-import application
+from mpex import application
 
 
 # show everything, errors may hide in the output branches

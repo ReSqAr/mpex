@@ -1,11 +1,11 @@
 import collections
 import string
 
-import lib.fuzzy_match
+from .lib import fuzzy_match
 
-import structure_base
-import structure_host
-import structure_annex
+from . import structure_base
+from . import structure_host
+from . import structure_annex
 
 
 class Repositories(structure_base.Collection):
@@ -50,7 +50,7 @@ class Repositories(structure_base.Collection):
 		
 		try:
 			# try to find a 
-			return lib.fuzzy_match.fuzzyMatch(annex_desc, valid)
+			return fuzzy_match.fuzzyMatch(annex_desc, valid)
 		except ValueError as e:
 			raise ValueError("could not parse the annex description '%s': %s" % (annex_desc,e.args[0]))
 
