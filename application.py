@@ -64,14 +64,14 @@ class Application:
 		with io.open(path, mode="rt", encoding="UTF8") as fd:
 			# read
 			hostname = fd.read()
-			hostname = hostname.strip()
-			# associate host to a Host object
-			host = self.hosts.get(hostname)
-			# if we failed, raise an error
-			if host is None:
-				raise RuntimeError("Unable to find the current host. (File: %s)" % hostname)
-			# otherwise, return the found host
-			return host
+		hostname = hostname.strip()
+		# associate host to a Host object
+		host = self.hosts.get(hostname)
+		# if we failed, raise an error
+		if host is None:
+			raise RuntimeError("Unable to find the current host. (File: %s)" % hostname)
+		# otherwise, return the found host
+		return host
 	
 	def setCurrentHost(self, host):
 		""" set the current host """

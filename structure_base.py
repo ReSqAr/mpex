@@ -1,16 +1,18 @@
 import json
 import os.path
 import io
+import hashlib
+import re
 
 
 
 class Collection:
-	def __init__(self, app, filename, cls):
+	def __init__(self, app, fileprefix, cls):
 		# save options
 		self.app = app
 		self.cls = cls
 		# compute the file name
-		self._path = os.path.join(self.app.path,filename)
+		self.fileprefix = fileprefix
 		# internal dictionary which tracks all known objects
 		self._objects = {}
 		# load objects
@@ -20,31 +22,53 @@ class Collection:
 		""" loads all known objects """
 		# clear tracker
 		self._objects.clear()
-		if os.path.isfile(self._path):
+		
+		# check all files in the config directory
+		for filename in os.listdir(self.app.path):
+			if not filename.startswith(self.fileprefix):
+				continue
+			
+			path = os.path.join(self.app.path,filename)
 			# open the file if it exists
-			with io.open(self._path, mode="rt", encoding="UTF8") as fd:
-				# decode list of hosts (json file)
-				list_of_objects = json.load(fd)
-				# create individual hosts
-				for obj in list_of_objects:
-					# covert raw object data
-					obj = self.rawDataToArgDict(obj)
-					# create the object
-					self.create(**obj)
+			with io.open(path, mode="rt", encoding="UTF8") as fd:
+				# decode object (json file)
+				raw_data = json.load(fd)
+				# convert raw object data
+				obj = self.rawDataToArgDict(raw_data)
+				# create the object
+				self.create(**obj)
 	
 	def save(self):
-		""" saves all known hosts """
+		""" saves all known objects """
 		# get set of all known objects
-		list_of_objects = list(self._objects.items())
-		# convert it to a sorted list of raw data elements
-		list_of_objects.sort(key=lambda kv:str(kv[0]))
-		list_of_objects = [self.objToRawData(kv[1]) for kv in list_of_objects]
-
-		# open the file in write mode
-		with io.open(self._path, mode="wt", encoding="UTF8") as fd:
-			# dump data
-			json.dump(list_of_objects, fd, ensure_ascii=False, indent=4, sort_keys=True)
-	
+		list_of_objects = list()
+		
+		used_names = set()
+		
+		for key, data in self._objects.items():
+			# convert data and calculate hash
+			raw_data = self.objToRawData(data)
+			raw_json = json.dumps(raw_data, ensure_ascii=False, indent=4, sort_keys=True)
+			raw_json_hash = hashlib.sha256(raw_json.encode("UTF8")).hexdigest()[:16]
+			
+			# create readable key
+			readable_key = "_".join(str(x) for x in key) if isinstance(key,tuple) else str(key)
+			readable_key = readable_key.lower()
+			readable_key = re.sub("[^a-zA-Z0-9]","_",readable_key)
+			
+			filename = self.fileprefix + "_" + readable_key + "_" + raw_json_hash
+			path = os.path.join(self.app.path,filename)
+			
+			used_names.add(filename)
+			
+			with io.open(path, mode="wt", encoding="UTF8") as fd:
+				fd.write( raw_json )
+		
+		# delete old files
+		seen_filenames = {filename for filename in os.listdir(self.app.path) if filename.startswith(self.fileprefix)}
+		for filename in seen_filenames - used_names:
+			os.remove( os.path.join(self.app.path,filename) )
+		
 	def getAll(self):
 		""" return all known objects """
 		return set(self._objects.values())
