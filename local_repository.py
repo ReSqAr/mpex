@@ -88,31 +88,6 @@ class GitRepository:
 		output = subprocess.check_output(cmd).decode("UTF-8")
 		return {remote.strip() for remote in output.splitlines()}
 	
-	def gitStatus(self):
-		""" call 'git status' """
-		# change into the right directory
-		self.changePath()
-
-		# the option -z is used to get NULL terminated strings
-		cmd = ["git","-c", "core.bare=false","status","-z","--porcelain"]
-		
-		# call 'git diff'
-		output = subprocess.check_output(cmd).decode("UTF-8")
-		data = output.split("\0")
-
-		# data looks like: <state><state><space><filename>, ..., ''
-		return {d[3:]:d[:2].strip() for d in data if d}
-
-	def hasUncommitedChanges(self):
-		"""
-			has the current repository uncommited changes?
-			warning: hasUncommitedChanges is inaccurate for direct
-			         repositories as a type change can mask a content change
-		"""
-		# accept all except type changes
-		print(self.gitStatus())
-		return any(status != 'T' for status in self.gitStatus().values())
-
 class GitAnnexRepository(GitRepository):
 	def standardRepositories(self):
 		raise NotImplementedError
@@ -136,6 +111,30 @@ class GitAnnexRepository(GitRepository):
 		""" get the git annex uuid of the current repository """
 		return self.gitConfig("annex.uuid")
 	
+	def gitAnnexStatus(self):
+		""" call 'git annex status' """
+		# change into the right directory
+		self.changePath()
+
+		# get status
+		cmd = ["git","annex","status","--json"]
+		
+		# call command
+		output = subprocess.check_output(cmd).decode("UTF-8")
+		data = [json.loads(s) for s in output.split("\n") if s]
+		print(data)
+		# data looks like: list of {"status":"<status>","file":"<name>"}
+		return data
+
+	def hasUncommitedChanges(self):
+		"""
+			has the current repository uncommited changes?
+			warning: hasUncommitedChanges is inaccurate for direct
+			         repositories as a type change can mask a content change
+		"""
+		# accept all except type changes
+		return any(data["status"] != 'T' for data in self.gitAnnexStatus())
+
 	def onDiskDirectMode(self):
 		""" finds the on disk direct mode """
 		
@@ -349,9 +348,6 @@ class GitAnnexRepository(GitRepository):
 		# call 'git-annex add'
 		self.executeCommand(["git-annex","add"])
 		
-		# update, in particular, remove deleted files
-		self.executeCommand(["git","-c", "core.bare=false","add","--update"])
-		
 		# commit it
 		utc = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M:%S")
 		msg = "Host: %s UTC: %s" % (self.host.name,utc)
@@ -562,6 +558,7 @@ class LocalRepository(GitAnnexRepository):
 		git annex methods:
 			gitAnnexInfo()
 			getAnnexUUID()
+			gitAnnexStatus()
 			onDiskDirectMode()
 			onDiskTrustLevel()
 			onDiskDescription()
