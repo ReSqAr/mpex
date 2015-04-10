@@ -6,9 +6,9 @@ test:
 	python3 test.py
 
 coverage:
-	coverage3 erase
-	coverage3 run --source=.,lib test.py
-	coverage3 html
+	python3 -m coverage erase
+	python3 -m coverage run --source=.,lib test.py
+	python3 -m coverage html
 
 install:
 	mkdir -p $(DESTDIR)/usr/lib/python3/dist-packages/mpex/ $(DESTDIR)/usr/bin/
