@@ -135,7 +135,7 @@ class Application:
 		return capabilities
 	
 
-	def executeCommand(self, cmd, ignoreexception=False):
+	def executeCommand(self, cmd, ignoreexception=False, print_ignored_exception=True):
 		""" print and execute the command """
 		if self.verbose <= self.VERBOSE_IMPORTANT:
 			print("command:"," ".join(cmd))
@@ -150,7 +150,8 @@ class Application:
 				subprocess.check_call(cmd,stdout=None if self.verbose <= self.VERBOSE_NORMAL else devnull)
 		except (subprocess.CalledProcessError,OSError) as e:
 			if ignoreexception:
-				print_red("an ignored error occured:", str(e))
+				if print_ignored_exception:
+					print_red("an ignored error occured:", str(e))
 			else:
 				print_red("an error occured:", str(e))
 				raise InterruptedException(e)

@@ -20,11 +20,11 @@ class GitRepository:
 	#
 	# file system interaction
 	#
-	def executeCommand(self, cmd, ignoreexception=False):
+	def executeCommand(self, cmd, ignoreexception=False, print_ignored_exception=True):
 		""" print and execute the command """
 		
 		# use the method given by the application
-		self.app.executeCommand(cmd, ignoreexception=ignoreexception)
+		self.app.executeCommand(cmd, ignoreexception=ignoreexception, print_ignored_exception=print_ignored_exception)
 
 
 	def changePath(self, create=False):
@@ -75,10 +75,8 @@ class GitRepository:
 
 	def gitHead(self):
 		""" get the git HEAD of the master branch """
-		path = os.path.join(self.localpath,".git/refs/heads/master")
-		with open(path,"rt") as fd:
-			return fd.read().strip()
-	
+		return subprocess.check_output(["git","rev-parse","HEAD"]).strip()
+
 	def gitRemotes(self):
 		""" find all git remotes """
 		
@@ -89,8 +87,32 @@ class GitRepository:
 		cmd = ["git","remote","show"]
 		output = subprocess.check_output(cmd).decode("UTF-8")
 		return {remote.strip() for remote in output.splitlines()}
-		
 	
+	def gitStatus(self):
+		""" call 'git status' """
+		# change into the right directory
+		self.changePath()
+
+		# the option -z is used to get NULL terminated strings
+		cmd = ["git","-c", "core.bare=false","status","-z","--porcelain"]
+		
+		# call 'git diff'
+		output = subprocess.check_output(cmd).decode("UTF-8")
+		data = output.split("\0")
+
+		# data looks like: <state><state><space><filename>, ..., ''
+		return {d[3:]:d[:2].strip() for d in data if d}
+
+	def hasUncommitedChanges(self):
+		"""
+			has the current repository uncommited changes?
+			warning: hasUncommitedChanges is inaccurate for direct
+			         repositories as a type change can mask a content change
+		"""
+		# accept all except type changes
+		print(self.gitStatus())
+		return any(status != 'T' for status in self.gitStatus().values())
+
 class GitAnnexRepository(GitRepository):
 	def standardRepositories(self):
 		raise NotImplementedError
@@ -326,7 +348,18 @@ class GitAnnexRepository(GitRepository):
 
 		# call 'git-annex add'
 		self.executeCommand(["git-annex","add"])
-
+		
+		# update, in particular, remove deleted files
+		self.executeCommand(["git","-c", "core.bare=false","add","--update"])
+		
+		# commit it
+		utc = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M:%S")
+		msg = "Host: %s UTC: %s" % (self.host.name,utc)
+		try:
+			# there is no good way of checking if the repository needs a commit
+			self.executeCommand(["git","-c", "core.bare=false","commit","-m",msg], ignoreexception=True,print_ignored_exception=False)
+		except:
+			pass
 
 	def sync(self, repositories=None):
 		"""

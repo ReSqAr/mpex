@@ -1013,8 +1013,7 @@ class TestCommands(unittest.TestCase):
 			self.create_file(repo,move_before%i)
 		
 		# test not commited?
-		# TODO: fix
-		#self.assertTrue(repo.hasUncommitedChanges())
+		self.assertTrue(repo.hasUncommitedChanges())
 
 		# finalise
 		repo.finalise()
@@ -1026,8 +1025,7 @@ class TestCommands(unittest.TestCase):
 			self.has_file(repo,move_before%i)
 		
 		# everything commited?
-		# TODO: fix
-		#self.assertFalse(repo.hasUncommitedChanges())
+		self.assertFalse(repo.hasUncommitedChanges())
 		
 		# remove and move files
 		for i in range(n):
@@ -1036,15 +1034,13 @@ class TestCommands(unittest.TestCase):
 			self.create_file(repo,move_after%i,move_before%i)
 		
 		# test not commited?
-		# TODO: fix
-		#self.assertTrue(repo.hasUncommitedChanges())
+		self.assertTrue(repo.hasUncommitedChanges())
 		
 		# finalise
 		repo.finalise()
 
 		# everything commited?
-		# TODO: fix
-		#self.assertFalse(repo.hasUncommitedChanges())
+		self.assertFalse(repo.hasUncommitedChanges())
 
 	def test_finalise_indirect(self):
 		self.finalise_tester(direct=False)
