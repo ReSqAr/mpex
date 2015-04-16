@@ -293,6 +293,8 @@ class GitAnnexRepository(GitRepository):
 			self.executeCommand(["git-annex",self.trust,"here"])
 		
 		# set git remotes
+		# note: it only adds connections to repositories which are currently accesible
+		# furthermore, it does not delete connections
 		for repo, connections in self.standardRepositories().items():
 			# ignore special repositories
 			if repo.isSpecial():
