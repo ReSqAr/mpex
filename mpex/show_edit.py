@@ -59,7 +59,7 @@ def print_table(table,sep=2,header_sep="="):
 			print(header_sep * (sum(column_lengths) + (len(column_lengths)-1) * sep))
 
 def enumerate_table(table):
-	""" adds the row number to the first line """
+	""" adds the row number as the first column """
 	return [ [str(i-1+1) if i>0 else "n"] + row for i,row in enumerate(table) ]
 
 def format_host(env, host):

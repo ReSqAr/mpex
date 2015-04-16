@@ -360,7 +360,7 @@ def createEnv(args):
 		def __init__(self):
 			self.app = app
 			self.host = app.hosts.fuzzyMatch(args.host) if args.host is not None else None
-			self.annex = app.annexes.fuzzyMatch(args.annex)  if args.annex is not None else None
+			self.annex = app.annexes.fuzzyMatch(args.annex) if args.annex is not None else None
 			
 			# find the host which should be highlighted
 			if self.host:
