@@ -6,9 +6,7 @@ import subprocess
 import datetime
 import json
 
-import application
-
-from lib.terminal import print_blue, print_red
+from .lib.terminal import print_blue, print_red
 
 
 class GitRepository:
@@ -20,11 +18,11 @@ class GitRepository:
 	#
 	# file system interaction
 	#
-	def executeCommand(self, cmd, ignoreexception=False):
+	def executeCommand(self, cmd, ignoreexception=False, print_ignored_exception=True):
 		""" print and execute the command """
 		
 		# use the method given by the application
-		self.app.executeCommand(cmd, ignoreexception=ignoreexception)
+		self.app.executeCommand(cmd, ignoreexception=ignoreexception, print_ignored_exception=print_ignored_exception)
 
 
 	def changePath(self, create=False):
@@ -40,7 +38,7 @@ class GitRepository:
 		elif not os.path.isdir(os.path.join(path,".git/annex")):
 			# if we are not allowed to create it, it has to be git annex archive
 			print_red("%s is not a git annex repository, please run 'mpex init' first." % path,sep='')
-			raise application.InterruptedException("this is not a git annex repository")
+			raise self.app.InterruptedException("this is not a git annex repository")
 			
 		# change to it
 		os.chdir(path)
@@ -75,10 +73,8 @@ class GitRepository:
 
 	def gitHead(self):
 		""" get the git HEAD of the master branch """
-		path = os.path.join(self.localpath,".git/refs/heads/master")
-		with open(path,"rt") as fd:
-			return fd.read().strip()
-	
+		return subprocess.check_output(["git","rev-parse","HEAD"]).strip()
+
 	def gitRemotes(self):
 		""" find all git remotes """
 		
@@ -89,7 +85,6 @@ class GitRepository:
 		cmd = ["git","remote","show"]
 		output = subprocess.check_output(cmd).decode("UTF-8")
 		return {remote.strip() for remote in output.splitlines()}
-		
 	
 class GitAnnexRepository(GitRepository):
 	def standardRepositories(self):
@@ -114,6 +109,30 @@ class GitAnnexRepository(GitRepository):
 		""" get the git annex uuid of the current repository """
 		return self.gitConfig("annex.uuid")
 	
+	def gitAnnexStatus(self):
+		""" call 'git annex status' """
+		# change into the right directory
+		self.changePath()
+
+		# get status
+		cmd = ["git","annex","status","--json"]
+		
+		# call command
+		output = subprocess.check_output(cmd).decode("UTF-8")
+		data = [json.loads(s) for s in output.split("\n") if s]
+		print(data)
+		# data looks like: list of {"status":"<status>","file":"<name>"}
+		return data
+
+	def hasUncommitedChanges(self):
+		"""
+			has the current repository uncommited changes?
+			warning: hasUncommitedChanges is inaccurate for direct
+			         repositories as a type change can mask a content change
+		"""
+		# accept all except type changes
+		return any(data["status"] != 'T' for data in self.gitAnnexStatus())
+
 	def onDiskDirectMode(self):
 		""" finds the on disk direct mode """
 		
@@ -212,7 +231,7 @@ class GitAnnexRepository(GitRepository):
 				print("NEVER create a special remote twice.")
 		
 		# bail out
-		raise application.InterruptedException("there are missing git remotes")
+		raise self.app.InterruptedException("there are missing git remotes")
 
 	#
 	# main methods
@@ -230,7 +249,7 @@ class GitAnnexRepository(GitRepository):
 		if not os.path.isdir(os.path.join(self.localpath,".git")):
 			if os.listdir(self.localpath) and not ignorenonempty:
 				print_red("trying to run 'git init' in a non-empty directory, use --ignorenonempty",sep='')
-				raise application.InterruptedException("non-empty directory")
+				raise self.app.InterruptedException("non-empty directory")
 			else:
 				self.executeCommand(["git","init"])
 		else:
@@ -274,6 +293,8 @@ class GitAnnexRepository(GitRepository):
 			self.executeCommand(["git-annex",self.trust,"here"])
 		
 		# set git remotes
+		# note: it only adds connections to repositories which are currently accesible
+		# furthermore, it does not delete connections
 		for repo, connections in self.standardRepositories().items():
 			# ignore special repositories
 			if repo.isSpecial():
@@ -326,7 +347,15 @@ class GitAnnexRepository(GitRepository):
 
 		# call 'git-annex add'
 		self.executeCommand(["git-annex","add"])
-
+		
+		# commit it
+		utc = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M:%S")
+		msg = "Host: %s UTC: %s" % (self.host.name,utc)
+		try:
+			# there is no good way of checking if the repository needs a commit
+			self.executeCommand(["git","-c", "core.bare=false","commit","-m",msg], ignoreexception=True,print_ignored_exception=False)
+		except:
+			pass
 
 	def sync(self, repositories=None):
 		"""
@@ -529,6 +558,7 @@ class LocalRepository(GitAnnexRepository):
 		git annex methods:
 			gitAnnexInfo()
 			getAnnexUUID()
+			gitAnnexStatus()
 			onDiskDirectMode()
 			onDiskTrustLevel()
 			onDiskDescription()

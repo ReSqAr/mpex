@@ -1,12 +1,13 @@
 import collections
 
-import lib.fuzzy_match
+from .lib import fuzzy_match
+from .lib.terminal import print_blue, print_red, print_bold, choose, ask_questions
 
-import structure_host
-import structure_annex
-import structure_repository
+from . import structure_host
+from . import structure_annex
+from . import structure_repository
 
-from lib.terminal import print_blue, print_red, print_bold, choose, ask_questions
+
 
 #
 # table helper functions
@@ -58,7 +59,7 @@ def print_table(table,sep=2,header_sep="="):
 			print(header_sep * (sum(column_lengths) + (len(column_lengths)-1) * sep))
 
 def enumerate_table(table):
-	""" adds the row number to the first line """
+	""" adds the row number as the first column """
 	return [ [str(i-1+1) if i>0 else "n"] + row for i,row in enumerate(table) ]
 
 def format_host(env, host):
@@ -389,10 +390,10 @@ def valid_values_pp(valid_values):
 	""" select from the given values """
 	# build identity mapping
 	valid_values = {x:x for x in valid_values}
-	# define post processor via lib.fuzzy_match
+	# define post processor via fuzzy_match
 	def postprocessor(s):
 		""" checks that s is a valid value """
-		return lib.fuzzy_match.fuzzyMatch(s, valid_values)
+		return fuzzy_match.fuzzyMatch(s, valid_values)
 	# return post processor
 	return postprocessor
 

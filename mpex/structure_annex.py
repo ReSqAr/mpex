@@ -1,8 +1,8 @@
 import string
 
-import lib.fuzzy_match
+from .lib import fuzzy_match
 
-import structure_base
+from . import structure_base
 
 
 class Annexes(structure_base.Collection):
@@ -29,7 +29,7 @@ class Annexes(structure_base.Collection):
 		
 		try:
 			# try to find an annex
-			return lib.fuzzy_match.fuzzyMatch(annexname, valid)
+			return fuzzy_match.fuzzyMatch(annexname, valid)
 		except ValueError as e:
 			raise ValueError("could not parse the annex name '%s': %s" % (annexname,e.args[0]))
 

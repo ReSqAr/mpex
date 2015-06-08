@@ -1,18 +1,16 @@
-#!/usr/bin/env python3
-
 import os
 import argparse
 import sys
 import textwrap
 import time
 
-import lib.fuzzy_match
+from .lib import fuzzy_match
+from .lib.terminal import print_blue, print_red, print_green
 
-import application
-import show_edit
-from lib.terminal import print_blue, print_red, print_green
+from . import application
+from . import show_edit
 
-import grouped_repositories
+from . import grouped_repositories
 
 CONFIG_PATH = "~/.config/mpex/"
 CONFIG_PATH = os.path.expanduser(CONFIG_PATH)
@@ -34,7 +32,7 @@ def parse_annex_names(app,args):
 
 	for annex_name in annex_names:
 		# find annexes
-		annexes = set(lib.fuzzy_match.fuzzyMultiMatch(annex_name,known_annexes))
+		annexes = set(fuzzy_match.fuzzyMultiMatch(annex_name,known_annexes))
 		if not annexes:
 			print("WARNING: could not parse the annex '%s'" % annex_name)
 			sys.exit(1)
@@ -94,7 +92,7 @@ def apply_function(args,f):
 		hosts_filter = set()
 		for host_name in hosts:
 			# find annexes
-			selected_hosts = set(lib.fuzzy_match.fuzzyMultiMatch(host_name,known_hosts))
+			selected_hosts = set(fuzzy_match.fuzzyMultiMatch(host_name,known_hosts))
 			if not selected_hosts:
 				print("WARNING: could not parse the host '%s'" % host_name)
 				sys.exit(1)
@@ -362,7 +360,7 @@ def createEnv(args):
 		def __init__(self):
 			self.app = app
 			self.host = app.hosts.fuzzyMatch(args.host) if args.host is not None else None
-			self.annex = app.annexes.fuzzyMatch(args.annex)  if args.annex is not None else None
+			self.annex = app.annexes.fuzzyMatch(args.annex) if args.annex is not None else None
 			
 			# find the host which should be highlighted
 			if self.host:

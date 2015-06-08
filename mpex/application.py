@@ -8,12 +8,12 @@ if sys.version_info < (3,2,0):
 	raise RuntimeError("Python version >= 3.2 is needed.")
 
 
-import local_repository
-import structure_host
-import structure_annex
-import structure_repository
-import structure_connection
-from lib.terminal import print_blue, print_red
+from . import local_repository
+from . import structure_host
+from . import structure_annex
+from . import structure_repository
+from . import structure_connection
+from .lib.terminal import print_blue, print_red
 
 class InterruptedException(Exception):
 	pass
@@ -24,6 +24,8 @@ class Application:
 	VERBOSE_DEBUG = 0
 	VERBOSE_NORMAL = 1
 	VERBOSE_IMPORTANT = 2
+	
+	InterruptedException = InterruptedException
 	
 	def __init__(self, path, verbose=True, simulate=False):
 		# save option
@@ -64,14 +66,14 @@ class Application:
 		with io.open(path, mode="rt", encoding="UTF8") as fd:
 			# read
 			hostname = fd.read()
-			hostname = hostname.strip()
-			# associate host to a Host object
-			host = self.hosts.get(hostname)
-			# if we failed, raise an error
-			if host is None:
-				raise RuntimeError("Unable to find the current host. (File: %s)" % hostname)
-			# otherwise, return the found host
-			return host
+		hostname = hostname.strip()
+		# associate host to a Host object
+		host = self.hosts.get(hostname)
+		# if we failed, raise an error
+		if host is None:
+			raise RuntimeError("Unable to find the current host. (File: %s)" % hostname)
+		# otherwise, return the found host
+		return host
 	
 	def setCurrentHost(self, host):
 		""" set the current host """
@@ -135,7 +137,7 @@ class Application:
 		return capabilities
 	
 
-	def executeCommand(self, cmd, ignoreexception=False):
+	def executeCommand(self, cmd, ignoreexception=False, print_ignored_exception=True):
 		""" print and execute the command """
 		if self.verbose <= self.VERBOSE_IMPORTANT:
 			print("command:"," ".join(cmd))
@@ -150,7 +152,8 @@ class Application:
 				subprocess.check_call(cmd,stdout=None if self.verbose <= self.VERBOSE_NORMAL else devnull)
 		except (subprocess.CalledProcessError,OSError) as e:
 			if ignoreexception:
-				print_red("an ignored error occured:", str(e))
+				if print_ignored_exception:
+					print_red("an ignored error occured:", str(e))
 			else:
 				print_red("an error occured:", str(e))
 				raise InterruptedException(e)
