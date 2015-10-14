@@ -125,6 +125,8 @@ class Application:
 		
 		# parse the version string
 		date = capabilities["version"].split('.')[1]
+		if "-" in date:
+			date = date.split("-")[0]
 		assert len(date) == 8, "Version string is unexcepted format: %s" % capabilities["version"]
 		year,month,day = date[:4],date[4:6],date[6:]
 		year,month,day = int(year),int(month),int(day)
