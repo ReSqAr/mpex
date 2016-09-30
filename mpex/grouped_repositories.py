@@ -295,7 +295,7 @@ def do_report(path, number_of_content_lines=5, omit_untrusted=False):
 
 if __name__ == "__main__":
 	import sys
-	if len(sys.argv) <  2:
+	if len(sys.argv) < 2:
 		print("first argument has to be a git annex path")
 		sys.exit(2)
 	# save first argument

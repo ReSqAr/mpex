@@ -353,7 +353,7 @@ class GitAnnexRepository(GitRepository):
 		msg = "Host: %s UTC: %s" % (self.host.name,utc)
 		try:
 			# there is no good way of checking if the repository needs a commit
-			self.executeCommand(["git","-c", "core.bare=false","commit","-m",msg], ignoreexception=True,print_ignored_exception=False)
+			self.executeCommand(["git-annex","sync","--no-push","--no-pull","--message={}".format(msg)])
 		except:
 			pass
 
