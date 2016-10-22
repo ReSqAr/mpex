@@ -1,14 +1,19 @@
-# mpex's setup.py
-from distutils.core import setup
+from setuptools import setup
+
+
 setup(
 	name = "mpex",
 	packages = ["mpex","mpex.lib"],
-	version = "0.2",
+	version = "0.9",
 	description = "git annex helper",
 	author = "Yasin Zaehringer",
 	author_email = "yasin-mpex@yhjz.de",
 	url = "https://github.com/ReSqAr/mpex",
 	keywords = ["git-annex"],
+	entry_points = {
+		'console_scripts': [
+			'mpex = mpex.__main__:main'
+		]},
 	classifiers = [
 		"Programming Language :: Python",
 		"Programming Language :: Python :: 3",

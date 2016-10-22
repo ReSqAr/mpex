@@ -1,5 +1,0 @@
-#!/usr/bin/env python3
-
-from mpex import mpex
-
-mpex.runParser()
