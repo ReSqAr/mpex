@@ -21,7 +21,7 @@ class TestStructure(unittest.TestCase):
         self.path = tempfile.mkdtemp()
 
     def tearDown(self):
-        # erease variable
+        # erase variable
         self.path = None
 
     # available methods:
@@ -48,7 +48,7 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(host1, host1p)
         self.assertEqual(id(host1), id(host1p))
 
-        self.assertEqual(h.getAll(), {host1, host2, host3})
+        self.assertEqual(h.get_all(), {host1, host2, host3})
 
     def test_hosts_creation_error_cases(self):
         """ test common error cases """
@@ -75,7 +75,7 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(annex1, annex1p)
         self.assertEqual(id(annex1), id(annex1p))
 
-        self.assertEqual(a.getAll(), {annex1, annex2, annex3})
+        self.assertEqual(a.get_all(), {annex1, annex2, annex3})
 
         # test repr and str
         repr(annex1)
@@ -113,7 +113,7 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(repo11, repo11p)
         self.assertEqual(id(repo11), id(repo11p))
 
-        self.assertEqual(r.getAll(), {repo11, repo12, repo13, repo22, repo33, repo23, repo21})
+        self.assertEqual(r.get_all(), {repo11, repo12, repo13, repo22, repo33, repo23, repo21})
 
         # test repr and str
         repr(repo11)
@@ -185,8 +185,8 @@ class TestStructure(unittest.TestCase):
         self.assertFalse(repo.strict)
         self.assertEqual(repo.trust, "semitrust")
         self.assertIsNone(repo.files)
-        self.assertFalse(repo.isSpecial())
-        self.assertFalse(repo.hasNonTrivialDescription())
+        self.assertFalse(repo.is_special())
+        self.assertFalse(repo.has_non_trivial_description())
 
     def test_creation_repositories_metadata_direct(self):
         """ check metadata direct member """
@@ -269,7 +269,7 @@ class TestStructure(unittest.TestCase):
         # files
         repo = r.create(host, annex1, os.path.join(self.path, "repo"))
         repo.files = "()+-&host"
-        self.assertEqual(repo.filesAsCmd(), ["-(", "-)", "--or", "--not", "--and", "--in=Host"])
+        self.assertEqual(repo.files_as_cmd(), ["-(", "-)", "--or", "--not", "--and", "--in=Host"])
 
     def test_creation_repositories_metadata_description(self):
         """ check metadata description member """
@@ -281,7 +281,7 @@ class TestStructure(unittest.TestCase):
         # description
         repo = r.create(host, annex, os.path.join(self.path, "repo"), description="XXX")
         self.assertEqual(repo.description, "XXX")
-        self.assertTrue(repo.hasNonTrivialDescription())
+        self.assertTrue(repo.has_non_trivial_description())
 
     def test_repositories_special(self):
         """ check the isSpecial method """
@@ -292,7 +292,7 @@ class TestStructure(unittest.TestCase):
 
         # check special
         repo = r.create(host, annex, "special", description="XXX")
-        self.assertTrue(repo.isSpecial())
+        self.assertTrue(repo.is_special())
 
     def test_connection_creation(self):
         """ test the creation of connections """
@@ -313,7 +313,7 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(conn12, conn12p)
         self.assertEqual(id(conn12), id(conn12p))
 
-        self.assertEqual(c.getAll(), {conn12, conn13, conn23, conn21, conn32})
+        self.assertEqual(c.get_all(), {conn12, conn13, conn23, conn21, conn32})
 
         # test repr and str
         repr(conn12)
@@ -345,9 +345,9 @@ class TestStructure(unittest.TestCase):
         conn32 = c.create(host3, host2, "ssh://server")
 
         # test
-        self.assertEqual(conn12.gitPath(repo21), "/abc" + self.path + "/repo")
-        self.assertEqual(conn32.gitPath(repo21), "ssh://server" + os.path.join(self.path, "repo"))
-        self.assertRaisesRegex(AssertionError, "Programming error", conn32.gitPath, repo11)
+        self.assertEqual(conn12.git_path(repo21), "/abc" + self.path + "/repo")
+        self.assertEqual(conn32.git_path(repo21), "ssh://server" + os.path.join(self.path, "repo"))
+        self.assertRaisesRegex(AssertionError, "Programming error", conn32.git_path, repo11)
 
     def test_connection_metadata_alwayson(self):
         """ test alwaysOn """
@@ -358,14 +358,14 @@ class TestStructure(unittest.TestCase):
 
         # alwayson
         conn12 = c.create(host1, host2, "/", alwayson="false")
-        self.assertFalse(conn12.alwaysOn)
-        conn12.alwaysOn = True
-        self.assertTrue(conn12.alwaysOn)
+        self.assertFalse(conn12.always_on)
+        conn12.always_on = True
+        self.assertTrue(conn12.always_on)
 
         conn13 = c.create(host1, host3, "/", alwayson="true")
-        self.assertTrue(conn13.alwaysOn)
-        conn13.alwaysOn = False
-        self.assertFalse(conn13.alwaysOn)
+        self.assertTrue(conn13.always_on)
+        conn13.always_on = False
+        self.assertFalse(conn13.always_on)
 
     def test_connection_metadata_protocol(self):
         """ test protocol and pathData """
@@ -381,7 +381,7 @@ class TestStructure(unittest.TestCase):
         # protocol 'ssh' and pathData
         conn1server = c.create(host1, host3, "ssh://myserver")
         self.assertEqual(conn1server.protocol(), "ssh")
-        self.assertEqual(conn1server.pathData()["server"], "myserver")
+        self.assertEqual(conn1server.path_data()["server"], "myserver")
 
     def test_connection_isonline_mount_nodir(self):
         """ test the isOnline method for connections with protocol 'mount' """
@@ -391,7 +391,7 @@ class TestStructure(unittest.TestCase):
 
         # connection with a path which does not exists
         conn = c.create(host1, host2, os.path.join(self.path, "repo"))
-        self.assertFalse(conn.isOnline())
+        self.assertFalse(conn.is_online())
 
     def test_connection_isonline_mount_emptydir(self):
         """ test the isOnline method for connections with protocol 'mount' """
@@ -404,7 +404,7 @@ class TestStructure(unittest.TestCase):
 
         # create the path, empty paths should also be not mounted
         os.makedirs(conn.path)
-        self.assertFalse(conn.isOnline())
+        self.assertFalse(conn.is_online())
 
     def test_connection_isonline_mount_dir(self):
         """ test the isOnline method for connections with protocol 'mount' """
@@ -423,7 +423,7 @@ class TestStructure(unittest.TestCase):
             fd.write("test")
 
         # should return True
-        self.assertTrue(conn.isOnline())
+        self.assertTrue(conn.is_online())
 
     def test_connection_isonline_ssh(self):
         """ test the isOnline method for connections with protocol 'ssh' """
@@ -433,9 +433,9 @@ class TestStructure(unittest.TestCase):
 
         # connection with a server which does not exist
         conn = c.create(host1, host2, "ssh://127.0.0.1:53122")
-        self.assertFalse(conn.isOnline())
+        self.assertFalse(conn.is_online())
         # second time comes from cache
-        self.assertFalse(conn.isOnline())
+        self.assertFalse(conn.is_online())
 
     def test_connection_pathOnSource(self):
         """ test the pathOnSource method for connections with protocol 'ssh' """
@@ -445,11 +445,11 @@ class TestStructure(unittest.TestCase):
 
         # create connection
         conn12 = c.create(host1, host2, "/test/")
-        self.assertEqual(conn12.pathOnSource("/abc/"), "/test/abc/")
+        self.assertEqual(conn12.path_on_source("/abc/"), "/test/abc/")
 
         # create connection
         conn23 = c.create(host2, host3, "/test")
-        self.assertEqual(conn12.pathOnSource("/abc/"), "/test/abc/")
+        self.assertEqual(conn12.path_on_source("/abc/"), "/test/abc/")
 
     def test_connection_remote_execution(self):
         """ test the and supportsRemoteExecution and executeRemotely methods """
@@ -459,25 +459,25 @@ class TestStructure(unittest.TestCase):
 
         # create connection
         conn12 = c.create(host1, host2, "/test/")
-        self.assertFalse(conn12.supportsRemoteExecution())
+        self.assertFalse(conn12.supports_remote_execution())
         self.assertRaisesRegex(AssertionError, "does not support remote execution",
-                               conn12.executeRemotely, ["ls"])
+                               conn12.execute_remotely, ["ls"])
 
         # create connection
         conn23 = c.create(host2, host3, "ssh://myserver")
-        self.assertTrue(conn23.supportsRemoteExecution())
-        self.assertRaisesRegex(AssertionError, "expected a list", conn23.executeRemotely, "ls")
+        self.assertTrue(conn23.supports_remote_execution())
+        self.assertRaisesRegex(AssertionError, "expected a list", conn23.execute_remotely, "ls")
 
         # we can only check the resulting command, so overwrite app.executeCommand
-        subroutineCalled = []
+        subroutine_called = []
 
-        def checkExecuteCommand(cmd):
-            subroutineCalled.append(True)
+        def check_execute_command(cmd):
+            subroutine_called.append(True)
             self.assertEqual(cmd, ["ssh", "myserver", "ls"])
 
-        app.executeCommand = checkExecuteCommand
-        conn23.executeRemotely(["ls"])
-        self.assertEqual(subroutineCalled, [True])
+        app.execute_command = check_execute_command
+        conn23.execute_remotely(["ls"])
+        self.assertEqual(subroutine_called, [True])
 
     def test_relations(self):
         """
@@ -528,7 +528,7 @@ class TestStructure(unittest.TestCase):
             # by hosts[i], hence {repos[i][j] for all j}
             self.assertEqual(hosts[i].repositories(), set(repos[i]))
             # hosts[i].connections() should be all connections which
-            # orignate from hosts[i], hence {conns[i][j] for all j}
+            # originate from hosts[i], hence {conns[i][j] for all j}
             self.assertEqual(hosts[i].connections(), set(conns[i]))
 
         for i in range(n):
@@ -552,7 +552,7 @@ class TestStructure(unittest.TestCase):
                 }
 
                 # they should be equal
-                self.assertEqual(repos[i][j].connectedRepositories(), d)
+                self.assertEqual(repos[i][j].connected_repositories(), d)
 
     def test_save(self):
         """
@@ -588,10 +588,10 @@ class TestStructure(unittest.TestCase):
         # short cuts
         h, a, r, c = app.hosts, app.annexes, app.repositories, app.connections
 
-        self.assertEqual(h.getAll(), {host1, host2, host3})
-        self.assertEqual(a.getAll(), {annex1, annex2, annex3})
-        self.assertEqual(r.getAll(), {repo11, repo12, repo13})
-        self.assertEqual(c.getAll(), {conn12, conn13, conn23})
+        self.assertEqual(h.get_all(), {host1, host2, host3})
+        self.assertEqual(a.get_all(), {annex1, annex2, annex3})
+        self.assertEqual(r.get_all(), {repo11, repo12, repo13})
+        self.assertEqual(c.get_all(), {conn12, conn13, conn23})
 
         repo11 = r.get(host1, annex1, os.path.join(self.path, "repo11"))
         repo12 = r.get(host1, annex2, os.path.join(self.path, "repo12"))
@@ -603,17 +603,17 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(repo13.trust, "trust")
 
         conn12 = c.get(host1, host2, "/")
-        self.assertTrue(conn12.alwaysOn)
+        self.assertTrue(conn12.always_on)
 
     def test_app_gitAnnexCapabilities(self):
         """ test app.gitAnnexCapabilities """
         app = application.Application(self.path, verbose=self.verbose)
 
-        capabilities = app.gitAnnexCapabilities
+        capabilities = app.git_annex_capabilities
         self.assertIn("date", capabilities)
 
         # the second call is from a cache
-        capabilities2 = app.gitAnnexCapabilities
+        capabilities2 = app.git_annex_capabilities
         self.assertEqual(id(capabilities), id(capabilities2))
 
 
@@ -628,7 +628,7 @@ class TestCommands(unittest.TestCase):
         super(TestCommands, self).__init__(*args, **kwargs)
         # does the current git annex version support direct mode?
         app = application.Application("/tmp/", verbose=self.verbose)
-        self._gitAnnexCapabilities = app.gitAnnexCapabilities
+        self._gitAnnexCapabilities = app.git_annex_capabilities
 
     def setUp(self):
         # create temporary directory
@@ -660,7 +660,7 @@ class TestCommands(unittest.TestCase):
 
     def reinit_repos(self, repos):
         """ init the given repos """
-        self.apply_to_repos(repos, lambda r: r.setProperties())
+        self.apply_to_repos(repos, lambda r: r.set_properties())
 
     def finalise_repos(self, repos):
         """ finalise the given repos """
@@ -698,7 +698,7 @@ class TestCommands(unittest.TestCase):
 
     def create_file_local(self, repo, filename, content=None):
         """ create file in the given repository """
-        self._create_file(repo.localpath, filename, content)
+        self._create_file(repo.local_path, filename, content)
 
     # remove
     @staticmethod
@@ -713,7 +713,7 @@ class TestCommands(unittest.TestCase):
 
     def remove_file_local(self, repo, filename):
         """ removes the given file """
-        return self._remove_file(repo.localpath, filename)
+        return self._remove_file(repo.local_path, filename)
 
     # has file
     def _has_file(self, path, filename, content):
@@ -728,7 +728,7 @@ class TestCommands(unittest.TestCase):
 
     def has_file_local(self, repo, filename, content=None):
         """ checks if the repository has the given file (with content) """
-        return self._has_file(repo.localpath, filename, content)
+        return self._has_file(repo.local_path, filename, content)
 
     # has link
     def _has_link(self, path, filename):
@@ -743,7 +743,7 @@ class TestCommands(unittest.TestCase):
 
     def has_link_local(self, repo, filename):
         """ checks if the repository has the given file as a link """
-        return self._has_link(repo.localpath, filename)
+        return self._has_link(repo.local_path, filename)
 
     #
     # actual tests
@@ -776,7 +776,7 @@ class TestCommands(unittest.TestCase):
         app = application.Application(self.path, verbose=self.verbose)
 
         # test getHostedRepositories (which returns the assimilated version repo1i)
-        self.assertEqual({a.repo for a in app.getHostedRepositories()}, {repo11, repo12})
+        self.assertEqual({a.repo for a in app.get_hosted_repositories()}, {repo11, repo12})
 
     def test_init(self):
         """ test repository init and conduct some basic checks """
@@ -794,9 +794,9 @@ class TestCommands(unittest.TestCase):
         repo.init()
 
         # check properties
-        self.assertTrue(bool(repo.getAnnexUUID()))
-        self.assertEqual(repo.onDiskDirectMode(), "indirect")
-        self.assertEqual(repo.onDiskTrustLevel(), "semitrust")
+        self.assertTrue(bool(repo.get_annex_UUID()))
+        self.assertEqual(repo.on_disk_direct_mode(), "indirect")
+        self.assertEqual(repo.on_disk_trust_level(), "semitrust")
 
         # check disk format
         self.assertTrue(os.path.isdir(os.path.join(repo.path, ".git")))
@@ -806,11 +806,11 @@ class TestCommands(unittest.TestCase):
         repo.init()
 
         # check properties again
-        self.assertTrue(bool(repo.getAnnexUUID()))
-        self.assertEqual(repo.onDiskDirectMode(), "indirect")
-        self.assertEqual(repo.onDiskTrustLevel(), "semitrust")
+        self.assertTrue(bool(repo.get_annex_UUID()))
+        self.assertEqual(repo.on_disk_direct_mode(), "indirect")
+        self.assertEqual(repo.on_disk_trust_level(), "semitrust")
 
-    def test_setproperties_direct(self):
+    def test_set_properties_direct(self):
         """ test repository setProperties with direct mode"""
         # initialisation
         app = application.Application(self.path, verbose=self.verbose)
@@ -825,14 +825,14 @@ class TestCommands(unittest.TestCase):
         repo = app.assimilate(repo)
 
         # check
-        self.assertRaisesRegex(application.InterruptedException, "is not a git annex", repo.setProperties)
+        self.assertRaisesRegex(application.InterruptedException, "is not a git annex", repo.set_properties)
 
         # init
         repo.init()
 
         # check
-        self.assertEqual(repo.onDiskDirectMode(), "direct")
-        self.assertEqual(repo.onDiskTrustLevel(), "trust")
+        self.assertEqual(repo.on_disk_direct_mode(), "direct")
+        self.assertEqual(repo.on_disk_trust_level(), "trust")
 
         # change
         repo.direct = False
@@ -840,14 +840,14 @@ class TestCommands(unittest.TestCase):
         repo._data["description"] = "DESC"
 
         # apply changes
-        repo.setProperties()
+        repo.set_properties()
 
         # check
-        self.assertEqual(repo.onDiskDirectMode(), "indirect")
-        self.assertEqual(repo.onDiskTrustLevel(), "untrust")
-        self.assertEqual(repo.onDiskDescription(), "DESC")
+        self.assertEqual(repo.on_disk_direct_mode(), "indirect")
+        self.assertEqual(repo.on_disk_trust_level(), "untrust")
+        self.assertEqual(repo.on_disk_description(), "DESC")
 
-    def test_setproperties_notdirect(self):
+    def test_set_properties_notdirect(self):
         """ test repository setProperties without direct mode """
         # initialisation
         app = application.Application(self.path, verbose=self.verbose)
@@ -862,25 +862,25 @@ class TestCommands(unittest.TestCase):
         repo = app.assimilate(repo)
 
         # check
-        self.assertRaisesRegex(application.InterruptedException, "is not a git annex", repo.setProperties)
+        self.assertRaisesRegex(application.InterruptedException, "is not a git annex", repo.set_properties)
 
         # init
         repo.init()
 
         # check
-        self.assertEqual(repo.onDiskTrustLevel(), "trust")
+        self.assertEqual(repo.on_disk_trust_level(), "trust")
 
         # change
         repo.trust = "untrust"
         repo._data["description"] = "DESC"
 
         # apply changes
-        repo.setProperties()
+        repo.set_properties()
 
         # check
-        self.assertEqual(repo.onDiskDirectMode(), "indirect")
-        self.assertEqual(repo.onDiskTrustLevel(), "untrust")
-        self.assertEqual(repo.onDiskDescription(), "DESC")
+        self.assertEqual(repo.on_disk_direct_mode(), "indirect")
+        self.assertEqual(repo.on_disk_trust_level(), "untrust")
+        self.assertEqual(repo.on_disk_description(), "DESC")
 
     def test_init_remotes(self):
         """ test repository init and remotes"""
@@ -903,7 +903,7 @@ class TestCommands(unittest.TestCase):
         repo4 = r.create(host4, annex1, "special")
         repo1 = app.assimilate(repo1)
         repo1.init()
-        repo1.setProperties()
+        repo1.set_properties()
 
         # check remotes
         self.assertIn("Host2", subprocess.check_output(["git", "remote", "show"]).decode("UTF8"))
@@ -938,7 +938,7 @@ class TestCommands(unittest.TestCase):
         # try init
         self.assertRaisesRegex(application.InterruptedException, "non-empty directory", repo.init)
         # force creation and check disk format
-        repo.init(ignorenonempty=True)
+        repo.init(ignore_nonempty=True)
         self.assertTrue(os.path.isdir(os.path.join(repo.path, ".git/annex")))
 
     def test_init_remotes_change_location(self):
@@ -959,11 +959,11 @@ class TestCommands(unittest.TestCase):
         repo.init()
 
         # set properties
-        repo.setProperties()
+        repo.set_properties()
 
         # doing bad stuff, still, repo should adapt
         conn12._path = "/abcd/"
-        repo.setProperties()
+        repo.set_properties()
 
     def finalise_tester(self, direct):
         """
@@ -973,11 +973,11 @@ class TestCommands(unittest.TestCase):
             2. create files
             3. call finalise
             4. afterwards, the file should still be where
-            5. everything should commited
+            5. everything should committed
             6. delete certain files, move certain other files
-            7. there should be uncommited changes
+            7. there should be uncommitted changes
             8. call finalise
-            9. there shouldn't be any uncommited changes anymore
+            9. there shouldn't be any uncommitted changes anymore
         """
         # initialisation
         app = application.Application(self.path, verbose=self.verbose)
@@ -994,7 +994,7 @@ class TestCommands(unittest.TestCase):
         repo.init()
 
         # check direct mode
-        self.assertEqual(repo.onDiskDirectMode(), "direct" if direct else "indirect")
+        self.assertEqual(repo.on_disk_direct_mode(), "direct" if direct else "indirect")
 
         # create files
         n = 5
@@ -1006,7 +1006,7 @@ class TestCommands(unittest.TestCase):
             self.create_file(repo, move_before % i)
 
         # test not commited?
-        self.assertTrue(repo.hasUncommitedChanges())
+        self.assertTrue(repo.has_uncommitted_changes())
 
         # finalise
         repo.finalise()
@@ -1018,7 +1018,7 @@ class TestCommands(unittest.TestCase):
             self.has_file(repo, move_before % i)
 
         # everything commited?
-        self.assertFalse(repo.hasUncommitedChanges())
+        self.assertFalse(repo.has_uncommitted_changes())
 
         # remove and move files
         for i in range(n):
@@ -1027,13 +1027,13 @@ class TestCommands(unittest.TestCase):
             self.create_file(repo, move_after % i, move_before % i)
 
         # test not commited?
-        self.assertTrue(repo.hasUncommitedChanges())
+        self.assertTrue(repo.has_uncommitted_changes())
 
         # finalise
         repo.finalise()
 
         # everything commited?
-        self.assertFalse(repo.hasUncommitedChanges())
+        self.assertFalse(repo.has_uncommitted_changes())
 
     def test_finalise_indirect(self):
         self.finalise_tester(direct=False)
@@ -1062,7 +1062,7 @@ class TestCommands(unittest.TestCase):
         repo.finalise()
 
         # get head
-        head = repo.gitHead()
+        head = repo.git_head()
 
         # change file
         self.create_file(repo, "test", "changed")
@@ -1071,7 +1071,7 @@ class TestCommands(unittest.TestCase):
         repo.finalise()
 
         # something was commited?
-        self.assertNotEqual(head, repo.gitHead())
+        self.assertNotEqual(head, repo.git_head())
 
     def test_repairMaster_in_empty(self):
         """ call repair master in empty repository """
@@ -1089,7 +1089,7 @@ class TestCommands(unittest.TestCase):
         repo.init()
 
         # should not raise an exception
-        repo.repairMaster()
+        repo.repair_master()
 
     def sync_tester(self, direct):
         """
@@ -1402,10 +1402,10 @@ class TestCommands(unittest.TestCase):
         # init special remote on alice
         def f(repo):
             # change path
-            repo.changePath()
+            repo.change_path()
             # execute 'git annex initremote $gitid type=rsync rsyncurl=${path0} encryption=none'
             cmd = ['git-annex', 'initremote', repo0.gitID(), 'type=rsync', 'rsyncurl=%s' % path0, 'encryption=none']
-            repo.executeCommand(cmd)
+            repo.execute_command(cmd)
 
         self.apply_to_repos([repo2], f)
 
@@ -1415,9 +1415,9 @@ class TestCommands(unittest.TestCase):
         # enable crypt on bob
         def f(repo):
             # change path and execute 'git annex enableremote $gitid'
-            repo.changePath()
+            repo.change_path()
             cmd = ['git-annex', 'enableremote', repo0.gitID()]
-            repo.executeCommand(cmd)
+            repo.execute_command(cmd)
 
         self.apply_to_repos([repo3], f)
 
@@ -1688,8 +1688,8 @@ class TestCommands(unittest.TestCase):
         self.copy(repos)
 
         # create special repository on Host2
-        pathS = os.path.join(self.path, "special")
-        repoS = r.create(host2, annex, "special", description="crypt")
+        path_s = os.path.join(self.path, "special")
+        repo_s = r.create(host2, annex, "special", description="crypt")
 
         # now all should still work, as special repositories are ignored when syncing
         self.sync(repos)
@@ -1711,10 +1711,10 @@ class TestCommands(unittest.TestCase):
         # init special remote on repo1
         def f(repo):
             # change path
-            repo.changePath()
+            repo.change_path()
             # execute 'git annex initremote $gitid type=rsync rsyncurl=${pathS} encryption=none'
-            cmd = ['git-annex', 'initremote', repoS.gitID(), 'type=rsync', 'rsyncurl=%s' % pathS, 'encryption=none']
-            repo.executeCommand(cmd)
+            cmd = ['git-annex', 'initremote', repo_s.gitID(), 'type=rsync', 'rsyncurl=%s' % path_s, 'encryption=none']
+            repo.execute_command(cmd)
 
         self.apply_to_repos([repo1], f)
 
@@ -1788,19 +1788,19 @@ class TestCommands(unittest.TestCase):
             x.load()
 
         # check some properties
-        self.assertEqual(len(h.getAll()), 2)
-        self.assertEqual(len(a.getAll()), 1)
-        self.assertEqual(len(r.getAll()), 2)
-        self.assertEqual(len(c.getAll()), 1)
+        self.assertEqual(len(h.get_all()), 2)
+        self.assertEqual(len(a.get_all()), 1)
+        self.assertEqual(len(r.get_all()), 2)
+        self.assertEqual(len(c.get_all()), 1)
 
         # refresh repos
-        repos = r.getAll()
+        repos = r.get_all()
 
         # assimilate
         repos = self.assimilate_repos(repos)
 
         # delete all remotes
-        self.apply_to_repos(repos, lambda r: r.deleteAllRemotes())
+        self.apply_to_repos(repos, lambda r: r.delete_all_remotes())
 
         # re init repositories
         self.reinit_repos(repos)
@@ -1819,7 +1819,7 @@ class TestCommands(unittest.TestCase):
 
         # there should be no strange remote branches left
         def remote_branch_checker(repo):
-            repo.changePath()
+            repo.change_path()
             cmd = ["git", "branch", "--all"]
             output = subprocess.check_output(cmd).decode("UTF-8")
             self.assertNotIn("alice", output)

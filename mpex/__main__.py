@@ -2,7 +2,7 @@ from mpex import mpex
 
 
 def main():
-    mpex.runParser()
+    mpex.run_parser()
 
 
 if __name__ == '__main__':

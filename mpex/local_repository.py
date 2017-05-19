@@ -9,23 +9,24 @@ from .lib.terminal import print_blue, print_red
 
 class GitRepository:
     @property
-    def localpath(self):
+    def local_path(self):
         raise NotImplementedError
 
     #
     # file system interaction
     #
-    def executeCommand(self, cmd, ignoreexception=False, print_ignored_exception=True):
+    def execute_command(self, cmd, ignore_exception=False, print_ignored_exception=True):
         """ print and execute the command """
 
         # use the method given by the application
-        self.app.executeCommand(cmd, ignoreexception=ignoreexception, print_ignored_exception=print_ignored_exception)
+        self.app.execute_command(cmd, ignore_exception=ignore_exception,
+                                 print_ignored_exception=print_ignored_exception)
 
-    def changePath(self, create=False):
+    def change_path(self, create=False):
         """ change the path to the current repository """
 
         # get path
-        path = os.path.normpath(self.localpath)
+        path = os.path.normpath(self.local_path)
 
         if create:
             # create the path if needed
@@ -44,10 +45,10 @@ class GitRepository:
 
         return path
 
-    def gitConfig(self, key, default=None):
+    def git_config(self, key, default=None):
         """ read a git key """
         # change path
-        self.changePath()
+        self.change_path()
 
         try:
             # get output of 'git config $key' and return it
@@ -57,10 +58,10 @@ class GitRepository:
         except subprocess.CalledProcessError:
             return default
 
-    def gitBranch(self):
+    def git_branch(self):
         """ returns all known branches """
         # change path
-        self.changePath()
+        self.change_path()
 
         # call 'git branch'
         output = subprocess.check_output(["git", "branch"]).decode("UTF8")
@@ -68,15 +69,15 @@ class GitRepository:
         return [line[2:].strip() for line in output.splitlines() if line.strip()]
 
     @staticmethod
-    def gitHead():
+    def git_head():
         """ get the git HEAD of the master branch """
         return subprocess.check_output(["git", "rev-parse", "HEAD"]).strip()
 
-    def gitRemotes(self):
+    def git_remotes(self):
         """ find all git remotes """
 
         # change into the right directory
-        self.changePath()
+        self.change_path()
 
         # read all remotes
         cmd = ["git", "remote", "show"]
@@ -85,13 +86,13 @@ class GitRepository:
 
 
 class GitAnnexRepository(GitRepository):
-    def standardRepositories(self):
+    def standard_repositories(self):
         raise NotImplementedError
 
-    def gitAnnexInfo(self):
+    def git_annex_info(self):
         """ calls 'git-annex info --fast --json' and parses the output """
         # change path
-        self.changePath()
+        self.change_path()
 
         # call the command
         cmd = ["git-annex", "info", "--fast", "--json"]
@@ -103,14 +104,14 @@ class GitAnnexRepository(GitRepository):
 
         return info
 
-    def getAnnexUUID(self):
+    def get_annex_UUID(self):
         """ get the git annex uuid of the current repository """
-        return self.gitConfig("annex.uuid")
+        return self.git_config("annex.uuid")
 
-    def gitAnnexStatus(self):
+    def git_annex_status(self):
         """ call 'git annex status' """
         # change into the right directory
-        self.changePath()
+        self.change_path()
 
         # get status
         cmd = ["git", "annex", "status", "--json"]
@@ -122,30 +123,30 @@ class GitAnnexRepository(GitRepository):
         # data looks like: list of {"status":"<status>","file":"<name>"}
         return data
 
-    def hasUncommitedChanges(self):
+    def has_uncommitted_changes(self):
         """
-            has the current repository uncommited changes?
-            warning: hasUncommitedChanges is inaccurate for direct
+            has the current repository uncommitted changes?
+            warning: has_uncommitted_changes is inaccurate for direct
                      repositories as a type change can mask a content change
         """
         # accept all except type changes
-        return any(data["status"] != 'T' for data in self.gitAnnexStatus())
+        return any(data["status"] != 'T' for data in self.git_annex_status())
 
-    def onDiskDirectMode(self):
+    def on_disk_direct_mode(self):
         """ finds the on disk direct mode """
 
         # get the config entry for 'annex.direct'
-        direct = self.gitConfig("annex.direct", "false")
+        direct = self.git_config("annex.direct", "false")
 
         # translate it to 'direct'/'indirect'
         return "direct" if direct == "true" else "indirect"
 
-    def onDiskTrustLevel(self):
+    def on_disk_trust_level(self):
         """ determines the current trust level """
 
         # get git annex info and git annex uuid
-        uuid = self.getAnnexUUID()
-        info = self.gitAnnexInfo()
+        uuid = self.get_annex_UUID()
+        info = self.git_annex_info()
 
         for level in self.TRUST_LEVEL:
             # create key
@@ -169,13 +170,13 @@ class GitAnnexRepository(GitRepository):
         else:
             raise ValueError("Unable to determine the trust level.")
 
-    def onDiskDescription(self):
+    def on_disk_description(self):
         """ find the on disk description of the current repository """
         """ determines the current trust level """
 
         # get git annex info and git annex uuid
-        uuid = self.getAnnexUUID()
-        info = self.gitAnnexInfo()
+        uuid = self.get_annex_UUID()
+        info = self.git_annex_info()
 
         for level in self.TRUST_LEVEL:
             # create key
@@ -203,10 +204,10 @@ class GitAnnexRepository(GitRepository):
         else:
             raise ValueError("Unable to determine the current description.")
 
-    def missingGitRemotesCheck(self, repos):
+    def missing_git_remotes_check(self, repos):
         """ check that all given repositories are indeed registered as a git remote """
         # get registered git remotes
-        remotes = self.gitRemotes()
+        remotes = self.git_remotes()
 
         # compute the missing ones
         missing = {r for r in repos if r.gitID() not in remotes}
@@ -220,7 +221,7 @@ class GitAnnexRepository(GitRepository):
         for r in sorted(missing, key=lambda r: str((r.host, r.annex, r.path))):
             print("Host: %s Annex: %s Path: %s" % (r.host.name, r.annex.name, r.path))
             # there is something additional to be told in the case of special repositories
-            if r.isSpecial():
+            if r.is_special():
                 print_red("warning: this is a special remote, you have to enable it manually", sep='')
                 print("create the special remote with the following command:")
                 print("    git annex initremote %s mac=HMACSHA512 encryption=<key> type=<type> ..." % r.gitID())
@@ -234,68 +235,68 @@ class GitAnnexRepository(GitRepository):
     #
     # main methods
     #
-    def init(self, ignorenonempty=False):
+    def init(self, ignore_nonempty=False):
         """ inits the repository """
 
         if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
-            print_blue("initialise", self.annex.name, "at", self.localpath)
+            print_blue("initialise", self.annex.name, "at", self.local_path)
 
         # change into the right directory, create it if necessary
-        self.changePath(create=True)
+        self.change_path(create=True)
 
         # init git
-        if not os.path.isdir(os.path.join(self.localpath, ".git")):
-            if os.listdir(self.localpath) and not ignorenonempty:
+        if not os.path.isdir(os.path.join(self.local_path, ".git")):
+            if os.listdir(self.local_path) and not ignore_nonempty:
                 print_red("trying to run 'git init' in a non-empty directory, use --ignorenonempty", sep='')
                 raise self.app.InterruptedException("non-empty directory")
             else:
-                self.executeCommand(["git", "init"])
+                self.execute_command(["git", "init"])
         else:
             if self.app.verbose <= self.app.VERBOSE_NORMAL:
                 print("It is already a git repository.")
 
         # init git annex
-        if not os.path.isdir(os.path.join(self.localpath, ".git/annex")):
-            self.executeCommand(["git-annex", "init", self.description])
+        if not os.path.isdir(os.path.join(self.local_path, ".git/annex")):
+            self.execute_command(["git-annex", "init", self.description])
         else:
             if self.app.verbose <= self.app.VERBOSE_NORMAL:
                 print("It is already a git annex repository.")
 
         # set the properties
-        self.setProperties()
+        self.set_properties()
 
-    def setProperties(self):
+    def set_properties(self):
         """ sets the properties of the current repository """
 
         if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
-            print_blue("setting properties of", self.annex.name, "at", self.localpath)
+            print_blue("setting properties of", self.annex.name, "at", self.local_path)
 
         # change into the right directory
-        self.changePath()
+        self.change_path()
 
         # make sure that the master branch exists
-        self.repairMaster()
+        self.repair_master()
 
         # set the description, if needed
-        if self.onDiskDescription() != self.description:
+        if self.on_disk_description() != self.description:
             cmd = ["git-annex", "describe", "here", self.description]
-            self.executeCommand(cmd)
+            self.execute_command(cmd)
 
         # set the requested direct mode, change only if needed
         d = "direct" if self.direct else "indirect"
-        if self.onDiskDirectMode() != d:
-            self.executeCommand(["git-annex", d])
+        if self.on_disk_direct_mode() != d:
+            self.execute_command(["git-annex", d])
 
         # set trust level if necessary
-        if self.onDiskTrustLevel() != self.trust:
-            self.executeCommand(["git-annex", self.trust, "here"])
+        if self.on_disk_trust_level() != self.trust:
+            self.execute_command(["git-annex", self.trust, "here"])
 
         # set git remotes
         # note: it only adds connections to repositories which are currently accesible
         # furthermore, it does not delete connections
-        for repo, connections in self.standardRepositories().items():
+        for repo, connections in self.standard_repositories().items():
             # ignore special repositories
-            if repo.isSpecial():
+            if repo.is_special():
                 continue
 
             # make sure that we have only one connection
@@ -308,28 +309,28 @@ class GitAnnexRepository(GitRepository):
             # determine the git path
             if connection is None:
                 # if it is local, use the path
-                gitPath = repo.path
+                git_path = repo.path
             else:
                 # otherwise delegate this question to the connection
-                gitPath = connection.gitPath(repo)
+                git_path = connection.git_path(repo)
 
             try:
                 # determine which url was already set
-                url = self.gitConfig("remote.%s.url" % gitID)
+                url = self.git_config("remote.%s.url" % gitID)
             except subprocess.CalledProcessError:
                 # no url was yet set
                 url = None
 
             if not url:
                 # if no url was yet set, set it
-                self.executeCommand(["git", "remote", "add", gitID, gitPath])
-            elif url != gitPath:
+                self.execute_command(["git", "remote", "add", gitID, git_path])
+            elif url != git_path:
                 # if the url was incorrect, warn the user and reset it
                 print_red("The url set for the connection %s does not match the computed one: %s != %s"
-                          % (connection, url, gitPath))
+                          % (connection, url, git_path))
                 # remove the old url and set it again
-                self.executeCommand(["git", "remote", "remove", gitID])
-                self.executeCommand(["git", "remote", "add", gitID, gitPath])
+                self.execute_command(["git", "remote", "remove", gitID])
+                self.execute_command(["git", "remote", "add", gitID, git_path])
             else:
                 # if everything is alright
                 continue
@@ -338,20 +339,20 @@ class GitAnnexRepository(GitRepository):
         """ calls git-annex add and commits all changes """
 
         if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
-            print_blue("commiting changes in", self.annex.name, "at", self.localpath)
+            print_blue("commiting changes in", self.annex.name, "at", self.local_path)
 
         # change into the right directory
-        self.changePath()
+        self.change_path()
 
         # call 'git-annex add'
-        self.executeCommand(["git-annex", "add"])
+        self.execute_command(["git-annex", "add"])
 
         # commit it
         utc = datetime.datetime.utcnow().strftime("%d.%m.%Y %H:%M:%S")
         msg = "Host: %s UTC: %s" % (self.host.name, utc)
         try:
             # there is no good way of checking if the repository needs a commit
-            self.executeCommand(["git-annex", "sync", "--no-push", "--no-pull", "--message={}".format(msg)])
+            self.execute_command(["git-annex", "sync", "--no-push", "--no-pull", "--message={}".format(msg)])
         except:
             pass
 
@@ -364,19 +365,19 @@ class GitAnnexRepository(GitRepository):
         self.finalise()
 
         # make sure that the master branch exists
-        self.repairMaster()
+        self.repair_master()
 
         if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
-            print_blue("syncing", self.annex.name, "in", self.localpath)
+            print_blue("syncing", self.annex.name, "in", self.local_path)
 
         # change into the right directory
-        self.changePath()
+        self.change_path()
 
         # repositories to sync with (select only non-special repositories)
-        sync_repos = set(repo for repo in self.standardRepositories().keys() if not repo.isSpecial())
+        sync_repos = set(repo for repo in self.standard_repositories().keys() if not repo.is_special())
 
         # check that all these repositories are registered
-        self.missingGitRemotesCheck(sync_repos)
+        self.missing_git_remotes_check(sync_repos)
 
         # only select wanted repositories
         if repositories is not None:
@@ -385,25 +386,25 @@ class GitAnnexRepository(GitRepository):
         if sync_repos:
             # call 'git-annex sync $gitIDs'
             gitIDs = [repo.gitID() for repo in sorted(sync_repos, key=str)]
-            self.executeCommand(["git-annex", "sync"] + gitIDs)
+            self.execute_command(["git-annex", "sync"] + gitIDs)
         else:
             # if no other annex is available, still do basic maintanence
-            self.executeCommand(["git-annex", "merge"])
+            self.execute_command(["git-annex", "merge"])
 
-    def repairMaster(self):
+    def repair_master(self):
         """ creates the master branch if necessary """
 
         # change into the right directory
-        self.changePath()
+        self.change_path()
 
-        branches = self.gitBranch()
+        branches = self.git_branch()
         # unneeded, if the master branch already exists
         if "master" in branches:
             return
 
         # we have to use this
         # (http://git-annex.branchable.com/direct_mode/)
-        self.executeCommand(["git", "-c", "core.bare=false", "commit", "--allow-empty", "-m", "empty commit"])
+        self.execute_command(["git", "-c", "core.bare=false", "commit", "--allow-empty", "-m", "empty commit"])
 
     def copy(self, copy_all=False, repositories=None, files=None, strict=None):
         """
@@ -418,15 +419,15 @@ class GitAnnexRepository(GitRepository):
 
         # use files expression of the current repository, if none is given
         if files is None:
-            local_files_cmd = self.filesAsCmd()
+            local_files_cmd = self.files_as_cmd()
         else:
-            local_files_cmd = self._filesAsCmd(files)
+            local_files_cmd = self._files_as_cmd(files)
 
         # repositories to copy from and to
-        repos = set(self.standardRepositories().keys())
+        repos = set(self.standard_repositories().keys())
 
         # check that all these repositories are registered
-        self.missingGitRemotesCheck(repos)
+        self.missing_git_remotes_check(repos)
 
         # only select wanted repositories
         if repositories is not None:
@@ -435,16 +436,16 @@ class GitAnnexRepository(GitRepository):
         # check remote files expression
         for repo in sorted(repos, key=str):
             # if we can convert it to command line arguments, then everything is fine
-            files_cmd = repo.filesAsCmd()
+            _ = repo.files_as_cmd()
 
         # sync
         self.sync(repos)
 
         if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
-            print_blue("copying files of", self.annex.name, "at", self.localpath)
+            print_blue("copying files of", self.annex.name, "at", self.local_path)
 
         # change into the right directory
-        self.changePath()
+        self.change_path()
 
         #
         # pull
@@ -461,7 +462,7 @@ class GitAnnexRepository(GitRepository):
         # call 'git-annex copy --fast [--all] --from=target <files expression as command>'
         for repo in sorted(repos, key=str):
             cmd = ["git-annex", "copy"] + flags + ["--from=%s" % repo.gitID()] + local_files_cmd
-            self.executeCommand(cmd)
+            self.execute_command(cmd)
 
         #
         # push
@@ -469,11 +470,11 @@ class GitAnnexRepository(GitRepository):
 
         for repo in sorted(repos, key=str):
             # parse remote files expression
-            files_cmd = repo.filesAsCmd()
+            files_cmd = repo.files_as_cmd()
 
             # call 'git-annex copy --fast [--all] --to=target <files expression as command>'
             cmd = ["git-annex", "copy"] + flags + ["--to=%s" % repo.gitID()] + files_cmd
-            self.executeCommand(cmd)
+            self.execute_command(cmd)
 
         #
         # apply strict
@@ -486,7 +487,7 @@ class GitAnnexRepository(GitRepository):
         if strict:
             # call 'git-annex drop --not -( <files expression -)
             cmd = ["git-annex", "drop"] + ["--not", "-("] + local_files_cmd + ["-)"]
-            self.executeCommand(cmd, ignoreexception=True)
+            self.execute_command(cmd, ignore_exception=True)
 
         # apply strict for remote repositories
         for repo in sorted(repos, key=str):
@@ -494,36 +495,36 @@ class GitAnnexRepository(GitRepository):
             if not repo.strict:
                 continue
             # parse remote files expression
-            files_cmd = repo.filesAsCmd()
+            files_cmd = repo.files_as_cmd()
 
             # call 'git-annex drop --from=target --not -( <files expression> -)
             cmd = ["git-annex", "drop", "--from=%s" % repo.gitID()] + ["--not", "-("] + files_cmd + ["-)"]
-            self.executeCommand(cmd, ignoreexception=True)
+            self.execute_command(cmd, ignore_exception=True)
 
         # sync again
         self.sync(repos)
 
-    def deleteAllRemotes(self):
+    def delete_all_remotes(self):
         """
             deletes all remotes found in .git/confing, this implicitly deletes
             also all remote tracking-branches
         """
 
         if self.app.verbose <= self.app.VERBOSE_IMPORTANT:
-            print_blue("delete all remotes of", self.annex.name, "in", self.localpath)
+            print_blue("delete all remotes of", self.annex.name, "in", self.local_path)
 
         # change path to current directory
-        self.changePath()
+        self.change_path()
 
         # find all remotes
-        remotes = self.gitRemotes()
+        remotes = self.git_remotes()
         if self.app.verbose <= self.app.VERBOSE_NORMAL:
             print("remotes found: %s" % ', '.join(remotes))
 
         # delete all remotes
         for remote in remotes:
             cmd = ["git", "remote", "rm", remote]
-            self.executeCommand(cmd)
+            self.execute_command(cmd)
 
 
 class LocalRepository(GitAnnexRepository):
@@ -532,30 +533,30 @@ class LocalRepository(GitAnnexRepository):
         which can be accessed from app.currentHost()
         
         main git annex methods:
-            init(ignorenonempty=False)
-            setProperties()
+            init(ignore_nonempty=False)
+            set_properties()
             finalise()
             sync(annex descriptions=None)
-            repairMaster()
+            repair_master()
             copy(annex descriptions, files expression, strict=true/false)
-            deleteAllRemotes()
+            delete_all_remotes()
 
         git methods:
-            gitConfig(key) -> value
-            gitBranch() -> list of branches
-            gitHead() -> git head
+            git_config(key) -> value
+            git_branch() -> list of branches
+            git_head() -> git head
         
         git annex methods:
-            gitAnnexInfo()
-            getAnnexUUID()
-            gitAnnexStatus()
-            onDiskDirectMode()
-            onDiskTrustLevel()
-            onDiskDescription()
+            git_annex_info()
+            get_annex_UUID()
+            git_annex_status()
+            on_disk_direct_mode()
+            on_disk_trust_level()
+            on_disk_description()
             
         other methods:
-            changePath()
-            standardRepositories()
+            change_path()
+            standard_repositories()
     """
 
     def __init__(self, repo, connection=None):
@@ -577,7 +578,7 @@ class LocalRepository(GitAnnexRepository):
                 "the connection does not end at the host of the current repository. (%s != %s)" \
                 % (self.repo.host, self.connection.dest)
             # the connection has to be local
-            assert self.connection.isLocal(), \
+            assert self.connection.is_local(), \
                 "the connection has to be to 'local'."
         else:
             # otherwise, the repository is hosted on the current host
@@ -607,18 +608,18 @@ class LocalRepository(GitAnnexRepository):
         return super(LocalRepository, self).__setattr__(name, v)
 
     @property
-    def localpath(self):
+    def local_path(self):
         """ returns the path on the local machine """
-        assert not self.isSpecial(), "local path can only be called for non-special remotes"
+        assert not self.is_special(), "local path can only be called for non-special remotes"
 
         if self.connection is None:
             # the repository is on the local machine
             return self.path
         else:
             # we are working remotely: give the path on the local machine
-            return self.connection.pathOnSource(self.path)
+            return self.connection.path_on_source(self.path)
 
-    def standardRepositories(self):
+    def standard_repositories(self):
         """ determine repositories which are online (from the point of view of the current host) """
         # convert connections to a dictionary dest -> set of connections to dest
         connections = collections.defaultdict(set)
@@ -644,9 +645,9 @@ class LocalRepository(GitAnnexRepository):
                     # we are working locally, add the connection only if
                     # the repository is non-special, i.e. avoid implcit
                     # connections to special local repositories
-                    if not repository.isSpecial():
+                    if not repository.is_special():
                         active_repos[repository].add(connection)
-                elif connection.isOnline():
+                elif connection.is_online():
                     # add the connection if the connection is online
                     active_repos[repository].add(connection)
 

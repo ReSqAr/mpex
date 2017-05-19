@@ -1,7 +1,7 @@
 class FuzzyMatch:
     def __init__(self, s, valid):
         # save options
-        self.s = s = s.strip()
+        self.s = s.strip()
         self.valid = valid
 
         # initialise output variables
@@ -57,7 +57,7 @@ class FuzzyMatch:
             return self.fuzzyMatches.values()
 
 
-def fuzzyMultiMatch(s, valid):
+def fuzzy_multi_match(s, valid):
     """
         matches the s in a fuzzy way against the keys of the dictionary valid,
         the corresponding values are returned
@@ -65,7 +65,7 @@ def fuzzyMultiMatch(s, valid):
     return FuzzyMatch(s, valid).all()
 
 
-def fuzzyMatch(s, valid):
+def fuzzy_match(s, valid):
     """
         matches the s in a fuzzy way against the keys of the dictionary valid,
         the corresponding value is returned

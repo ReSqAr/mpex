@@ -46,7 +46,7 @@ class Application:
         self.repositories.check()
 
         # we want to have a new version
-        assert self.gitAnnexCapabilities["date"] >= (2014, 1, 1)
+        assert self.git_annex_capabilities["date"] >= (2014, 1, 1)
 
     def save(self):
         """ saves all data """
@@ -88,20 +88,20 @@ class Application:
         # promote the object
         return local_repository.LocalRepository(repo, connection)
 
-    def getHostedRepositories(self):
+    def get_hosted_repositories(self):
         """ get all repositories which are hosted on the current machine """
         return {self.assimilate(repo) for repo in self.current_host().repositories()}
 
-    def getConnections(self):
+    def get_connections(self):
         """ get all connections which originate from the current host """
         return self.current_host().connections()
 
-    def getConnectedRepositories(self, conn):
+    def get_connected_repositories(self, conn):
         """ find all repositories which are connected via the given connection """
         return {self.assimilate(repo, conn) for repo in conn.dest.repositories()}
 
     @property
-    def gitAnnexCapabilities(self):
+    def git_annex_capabilities(self):
         """
             checks if the current git annex version supports certain
             operations, e.g. direct mode, certain special remotes, etc.
@@ -127,7 +127,7 @@ class Application:
         date = capabilities["version"].split('.')[1]
         if "-" in date:
             date = date.split("-")[0]
-        assert len(date) == 8, "Version string is unexcepted format: %s" % capabilities["version"]
+        assert len(date) == 8, "Version string is unexpected format: %s" % capabilities["version"]
         year, month, day = date[:4], date[4:6], date[6:]
         year, month, day = int(year), int(month), int(day)
         capabilities["date"] = year, month, day
@@ -138,7 +138,7 @@ class Application:
         # return
         return capabilities
 
-    def executeCommand(self, cmd, ignoreexception=False, print_ignored_exception=True):
+    def execute_command(self, cmd, ignore_exception=False, print_ignored_exception=True):
         """ print and execute the command """
         if self.verbose <= self.VERBOSE_IMPORTANT:
             print("command:", " ".join(cmd))
@@ -152,9 +152,9 @@ class Application:
             with open(os.devnull, "w") as devnull:
                 subprocess.check_call(cmd, stdout=None if self.verbose <= self.VERBOSE_NORMAL else devnull)
         except (subprocess.CalledProcessError, OSError) as e:
-            if ignoreexception:
+            if ignore_exception:
                 if print_ignored_exception:
-                    print_red("an ignored error occured:", str(e))
+                    print_red("an ignored error occurred:", str(e))
             else:
-                print_red("an error occured:", str(e))
+                print_red("an error occurred:", str(e))
                 raise InterruptedException(e)

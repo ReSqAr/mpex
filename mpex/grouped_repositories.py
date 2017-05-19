@@ -12,7 +12,7 @@ def check_output_no_ret(*popenargs, **kwargs):
         raise ValueError('stdout argument not allowed, it will be overridden.')
     process = subprocess.Popen(stdout=subprocess.PIPE, stderr=subprocess.PIPE, *popenargs, **kwargs)
     output, unused_error = process.communicate()
-    unused_retcode = process.poll()
+    _ = process.poll()
     return output
 
 
@@ -304,7 +304,7 @@ def do_report(path, number_of_content_lines=5, omit_untrusted=False):
     print_report(root, repositories, number_of_content_lines)
 
 
-if __name__ == "__main__":
+def application_main():
     import sys
 
     if len(sys.argv) < 2:
@@ -316,10 +316,14 @@ if __name__ == "__main__":
     # second argument is the number of content lines, default is 5
     try:
         number_of_content_lines = int(sys.argv[2])
-    except:
+    except (IndexError, ValueError):
         number_of_content_lines = 5
 
     omit_untrusted = False
 
     # create and print the report
     do_report(path, number_of_content_lines, omit_untrusted=omit_untrusted)
+
+
+if __name__ == "__main__":
+    application_main()

@@ -132,12 +132,12 @@ def create_annexes_table(env, annexes, additional_data=True):
 def create_repositories_table(env, repositories):
     """ builds a table """
     # determine if additional columns have to be shown
-    withspecial = any(repo.isSpecial() for repo in repositories)
-    withdirect = any(repo.direct for repo in repositories)
-    withtrust = any(repo.trust != "semitrust" for repo in repositories)
-    withfiles = any(repo.files for repo in repositories)
-    withstrict = any(repo.strict for repo in repositories)
-    withdesc = any(repo.hasNonTrivialDescription() for repo in repositories)
+    with_special = any(repo.is_special() for repo in repositories)
+    with_direct = any(repo.direct for repo in repositories)
+    with_trust = any(repo.trust != "semitrust" for repo in repositories)
+    with_files = any(repo.files for repo in repositories)
+    with_strict = any(repo.strict for repo in repositories)
+    with_desc = any(repo.has_non_trivial_description() for repo in repositories)
 
     # we build a table: a 2 dimensional array
     table = []
@@ -145,12 +145,12 @@ def create_repositories_table(env, repositories):
     # build table header
     header = ["Host", "Annex", "Path"]
     # additional columns:
-    if withspecial: header.append("Special")
-    if withdirect:  header.append("Direct")
-    if withtrust:   header.append("Trust")
-    if withfiles:   header.append("Files")
-    if withstrict:  header.append("Strict")
-    if withdesc:    header.append("Description")
+    if with_special: header.append("Special")
+    if with_direct:  header.append("Direct")
+    if with_trust:   header.append("Trust")
+    if with_files:   header.append("Files")
+    if with_strict:  header.append("Strict")
+    if with_desc:    header.append("Description")
     # the first line is the header
     table.append(header)
 
@@ -165,20 +165,20 @@ def create_repositories_table(env, repositories):
         # second column is the annex name
         row.append(format_annex(env, repo.annex))
         # third column is the path
-        row.append(repo.path if not repo.isSpecial() else "-")
+        row.append(repo.path if not repo.is_special() else "-")
         # further columns
-        if withspecial:
-            row.append("yes" if repo.isSpecial() else "")
-        if withdirect:
+        if with_special:
+            row.append("yes" if repo.is_special() else "")
+        if with_direct:
             row.append("yes" if repo.direct else "")
-        if withtrust:
+        if with_trust:
             row.append(repo.trust if repo.trust != "semitrust" else "")
-        if withstrict:
+        if with_strict:
             row.append("yes" if repo.strict else "")
-        if withfiles:
+        if with_files:
             row.append(repo.files if repo.files else "")
-        if withdesc:
-            row.append(repo.description if repo.hasNonTrivialDescription() else "")
+        if with_desc:
+            row.append(repo.description if repo.has_non_trivial_description() else "")
         # append row
         table.append(row)
 
@@ -190,7 +190,7 @@ def create_connections_table(env, connections):
     """ builds a table """
 
     # determine if additional columns have to be shown
-    withalwayson = any(conn.alwaysOn for conn in connections)
+    withalwayson = any(conn.always_on for conn in connections)
 
     # we build a table: a 2 dimensional array
     table = []
@@ -216,7 +216,7 @@ def create_connections_table(env, connections):
         row.append(conn.path)
         # further columns
         if withalwayson:
-            row.append("yes" if conn.alwaysOn else "")
+            row.append("yes" if conn.always_on else "")
         # append row
         table.append(row)
     return connections, table
@@ -229,7 +229,7 @@ def print_data(env, data_type, enumerated=False):
     """ print all data known for data type data_type """
 
     # get known objects
-    objs = getattr(env.app, data_type).getAll()
+    objs = getattr(env.app, data_type).get_all()
 
     appendix = []
 
@@ -303,8 +303,8 @@ def edit(env):
             print("  edit [%s]%s list" % (data_type[0], data_type[1:]))
 
             # create edit command: break scoping rule
-            def create_edit_command(data_type):
-                return lambda: meta_edit_command(env, data_type)
+            def create_edit_command(inner_data_type):
+                return lambda: meta_edit_command(env, inner_data_type)
 
             options[data_type[0]] = create_edit_command(data_type)
 
@@ -352,7 +352,7 @@ def meta_edit_command(env, data_type):
         # print available options
         print_bold("Available options:", sep='')
 
-        # if objects exist, give the possiblity to edit them
+        # if objects exist, give the possibility to edit them
         if objs:
             print("  edit [i]-th entry (i: 1-%d)" % len(objs))
             # create edit command: break scoping rule
@@ -411,7 +411,7 @@ def valid_values_pp(valid_values):
     # define post processor via fuzzy_match
     def postprocessor(s):
         """ checks that s is a valid value """
-        return fuzzy_match.fuzzyMatch(s, valid_values)
+        return fuzzy_match.fuzzy_match(s, valid_values)
 
     # return post processor
     return postprocessor
@@ -435,7 +435,7 @@ def sorted_obj_pp(env, data_type, sorted_objs):
 
         # otherwise, try to fuzzily match against a host name
         # this may raise an exception, this exception is used by ask_questions
-        return getattr(env.app, data_type).fuzzyMatch(s).name
+        return getattr(env.app, data_type).fuzzy_match(s).name
 
     return postprocessor
 
@@ -494,7 +494,7 @@ def edit_hosts(env, obj):
                 # overwrite (very unsafe)
                 obj._name = name
         except Exception as e:
-            print_red("an error occured:", e.args[0])
+            print_red("an error occurred:", e.args[0])
             return
 
 
@@ -535,7 +535,7 @@ def edit_annexes(env, obj):
                 # overwrite (very unsafe)
                 obj._name = name
         except Exception as e:
-            print_red("an error occured:", e.args[0])
+            print_red("an error occurred:", e.args[0])
             return
 
     else:
@@ -552,7 +552,7 @@ def edit_repositories(env, obj):
         # we have to create a new object (or overwrite existing values)
 
         # at least one host and one annex have to exist
-        if not env.app.hosts.getAll() or not env.app.annexes.getAll():
+        if not env.app.hosts.get_all() or not env.app.annexes.get_all():
             print("error: you have to have at least one host and one annex to be able to create a repository")
             return
 
@@ -606,8 +606,8 @@ def edit_repositories(env, obj):
 
         try:
             # pre process raw data
-            host = env.app.hosts.fuzzyMatch(answers["host"]) if env.host is None else env.host
-            annex = env.app.annexes.fuzzyMatch(answers["annex"]) if env.annex is None else env.annex
+            host = env.app.hosts.fuzzy_match(answers["host"]) if env.host is None else env.host
+            annex = env.app.annexes.fuzzy_match(answers["annex"]) if env.annex is None else env.annex
             path = answers["path"]
             description = answers["description"]
 
@@ -625,7 +625,7 @@ def edit_repositories(env, obj):
                 elif "description" in obj._data:
                     del obj._data["description"]
         except Exception as e:
-            print_red("an error occured:", e.args[0])
+            print_red("an error occurred:", e.args[0])
             return
 
     print()
@@ -655,7 +655,7 @@ def edit_repositories(env, obj):
     questions.append({"name": "files",
                       "description": "files expression which specifies the desired content of this repository",
                       "default": obj.files if obj.files else "",
-                      "postprocessor": obj._sanitiseFilesExpression})
+                      "postprocessor": obj._sanitise_files_expression})
 
     # 4. question: strict?
     questions.append({"name": "strict",
@@ -685,7 +685,7 @@ def edit_repositories(env, obj):
         obj.strict = strict
         obj.files = files  # files should be last, as it more likely to fail
     except Exception as e:
-        print_red("an error occured:", e.args[0])
+        print_red("an error occurred:", e.args[0])
         return
 
 
@@ -699,7 +699,7 @@ def edit_connections(env, obj):
         # we have to create a new object (or overwrite existing values)
 
         # at least two hosts have to exist
-        if len(env.app.hosts.getAll()) < 2:
+        if len(env.app.hosts.get_all()) < 2:
             print("error: you have to have at least two hosts to be able to create a connection")
             return
 
@@ -743,8 +743,8 @@ def edit_connections(env, obj):
         # create or overwrite object
         try:
             # pre process raw data
-            source = env.app.hosts.fuzzyMatch(answers["source"]) if env.host is None else env.host
-            destination = env.app.hosts.fuzzyMatch(answers["destination"])
+            source = env.app.hosts.fuzzy_match(answers["source"]) if env.host is None else env.host
+            destination = env.app.hosts.fuzzy_match(answers["destination"])
             path = answers["path"]
 
             if to_create:
@@ -754,7 +754,7 @@ def edit_connections(env, obj):
                 # overwrite (very unsafe)
                 obj._source, obj._dest, obj._path = source, destination, path
         except Exception as e:
-            print_red("an error occured:", e.args[0])
+            print_red("an error occurred:", e.args[0])
             return
 
     print()
@@ -788,5 +788,5 @@ def edit_connections(env, obj):
         # set values
         obj.alwaysOn = alwayson
     except Exception as e:
-        print_red("an error occured:", e.args[0])
+        print_red("an error occurred:", e.args[0])
         return

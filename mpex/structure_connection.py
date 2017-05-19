@@ -13,11 +13,11 @@ class Connections(structure_base.Collection):
         # call super
         super(Connections, self).__init__(app, "known_connections", Connection)
 
-    def keyFromArguments(self, source, dest, path, **data):
+    def key_from_arguments(self, source, dest, path, **data):
         """ get the key from the arguments """
         return source, dest, path
 
-    def objToRawData(self, obj):
+    def obj_to_raw_data(self, obj):
         """ converts an object into raw data """
         raw = dict(obj._data)
         raw["source"] = obj._source.name
@@ -25,7 +25,7 @@ class Connections(structure_base.Collection):
         raw["path"] = obj._path
         return raw
 
-    def rawDataToArgDict(self, raw):
+    def raw_data_to_arg_dict(self, raw):
         """ brings obj into a form which can be consumed by cls """
         # copy dictionary
         raw = dict(raw)
@@ -69,18 +69,18 @@ class Connection:
         return self._path
 
     @property
-    def alwaysOn(self):
+    def always_on(self):
         """ specifies if the connection is always active, default: False """
         return self._data.get("alwayson", "false").lower() == "true"
 
-    @alwaysOn.setter
-    def alwaysOn(self, v):
+    @always_on.setter
+    def always_on(self, v):
         self._data["alwayson"] = str(bool(v)).lower()
 
     #
     # derived methods
     #
-    def pathData(self):
+    def path_data(self):
         """ returns a dictionary with all relevant data on the path """
         data = {}
 
@@ -97,13 +97,13 @@ class Connection:
 
     def protocol(self):
         """ returns the used protocol """
-        return self.pathData()["protocol"]
+        return self.path_data()["protocol"]
 
-    def gitPath(self, repo):
+    def git_path(self, repo):
         """ computes the path used by git to access the repository over the connection """
 
         assert self.dest == repo.host, "Programming error."
-        assert not repo.isSpecial(), "There is no git path for a special repository."
+        assert not repo.is_special(), "There is no git path for a special repository."
 
         # get the protocol
         protocol = self.protocol()
@@ -118,10 +118,10 @@ class Connection:
         else:
             raise ValueError("Programming error.")
 
-    def isOnline(self):
+    def is_online(self):
         """ checks if the connection is online """
         # if always on is set, then the connection is online
-        if self.alwaysOn:
+        if self.always_on:
             return True
 
         # if there is a cache, use it
@@ -129,7 +129,7 @@ class Connection:
             return self._isonline_cache
 
         # get data
-        data = self.pathData()
+        data = self.path_data()
 
         if data["protocol"] == "mount":
             # consider a path mounted if the directory exists and is non-empty
@@ -160,7 +160,7 @@ class Connection:
         # return status
         return isonline
 
-    def isLocal(self):
+    def is_local(self):
         """
             is the connection local, i.e. something which can be
             reached via the file system
@@ -168,12 +168,12 @@ class Connection:
         # a connection is local if it is of type 'mount'
         return self.protocol() in ("mount",)
 
-    def pathOnSource(self, path):
+    def path_on_source(self, path):
         """
             assume that path is path on self.dest and that the connection is of
             type mount, the return value is the path on self.source
         """
-        assert self.isLocal(), "Incorrect usage."
+        assert self.is_local(), "Incorrect usage."
 
         # kill the trailing /
         prefix = self.path
@@ -182,21 +182,21 @@ class Connection:
         # just join them together
         return prefix + path
 
-    def supportsRemoteExecution(self):
+    def supports_remote_execution(self):
         """ can we execute commands remotely? """
         # we can do that only if the protocol is 'ssh'
         return self.protocol() in ("ssh",)
 
-    def executeRemotely(self, cmd):
+    def execute_remotely(self, cmd):
         """ execute the command on the target machine """
-        assert self.supportsRemoteExecution(), "does not support remote execution"
+        assert self.supports_remote_execution(), "does not support remote execution"
         assert isinstance(cmd, list), "expected a list"
 
         # build remote command
-        l_cmd = ["ssh", self.pathData()["server"]] + cmd
+        l_cmd = ["ssh", self.path_data()["server"]] + cmd
 
         # execute the command
-        self.app.executeCommand(l_cmd)
+        self.app.execute_command(l_cmd)
 
     #
     # hashable type mehods, hashable is needed for dict keys and sets

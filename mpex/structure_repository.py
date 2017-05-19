@@ -15,14 +15,14 @@ class Repositories(structure_base.Collection):
         # call super
         super(Repositories, self).__init__(app, "known_repositories", Repository)
 
-    def keyFromArguments(self, host, annex, path, **data):
+    def key_from_arguments(self, host, annex, path, **data):
         """ get the key from the arguments """
         # key is annex and the description, or if the description
         # does not exists, the host name
         assert isinstance(host, structure_host.Host), "host %s has to be an instance of Host" % host
         return annex, data.get("description", host.name)
 
-    def objToRawData(self, obj):
+    def obj_to_raw_data(self, obj):
         """ converts an object into raw data """
         raw = dict(obj._data)
         raw["host"] = obj._host.name
@@ -30,7 +30,7 @@ class Repositories(structure_base.Collection):
         raw["path"] = obj._path
         return raw
 
-    def rawDataToArgDict(self, raw):
+    def raw_data_to_arg_dict(self, raw):
         """ brings obj into a form which can be consumed by cls """
         # copy dictionary
         raw = dict(raw)
@@ -42,18 +42,18 @@ class Repositories(structure_base.Collection):
 
     def check(self):
         """ checks the files expressions """
-        for repo in self.getAll():
+        for repo in self.get_all():
             repo.files = repo.files
 
-    def fuzzyMatch(self, annex, annex_desc):
+    def fuzzy_match(self, annex, annex_desc):
         """ matches the annex description in a fuzzy way against the known repositories """
 
         # create key -> value mapping
-        valid = {repo.description: repo for repo in self.getAll() if repo.annex == annex}
+        valid = {repo.description: repo for repo in self.get_all() if repo.annex == annex}
 
         try:
             # try to find a
-            return fuzzy_match.fuzzyMatch(annex_desc, valid)
+            return fuzzy_match.fuzzy_match(annex_desc, valid)
         except ValueError as e:
             raise ValueError("could not parse the annex description '%s': %s" % (annex_desc, e.args[0]))
 
@@ -103,7 +103,7 @@ class Repository:
     # so we check it after everything is loaded
 
     @staticmethod
-    def checkTokenisedFilesExpression(s, tokens):
+    def check_tokenised_files_expression(s, tokens):
         """ conducts some trivial tests on the tokenised expression """
 
         # brackets: all brackets have to closed at the right level
@@ -117,7 +117,7 @@ class Repository:
             if number_of_brackets > 0:
                 raise ValueError("too many '(' in: %s" % s)
 
-    def _tokeniseFilesExpression(self, s):
+    def _tokenise_files_expression(self, s):
         """ tokenises the file expression, returns a list of tokens """
         if s is None:
             return []
@@ -163,17 +163,17 @@ class Repository:
                 s = s[i:]
 
             # we have found an annex description, now parse it
-            annex_desc = self.app.repositories.fuzzyMatch(self.annex, annex_desc)
+            annex_desc = self.app.repositories.fuzzy_match(self.annex, annex_desc)
             tokens.append(annex_desc.description)
 
         # check
-        self.checkTokenisedFilesExpression(orig, tokens)
+        self.check_tokenised_files_expression(orig, tokens)
 
         # return the list of tokens
         return tokens
 
     @classmethod
-    def _tokenisedFilesExpressionToCmd(cls, tokens):
+    def _tokenised_files_expression_to_cmd(cls, tokens):
         """ converts a list of tokens into a command """
         tokens, cmd = list(tokens), []
 
@@ -207,7 +207,7 @@ class Repository:
 
         return cmd
 
-    def _sanitiseFilesExpression(self, files):
+    def _sanitise_files_expression(self, files):
         """ sanitise the files expression """
 
         # if there is nothing to do, leave
@@ -215,7 +215,7 @@ class Repository:
             return
 
         # tokenise
-        tokens = self._tokeniseFilesExpression(files)
+        tokens = self._tokenise_files_expression(files)
 
         # reformat files
         files = ""
@@ -234,10 +234,10 @@ class Repository:
 
         return files.strip()
 
-    def _filesAsCmd(self, files):
+    def _files_as_cmd(self, files):
         """ convert the files expression to a command """
-        tokens = self._tokeniseFilesExpression(files)
-        return self._tokenisedFilesExpressionToCmd(tokens)
+        tokens = self._tokenise_files_expression(files)
+        return self._tokenised_files_expression_to_cmd(tokens)
 
     @property
     def host(self):
@@ -251,7 +251,7 @@ class Repository:
     def path(self):
         return self._path
 
-    def hasNonTrivialDescription(self):
+    def has_non_trivial_description(self):
         """ is the description more than the modified host name? """
         return "description" in self._data
 
@@ -286,14 +286,14 @@ class Repository:
     def files(self):
         """ determines which files should be kept in the repository, default: None """
         files = self._data.get("files")
-        files = self._sanitiseFilesExpression(files)
+        files = self._sanitise_files_expression(files)
         return files
 
     @files.setter
     def files(self, v):
         """ protected setter method """
         # sanitise the expression
-        v = self._sanitiseFilesExpression(v)
+        v = self._sanitise_files_expression(v)
 
         if v is None and "files" in self._data:
             # if it should be deleted and the property is set
@@ -302,9 +302,9 @@ class Repository:
             # if the property should be set
             self._data["files"] = v
 
-    def filesAsCmd(self):
+    def files_as_cmd(self):
         """ convert the current files expression to a command """
-        return self._filesAsCmd(self.files)
+        return self._files_as_cmd(self.files)
 
     @property
     def strict(self):
@@ -315,11 +315,11 @@ class Repository:
     def strict(self, v):
         self._data["strict"] = str(bool(v)).lower()
 
-    def isSpecial(self):
+    def is_special(self):
         """ determines if the repository is a special remote """
         return self._path == "special"
 
-    def connectedRepositories(self):
+    def connected_repositories(self):
         """ find all connected repositories, returns a dictionary: repository -> set of connections """
 
         # convert connections to a dictionary dest -> set of connections to dest
@@ -347,7 +347,7 @@ class Repository:
         return gitID
 
     #
-    # hashable type mehods, hashable is needed for dict keys and sets
+    # hashable type methods, hashable is needed for dict keys and sets
     # (source: http://docs.python.org/2/library/stdtypes.html#mapping-types-dict)
     #
     def __hash__(self):

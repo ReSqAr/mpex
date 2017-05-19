@@ -6,12 +6,12 @@ import re
 
 
 class Collection:
-    def __init__(self, app, fileprefix, cls):
+    def __init__(self, app, file_prefix, cls):
         # save options
         self.app = app
         self.cls = cls
         # compute the file name
-        self.fileprefix = fileprefix
+        self.file_prefix = file_prefix
         # internal dictionary which tracks all known objects
         self._objects = {}
         # load objects
@@ -24,7 +24,7 @@ class Collection:
 
         # check all files in the config directory
         for filename in os.listdir(self.app.path):
-            if not filename.startswith(self.fileprefix):
+            if not filename.startswith(self.file_prefix):
                 continue
 
             path = os.path.join(self.app.path, filename)
@@ -33,20 +33,18 @@ class Collection:
                 # decode object (json file)
                 raw_data = json.load(fd)
                 # convert raw object data
-                obj = self.rawDataToArgDict(raw_data)
+                obj = self.raw_data_to_arg_dict(raw_data)
                 # create the object
                 self.create(**obj)
 
     def save(self):
         """ saves all known objects """
         # get set of all known objects
-        list_of_objects = list()
-
         used_names = set()
 
         for key, data in self._objects.items():
             # convert data and calculate hash
-            raw_data = self.objToRawData(data)
+            raw_data = self.obj_to_raw_data(data)
             raw_json = json.dumps(raw_data, ensure_ascii=False, indent=4, sort_keys=True)
             raw_json_hash = hashlib.sha256(raw_json.encode("UTF8")).hexdigest()[:16]
 
@@ -55,7 +53,7 @@ class Collection:
             readable_key = readable_key.lower()
             readable_key = re.sub("[^a-zA-Z0-9]", "_", readable_key)
 
-            filename = self.fileprefix + "__" + readable_key + "__" + raw_json_hash
+            filename = self.file_prefix + "__" + readable_key + "__" + raw_json_hash
             path = os.path.join(self.app.path, filename)
 
             used_names.add(filename)
@@ -64,11 +62,11 @@ class Collection:
                 fd.write(raw_json)
 
         # delete old files
-        seen_filenames = {filename for filename in os.listdir(self.app.path) if filename.startswith(self.fileprefix)}
+        seen_filenames = {filename for filename in os.listdir(self.app.path) if filename.startswith(self.file_prefix)}
         for filename in seen_filenames - used_names:
             os.remove(os.path.join(self.app.path, filename))
 
-    def getAll(self):
+    def get_all(self):
         """ return all known objects """
         return set(self._objects.values())
 
@@ -80,14 +78,14 @@ class Collection:
             is raised
         """
         # compute key
-        key = self.keyFromArguments(*args, **kwargs)
+        key = self.key_from_arguments(*args, **kwargs)
         # return object
         return self._objects[key]
 
     def create(self, *args, **kwargs):
         """ get the given object, signature matches the signature of cls """
         # compute key
-        key = self.keyFromArguments(*args, **kwargs)
+        key = self.key_from_arguments(*args, **kwargs)
         # the object may not exist yet
         assert key not in self._objects, "object with key %s already exists: %s" % (key, self._objects[key])
         # create it
@@ -96,14 +94,14 @@ class Collection:
         return self._objects[key]
 
     # virtual methods
-    def keyFromArguments(self, *args, **kwargs):
+    def key_from_arguments(self, *args, **kwargs):
         """ get the key from the arguments """
         raise NotImplementedError
 
-    def objToRawData(self, obj):
+    def obj_to_raw_data(self, obj):
         """ converts an object into raw data """
         raise NotImplementedError
 
-    def rawDataToArgDict(self, raw):
+    def raw_data_to_arg_dict(self, raw):
         """ brings obj into a form which can be consumed by cls """
         raise NotImplementedError

@@ -20,19 +20,19 @@ def parse_annex_names(app, args):
     """ parse annexes supplied by the user """
     # if nothing is given, return all
     if not args.annex:
-        return app.annexes.getAll()
+        return app.annexes.get_all()
 
     # save
     annex_names = args.annex
 
     # find all known names
-    known_annexes = {annex.name: annex for annex in app.annexes.getAll()}
+    known_annexes = {annex.name: annex for annex in app.annexes.get_all()}
 
     selected_annexes = set()
 
     for annex_name in annex_names:
         # find annexes
-        annexes = set(fuzzy_match.fuzzyMultiMatch(annex_name, known_annexes))
+        annexes = set(fuzzy_match.fuzzy_multi_match(annex_name, known_annexes))
         if not annexes:
             print("WARNING: could not parse the annex '%s'" % annex_name)
             sys.exit(1)
@@ -85,15 +85,15 @@ def apply_function(args, f):
     # sort out execution targets
     hosts_filter = None
     if args.hosts is not None:
-        # split the comma seperated list
+        # split the comma separated list
         hosts = [host.strip() for host in args.hosts.split(",")]
 
         # find all known names
-        known_hosts = {host.name: host for host in app.hosts.getAll()}
+        known_hosts = {host.name: host for host in app.hosts.get_all()}
         hosts_filter = set()
         for host_name in hosts:
             # find annexes
-            selected_hosts = set(fuzzy_match.fuzzyMultiMatch(host_name, known_hosts))
+            selected_hosts = set(fuzzy_match.fuzzy_multi_match(host_name, known_hosts))
             if not selected_hosts:
                 print("WARNING: could not parse the host '%s'" % host_name)
                 sys.exit(1)
@@ -102,40 +102,40 @@ def apply_function(args, f):
 
         # only execute locally, if the current host is specified
         if app.current_host() in hosts_filter:
-            localExecution = True
+            local_execution = True
             # remove local host
             hosts_filter.remove(app.current_host())
         else:
-            localExecution = False
+            local_execution = False
 
         # only execute remotely, if the filter is non-empty
-        remoteExecution = bool(hosts_filter)
+        remote_execution = bool(hosts_filter)
 
     elif args.remoteonly:
         # only remote
-        localExecution, remoteExecution = False, True
+        local_execution, remote_execution = False, True
     elif args.remote:
         # both
-        localExecution, remoteExecution = True, True
+        local_execution, remote_execution = True, True
     else:
         # default: only local
-        localExecution, remoteExecution = True, False
+        local_execution, remote_execution = True, False
 
     # list of connections
     connections = []
 
-    # if remoted execution is wanted and we are still close enough to the origin
-    if remoteExecution and args.hops > 0:
-        for connection in app.getConnections():
+    # if remote execution is wanted and we are still close enough to the origin
+    if remote_execution and args.hops > 0:
+        for connection in app.get_connections():
             # filter hosts if the host filter is active
             if hosts_filter is not None and connection.dest not in hosts_filter:
                 continue
             # if the connection is available, use it
-            if connection.isOnline():
+            if connection.is_online():
                 connections.append(connection)
 
         # sort connections, non-local connections first
-        connections.sort(key=lambda c: c.isLocal())
+        connections.sort(key=lambda c: c.is_local())
 
         # state the connected hosts
 
@@ -145,29 +145,29 @@ def apply_function(args, f):
             print("found no connections to other hosts")
 
     # if local execution is requested, add the trivial connection
-    if localExecution:
+    if local_execution:
         connections.append(None)
 
     # actually execute f
     for connection in connections:
-        if connection is None or connection.isLocal():
+        if connection is None or connection.is_local():
             # if the repositories are locally accessible
             if connection is None:
                 # if we have the trivial connection, use the locally hosted repositories
-                repositories = app.getHostedRepositories()
+                repositories = app.get_hosted_repositories()
             else:
                 # otherwise, all repositories which can be accessed via the connection
-                repositories = app.getConnectedRepositories(connection)
+                repositories = app.get_connected_repositories(connection)
 
             # iterate over all found repositories
             for repo in sorted(repositories, key=r_key):
                 # check if the repo belongs to a selected annex
                 # and that it is not special, if both conditions
                 # are true, execute f
-                if repo.annex in selected_annexes and not repo.isSpecial():
+                if repo.annex in selected_annexes and not repo.is_special():
                     f(repo)
 
-        elif connection.supportsRemoteExecution():
+        elif connection.supports_remote_execution():
             # if the connection allows remote execution, first compute the remote command
             # based on the current command
             cmd = sys.argv[:]
@@ -193,7 +193,7 @@ def apply_function(args, f):
             # execute the command on the target machine
             print()
             print_green("executing command on host %s" % connection.dest.name)
-            connection.executeRemotely(cmd)
+            connection.execute_remotely(cmd)
             print_green("command finished on host %s" % connection.dest.name)
             print()
         else:
@@ -213,7 +213,7 @@ def init_init(parsers):
 
 def func_init(args):
     def repo_init(repo):
-        repo.init(ignorenonempty=args.ignorenonempty)
+        repo.init(ignore_nonempty=args.ignorenonempty)
 
     apply_function(args, repo_init)
 
@@ -229,7 +229,7 @@ def init_reinit(parsers):
 
 def func_reinit(args):
     def repo_reinit(repo):
-        repo.setProperties()
+        repo.set_properties()
 
     apply_function(args, repo_reinit)
 
@@ -345,11 +345,11 @@ def func_command(args):
 
     def repo_command(repo):
         # change path
-        repo.changePath()
+        repo.change_path()
         if repo.app.verbose <= repo.app.VERBOSE_IMPORTANT:
-            print_blue("running the command for", repo.annex.name, "in", repo.localpath)
+            print_blue("running the command for", repo.annex.name, "in", repo.local_path)
         # run the command in the directory
-        repo.executeCommand(args.command, ignoreexception=args.force)
+        repo.execute_command(args.command, ignore_exception=args.force)
         if repo.app.verbose <= repo.app.VERBOSE_IMPORTANT:
             print()
 
@@ -368,7 +368,7 @@ show_edit_parser.add_argument('--annex', default=None,
                               help="restrict show/edit to the given annex")
 
 
-def createEnv(args):
+def create_env(args):
     # create application
     app = application.Application(CONFIG_PATH)
 
@@ -376,21 +376,21 @@ def createEnv(args):
     class Env:
         def __init__(self):
             self.app = app
-            self.host = app.hosts.fuzzyMatch(args.host) if args.host is not None else None
-            self.annex = app.annexes.fuzzyMatch(args.annex) if args.annex is not None else None
+            self.host = app.hosts.fuzzy_match(args.host) if args.host is not None else None
+            self.annex = app.annexes.fuzzy_match(args.annex) if args.annex is not None else None
 
             # find the host which should be highlighted
             if self.host:
-                self.highlightedhost = self.host
+                self.highlighted_host = self.host
             else:
                 try:
-                    self.highlightedhost = app.current_host()
+                    self.highlighted_host = app.current_host()
                 except:
                     # there is no distinguished host
-                    self.highlightedhost = None
+                    self.highlighted_host = None
 
             # find annex which should be highlighted
-            self.highlightedannex = self.annex
+            self.highlighted_annex = self.annex
 
     # create environment
     return Env()
@@ -406,7 +406,7 @@ def init_show(parsers):
 
 def func_show(args):
     # create env
-    env = createEnv(args)
+    env = create_env(args)
 
     # show app data
     show_edit.show(env)
@@ -425,7 +425,7 @@ def init_edit(parsers):
 
 def func_edit(args):
     # create env
-    env = createEnv(args)
+    env = create_env(args)
 
     # parse unsafe
     env.unsafe = args.unsafe
@@ -445,7 +445,7 @@ def func_edit(args):
 #
 # set host
 #
-def init_sethost(parsers):
+def init_set_host(parsers):
     parser = parsers.add_parser('sethost', help='set the current host')
     parser.add_argument('host', help="host name")
     parser.set_defaults(func=func_sethost)
@@ -456,11 +456,11 @@ def func_sethost(args):
     app = application.Application(CONFIG_PATH)
 
     try:
-        host = app.hosts.fuzzyMatch(args.host)
+        host = app.hosts.fuzzy_match(args.host)
         print("setting host to %s." % host.name)
         app.set_current_host(host)
     except Exception as e:
-        print("an error has occured: %s" % e.args[0])
+        print("an error has occurred: %s" % e.args[0])
 
 
 #
@@ -472,7 +472,7 @@ def init_migrate(parsers):
              " also implicitly removes all remote-tracking branches. Afterwards, mpex" \
              " adds all remotes known to it. It is not dangerous for your data" \
              " however git may or may not be able to reestablish the logical" \
-             " dependances of the commits, that is your history. So please make sure" \
+             " dependencies of the commits, that is your history. So please make sure" \
              " that you synchronised all your repositories before running this command."
     parser = parsers.add_parser('migrate',
                                 help='migrate repositories',
@@ -491,8 +491,8 @@ def func_migrate(args):
         return
 
     def repo_migrate(repo):
-        repo.deleteAllRemotes()
-        repo.setProperties()
+        repo.delete_all_remotes()
+        repo.set_properties()
 
     apply_function(args, repo_migrate)
 
@@ -500,7 +500,7 @@ def func_migrate(args):
 #
 # create and run parser
 #
-def runParser():
+def run_parser():
     # create the top-level parser
     parser = argparse.ArgumentParser(prog='mpex')
 
@@ -515,7 +515,7 @@ def runParser():
     init_command(subparsers)
     init_show(subparsers)
     init_edit(subparsers)
-    init_sethost(subparsers)
+    init_set_host(subparsers)
     init_migrate(subparsers)
 
     # parse arguments and call function

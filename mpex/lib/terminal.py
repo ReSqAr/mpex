@@ -30,12 +30,12 @@ def choose(options):
     # ask the user what to do (until we have a valid answer)
     while True:
         # build a nice representation of all options
-        def convert(option):
-            if isinstance(option, range):
-                assert option.step == 1, "step has to be 1"
-                return "i∊[%d,%d]" % (option.start, option.stop - 1)
+        def convert(inner_option):
+            if isinstance(inner_option, range):
+                assert inner_option.step == 1, "step has to be 1"
+                return "i∊[%d,%d]" % (inner_option.start, inner_option.stop - 1)
             else:
-                return str(option)
+                return str(inner_option)
 
         opt_text = ",".join(convert(opt) for opt in options.keys())
 
@@ -59,7 +59,7 @@ def choose(options):
                 try:
                     # convert to an integer
                     number = int(answer)
-                except:
+                except ValueError:
                     # if it fails, it cannot be a number
                     continue
 
@@ -89,7 +89,7 @@ def ask_questions(questions):
         # set
         answers[name] = question.get("default") if question.get("default") else ""
 
-    prefixlength = max(len(question["name"]) for question in questions) + 1
+    prefix_length = max(len(question["name"]) for question in questions) + 1
 
     while True:
         print()
@@ -99,14 +99,14 @@ def ask_questions(questions):
             # print the description (wrapped)
             for i, line in enumerate(textwrap.wrap(question["description"], 70)):
                 if i == 0:
-                    print("\033[1m%s:\033[0m" % name, " " * (prefixlength - len(name) - 1), end="")
+                    print("\033[1m%s:\033[0m" % name, " " * (prefix_length - len(name) - 1), end="")
                 else:
-                    print(" " * (prefixlength + 1), end="")
+                    print(" " * (prefix_length + 1), end="")
                 print(line)
 
             # ask
             while True:
-                inp = input("%s \033[1mnew value [%s]:\033[0m " % (" " * prefixlength, answers[name]))
+                inp = input("%s \033[1mnew value [%s]:\033[0m " % (" " * prefix_length, answers[name]))
 
                 # if the input is empty, use the default value
                 if not inp:
@@ -124,10 +124,10 @@ def ask_questions(questions):
                         # if the original version differs from the post processed one,
                         # show it
                         if orig != inp:
-                            print(" " * prefixlength, "implicit change to: %s" % (inp,))
+                            print(" " * prefix_length, "implicit change to: %s" % (inp,))
                     except Exception as e:
                         # the post processor found an error
-                        print(" " * prefixlength, "invalid input: %s" % (e.args[0],))
+                        print(" " * prefix_length, "invalid input: %s" % (e.args[0],))
                         continue
 
                 # if we reach this point, everything is fine, we save the answer
