@@ -65,14 +65,14 @@ def enumerate_table(table):
 
 
 def format_host(env, host):
-    if env.highlightedhost and env.highlightedhost == host:
+    if env.highlighted_host and env.highlighted_host == host:
         return "\033[1m%s\033[0m" % host.name
     else:
         return host.name
 
 
 def format_annex(env, annex):
-    if env.highlightedannex and env.highlightedannex == annex:
+    if env.highlighted_annex and env.highlighted_annex == annex:
         return "\033[1m%s\033[0m" % annex.name
     else:
         return annex.name
