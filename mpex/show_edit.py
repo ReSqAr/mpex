@@ -74,6 +74,8 @@ def format_annex(env, annex):
 	else:
 		return annex.name
 
+
+# noinspection PyListCreation,PyListCreation
 def create_hosts_table(env, hosts, additional_data=True):
 	""" builds a table """
 	# we build a table: a 2 dimensional array
@@ -97,6 +99,8 @@ def create_hosts_table(env, hosts, additional_data=True):
 	
 	return hosts,table
 
+
+# noinspection PyListCreation,PyListCreation
 def create_annexes_table(env, annexes, additional_data=True):
 	""" builds a table """
 	# we build a table: a 2 dimensional array
@@ -119,7 +123,9 @@ def create_annexes_table(env, annexes, additional_data=True):
 		table.append(row)
 	
 	return annexes,table
-		
+
+
+# noinspection PyListCreation
 def create_repositories_table(env, repositories):
 	""" builds a table """
 	# determine if additional columns have to be shown
@@ -175,6 +181,8 @@ def create_repositories_table(env, repositories):
 
 	return repositories,table
 
+
+# noinspection PyListCreation
 def create_connections_table(env, connections):
 	""" builds a table """
 	
@@ -438,6 +446,7 @@ def connection_path_pp(s):
 #
 # edit function
 #
+# noinspection PyListCreation
 def edit_hosts(env, obj):
 	""" edit hosts """
 
@@ -478,7 +487,7 @@ def edit_hosts(env, obj):
 			return
 
 
-	
+# noinspection PyListCreation
 def edit_annexes(env, obj):
 	""" edit annexes """
 
@@ -521,10 +530,9 @@ def edit_annexes(env, obj):
 
 	else:
 		print("Annex objects have are inmutable, edit request ignored")
-	
 
 
-
+# noinspection PyListCreation
 def edit_repositories(env, obj):
 	""" edit repositories """
 	
@@ -667,6 +675,7 @@ def edit_repositories(env, obj):
 		return
 
 
+# noinspection PyListCreation
 def edit_connections(env, obj):
 	""" edit connections """
 

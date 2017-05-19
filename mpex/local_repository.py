@@ -71,7 +71,8 @@ class GitRepository:
 		# the first two characters are noise
 		return [line[2:].strip() for line in output.splitlines() if line.strip()]
 
-	def gitHead(self):
+	@staticmethod
+	def gitHead():
 		""" get the git HEAD of the master branch """
 		return subprocess.check_output(["git","rev-parse","HEAD"]).strip()
 

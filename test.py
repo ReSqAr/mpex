@@ -655,7 +655,8 @@ class TestCommands(unittest.TestCase):
 	#
 	# repo based helper
 	#
-	def apply_to_repos(self, repos, f):
+	@staticmethod
+	def apply_to_repos(repos, f):
 		""" applys f to every repository on its host """
 		ret = []
 		for repo in repos:
@@ -698,7 +699,8 @@ class TestCommands(unittest.TestCase):
 	#
 
 	# create
-	def _create_file(self, path, filename, content):
+	@staticmethod
+	def _create_file(path, filename, content):
 		""" create file in the given path """
 		f_path = os.path.join(path,filename)
 		with open(f_path,"wt") as fd:
@@ -711,7 +713,8 @@ class TestCommands(unittest.TestCase):
 		self._create_file(repo.localpath,filename,content)
 
 	# remove
-	def _remove_file(self, path, filename):
+	@staticmethod
+	def _remove_file(path, filename):
 		""" removes the given file """
 		f_path = os.path.join(path,filename)
 		os.remove(f_path)

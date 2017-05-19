@@ -83,7 +83,8 @@ class Application:
 			# write
 			fd.write(host.name)
 	
-	def assimilate(self, repo, connection=None):
+	@staticmethod
+	def assimilate(repo, connection=None):
 		""" promotes a Repository to a LocalRepository """
 		# promote the object
 		return local_repository.LocalRepository(repo,connection)

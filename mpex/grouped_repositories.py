@@ -6,13 +6,13 @@ import os
 import subprocess
 
 def check_output_no_ret(*popenargs, **kwargs):
-    """ see subprocess.check_output """
-    if 'stdout' in kwargs:
-        raise ValueError('stdout argument not allowed, it will be overridden.')
-    process = subprocess.Popen(stdout=subprocess.PIPE, stderr=subprocess.PIPE, *popenargs, **kwargs)
-    output, unused_error = process.communicate()
-    unused_retcode = process.poll()
-    return output
+	""" see subprocess.check_output """
+	if 'stdout' in kwargs:
+		raise ValueError('stdout argument not allowed, it will be overridden.')
+	process = subprocess.Popen(stdout=subprocess.PIPE, stderr=subprocess.PIPE, *popenargs, **kwargs)
+	output, unused_error = process.communicate()
+	unused_retcode = process.poll()
+	return output
 
 def annex_whereis(path):
 	"""
@@ -104,7 +104,7 @@ class Directory:
 
 	def get_subfolder(self,subfolder):
 		# subfolder is a list
-		if subfolder == []:
+		if not subfolder:
 			return self
 
 		sub_directory = self.get_directory(subfolder[0])
@@ -211,8 +211,9 @@ def colored_format(text, index):
 				text = text,
 				reset = code_to_str( 0 )
 			)
-				
 
+
+# noinspection PyArgumentList
 def print_report(root, repositories, number_of_content_lines = 5):
 	# sort uuids by size
 	description = sorted(root.get_description().items(),
