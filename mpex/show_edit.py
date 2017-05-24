@@ -655,7 +655,7 @@ def edit_repositories(env, obj):
     questions.append({"name": "files",
                       "description": "files expression which specifies the desired content of this repository",
                       "default": obj.files if obj.files else "",
-                      "postprocessor": obj._sanitise_files_expression})
+                      "postprocessor": obj.sanitise_files_expression})
 
     # 4. question: strict?
     questions.append({"name": "strict",

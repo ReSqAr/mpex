@@ -10,6 +10,7 @@ from mpex import application
 verbose = 0
 
 
+# noinspection PyUnusedLocal
 class TestStructure(unittest.TestCase):
     """
         tests structural properties of the application
@@ -617,6 +618,7 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(id(capabilities), id(capabilities2))
 
 
+# noinspection PyUnusedLocal
 class TestCommands(unittest.TestCase):
     verbose = verbose
     """
@@ -1211,7 +1213,7 @@ class TestCommands(unittest.TestCase):
                         fd.write(name)
 
         # consistency check
-        self.check_powerset_files(paths, lambda t, f: self.assertEqual(f, t))
+        self.check_powerset_files(paths, lambda t_, f_: self.assertEqual(f_, t_))
 
     def check_powerset_files(self, paths, checker):
         """
@@ -1818,8 +1820,8 @@ class TestCommands(unittest.TestCase):
             self.has_file(repo, "test2")
 
         # there should be no strange remote branches left
-        def remote_branch_checker(repo):
-            repo.change_path()
+        def remote_branch_checker(repo_):
+            repo_.change_path()
             cmd = ["git", "branch", "--all"]
             output = subprocess.check_output(cmd).decode("UTF-8")
             self.assertNotIn("alice", output)

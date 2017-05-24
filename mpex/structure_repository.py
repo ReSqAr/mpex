@@ -207,7 +207,7 @@ class Repository:
 
         return cmd
 
-    def _sanitise_files_expression(self, files):
+    def sanitise_files_expression(self, files):
         """ sanitise the files expression """
 
         # if there is nothing to do, leave
@@ -286,14 +286,14 @@ class Repository:
     def files(self):
         """ determines which files should be kept in the repository, default: None """
         files = self._data.get("files")
-        files = self._sanitise_files_expression(files)
+        files = self.sanitise_files_expression(files)
         return files
 
     @files.setter
     def files(self, v):
         """ protected setter method """
         # sanitise the expression
-        v = self._sanitise_files_expression(v)
+        v = self.sanitise_files_expression(v)
 
         if v is None and "files" in self._data:
             # if it should be deleted and the property is set
