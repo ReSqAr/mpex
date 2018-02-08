@@ -770,7 +770,7 @@ def edit_connections(env, obj):
     # 1. question: alwaysOn
     questions.append({"name": "alwayson",
                       "description": "is the connection always available, valid values: true,false",
-                      "default": str(obj.alwaysOn).lower(),
+                      "default": str(obj.always_on).lower(),
                       "postprocessor": valid_values_pp(("true", "false"))})
 
     # actually ask the questions
@@ -786,7 +786,7 @@ def edit_connections(env, obj):
         # parse values
         alwayson = (answers["alwayson"] == 'true')
         # set values
-        obj.alwaysOn = alwayson
+        obj.always_on = alwayson
     except Exception as e:
         print_red("an error occurred:", e.args[0])
         return
