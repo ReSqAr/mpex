@@ -311,7 +311,7 @@ def func_group(args):
             print_blue("grouping repositories of", repo.annex.name, "in", repo.path)
             print()
 
-        grouped_repositories.do_report(repo.path, args.lines, args.no_untrusted)
+        grouped_repositories.do_report(repo.local_path, args.lines, args.no_untrusted)
         print()
 
     apply_function(args, repo_group)

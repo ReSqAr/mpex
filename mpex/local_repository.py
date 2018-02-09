@@ -506,7 +506,7 @@ class GitAnnexRepository(GitRepository):
 
     def delete_all_remotes(self):
         """
-            deletes all remotes found in .git/confing, this implicitly deletes
+            deletes all remotes found in .git/config, this implicitly deletes
             also all remote tracking-branches
         """
 
