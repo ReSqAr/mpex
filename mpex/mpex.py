@@ -82,7 +82,7 @@ def apply_function(args, f):
     # sort order for repositories
     r_key = lambda r: str((r.annex, r.path))
 
-    # sort out execution targets
+    # select execution targets
     hosts_filter = None
     if args.hosts is not None:
         # split the comma separated list
@@ -124,7 +124,7 @@ def apply_function(args, f):
     # list of connections
     connections = []
 
-    # if remote execution is wanted and we are still close enough to the origin
+    # if remote execution is requested and we are still close enough to the origin
     if remote_execution and args.hops > 0:
         for connection in app.get_connections():
             # filter hosts if the host filter is active
@@ -188,12 +188,11 @@ def apply_function(args, f):
             else:
                 # no hops argument in the original command given: just add it
                 cmd = cmd[:2] + ["--hops", str(args.hops - 1)] + cmd[2:]
-            # TODO: ssh problems....
 
             # execute the command on the target machine
             print()
             print_green("executing command on host %s" % connection.dest.name)
-            connection.execute_remotely(cmd)
+            connection.execute_remotely(cmd, ignore_exception=True, print_ignored_exception=True)
             print_green("command finished on host %s" % connection.dest.name)
             print()
         else:
@@ -329,7 +328,7 @@ def init_command(parsers):
                    %(prog)s cat .git/config
                 """)
     parser = parsers.add_parser('command',
-                                help='run the given command against the repositories',
+                                help='run the given command against the selected repositories',
                                 epilog=epilog,
                                 formatter_class=argparse.RawDescriptionHelpFormatter,
                                 parents=[apply_parser])
@@ -448,10 +447,10 @@ def func_edit(args):
 def init_set_host(parsers):
     parser = parsers.add_parser('sethost', help='set the current host')
     parser.add_argument('host', help="host name")
-    parser.set_defaults(func=func_sethost)
+    parser.set_defaults(func=func_set_host)
 
 
-def func_sethost(args):
+def func_set_host(args):
     # create application
     app = application.Application(CONFIG_PATH)
 

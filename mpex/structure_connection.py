@@ -187,7 +187,7 @@ class Connection:
         # we can do that only if the protocol is 'ssh'
         return self.protocol() in ("ssh",)
 
-    def execute_remotely(self, cmd):
+    def execute_remotely(self, cmd, ignore_exception=False, print_ignored_exception=True):
         """ execute the command on the target machine """
         assert self.supports_remote_execution(), "does not support remote execution"
         assert isinstance(cmd, list), "expected a list"
@@ -196,7 +196,7 @@ class Connection:
         l_cmd = ["ssh", self.path_data()["server"]] + cmd
 
         # execute the command
-        self.app.execute_command(l_cmd)
+        self.app.execute_command(l_cmd, ignore_exception=ignore_exception, print_ignored_exception=print_ignored_exception)
 
     #
     # hashable type mehods, hashable is needed for dict keys and sets
