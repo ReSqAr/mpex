@@ -3,6 +3,7 @@ import argparse
 import sys
 import textwrap
 import time
+import xdg
 
 from .lib import fuzzy_match
 from .lib.terminal import print_blue, print_red, print_green
@@ -12,8 +13,10 @@ from . import show_edit
 
 from . import grouped_repositories
 
-CONFIG_PATH = "~/.config/mpex/"
-CONFIG_PATH = os.path.expanduser(CONFIG_PATH)
+CONFIG_PATH = xdg.XDG_CONFIG_HOME
+if not CONFIG_PATH:
+    CONFIG_PATH = os.path.expanduser('~/.config')
+CONFIG_PATH = os.path.join(CONFIG_PATH, 'mpex')
 
 
 def parse_annex_names(app, args):

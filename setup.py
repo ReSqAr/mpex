@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name="mpex",
     packages=["mpex", "mpex.lib"],
-    version="0.9",
+    version="0.9.1",
     description="git annex helper",
     author="Yasin Zaehringer",
     author_email="yasin-mpex@yhjz.de",
@@ -13,6 +13,9 @@ setup(
         'console_scripts': [
             'mpex = mpex.__main__:main'
         ]},
+    install_requires=[
+        "xdg",
+    ],
     classifiers=[
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
